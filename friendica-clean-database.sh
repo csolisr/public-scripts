@@ -2,14 +2,14 @@
 interval=14
 sudo mariadb friendica --verbose -v -v --show-warnings --execute=\
 "DELETE FROM \`post-origin\` WHERE (\`parent-uri-id\`, \`uid\`) IN (SELECT \`uri-id\`, \`uid\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \
-  \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL $interval DAY));\
+  \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL ${interval} DAY));\
 DELETE FROM \`post-user\` WHERE \`gravity\` = 0 AND \
-  \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL $interval DAY);\
+  \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL ${interval} DAY);\
 DELETE FROM \`post\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`);\
 DELETE FROM \`post-content\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`);\
 DELETE FROM \`post-thread\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`);\
 DELETE FROM \`post-user\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post\`);\
-DELETE FROM \`item-uri\` WHERE \`id\` IN (SELECT \`uri-id\` FROM \`post-thread\` WHERE \`received\` < (CURDATE() - INTERVAL $interval DAY) \
+DELETE FROM \`item-uri\` WHERE \`id\` IN (SELECT \`uri-id\` FROM \`post-thread\` WHERE \`received\` < (CURDATE() - INTERVAL ${interval} DAY) \
   AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-thread-user\` \
     WHERE (\`mention\` OR \`starred\` OR \`wall\`) AND \`uri-id\` = \`post-thread\`.\`uri-id\`) \
   AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-category\` \
@@ -24,11 +24,11 @@ DELETE FROM \`item-uri\` WHERE \`id\` IN (SELECT \`uri-id\` FROM \`post-thread\`
     WHERE (\`origin\` OR \`event-id\` != 0 OR \`post-type\` = 128) AND \`parent-uri-id\` = \`post-thread\`.\`uri-id\`) \
   AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-content\` \
     WHERE \`resource-id\` != 0 AND \`uri-id\` = \`post-thread\`.\`uri-id\`));\
-DELETE FROM \`item-uri\` WHERE \`id\` IN (SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`uid\` = 0 AND \`received\` < (CURDATE() - INTERVAL $interval DAY) \
+DELETE FROM \`item-uri\` WHERE \`id\` IN (SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`uid\` = 0 AND \`received\` < (CURDATE() - INTERVAL ${interval} DAY) \
   AND NOT \`uri-id\` IN (\
     SELECT \`parent-uri-id\` FROM \`post-user\` AS \`i\` WHERE \`i\`.\`uid\` != 0 AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\`\
   ) AND NOT \`uri-id\` IN (\
-    SELECT \`parent-uri-id\` FROM \`post-user\` AS \`i\` WHERE \`i\`.\`uid\` = 0 AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` AND \`i\`.\`received\` > (CURDATE() - INTERVAL $interval DAY)\
+    SELECT \`parent-uri-id\` FROM \`post-user\` AS \`i\` WHERE \`i\`.\`uid\` = 0 AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` AND \`i\`.\`received\` > (CURDATE() - INTERVAL ${interval} DAY)\
   )\
 );\
 DELETE FROM \`attach\` WHERE \`id\` NOT IN (SELECT \`attach-id\` FROM \`post-media\`);\

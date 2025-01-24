@@ -11,15 +11,15 @@ folder=/var/www/friendica
 folderescaped=${folder////\\/}
 tmpfile=/tmp/friendica-fix-avatar-permissions.txt
 avatarfolder=avatar
-cd "$folder" || exit
-if [ ! -f "$tmpfile" ]
+cd "${folder}" || exit
+if [[ ! -f "${tmpfile}" ]]
 then
-	sudo -u "$user" bin/console movetoavatarcache | sudo tee "$tmpfile" #&> /dev/null
+	sudo -u "${user}" bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
 fi
-grep -e "https://$site/$avatarfolder/" "$tmpfile" | sed -e "s/.*$site/$folderescaped/g" -e "s/-.*/\*/g" | (
+grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${folderescaped}/g" -e "s/-.*/\*/g" | (
 	while read n
 	do
-		find "$folder/$avatarfolder" -path "$n" -type f | (
+		find "${folder}/${avatarfolder}" -path "${n}" -type f | (
 			while read p
 			do
 				if [[ "${p}" =~ ".jpeg" || "${p}" =~ ".jpg" ]]
@@ -58,11 +58,11 @@ grep -e "https://$site/$avatarfolder/" "$tmpfile" | sed -e "s/.*$site/$folderesc
 				if [[ "${p}" =~ ".webp" ]]
 				then
 					cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
-					if [ -f /tmp/temp.webp ]
+					if [[ -f /tmp/temp.webp ]]
 					then
 						size_new=$(stat -c%s "/tmp/temp.webp")
 						size_original=$(stat -c%s "${p}")
-						if [ "$size_original" -gt "$size_new" ]
+						if [[ "${size_original}" -gt "${size_new}" ]]
 						then
 							mv /tmp/temp.webp "${p}"
 						else
@@ -75,10 +75,10 @@ grep -e "https://$site/$avatarfolder/" "$tmpfile" | sed -e "s/.*$site/$folderesc
 	done
 )
 wait
-rm "$tmpfile"
-/usr/bin/find $folder/avatar -type d -empty -delete
-/usr/bin/chmod $folderperm $folder/avatar
-/usr/bin/chown -R $user:$group $folder/avatar
-/usr/bin/find $folder/avatar -depth -not -user $user -or -not -group $group -print0 | xargs -0 -r sudo chown -v $user:$group #&> /dev/null
-/usr/bin/find $folder/avatar -depth -type d -and -not -type f -and -not -perm $folderperm -print0 | xargs -0 -r sudo chmod -v $folderperm #&> /dev/null
-/usr/bin/find $folder/avatar -depth -type f -and -not -type d -and -not -perm $fileperm -print0 | xargs -0 -r sudo chmod -v $fileperm #&> /dev/null
+rm "${tmpfile}"
+/usr/bin/find "${folder}"/avatar -type d -empty -delete
+/usr/bin/chmod "${folderperm}" "${folder}"/avatar
+/usr/bin/chown -R "${user}":"${group}" "${folder}"/avatar
+/usr/bin/find "${folder}"/avatar -depth -not -user "${user}" -or -not -group "${group}" -print0 | xargs -0 -r sudo chown -v "${user}":"${group}" #&> /dev/null
+/usr/bin/find "${folder}"/avatar -depth -type d -and -not -type f -and -not -perm "${folderperm}" -print0 | xargs -0 -r sudo chmod -v "${folderperm}" #&> /dev/null
+/usr/bin/find "${folder}"/avatar -depth -type f -and -not -type d -and -not -perm "${fileperm}" -print0 | xargs -0 -r sudo chmod -v "${fileperm}" #&> /dev/null

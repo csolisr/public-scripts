@@ -40,13 +40,13 @@ IFS="
         while read s
 	do
             nice -n 15 cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp
-            if [ -f /tmp/"${s##.*\/}"_temp.webp ]
+            if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]
             then
                 size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp)
                 size_original=$(stat -c%s "${s}")
-                if [ "$size_original" -gt "$size_new" ]
+                if [[ "${size_original}" -gt "${size_new}" ]]
                 then
-                    mv /tmp/"${s##.*\/}"_temp.webp "$s"
+                    mv /tmp/"${s##.*\/}"_temp.webp "${s}"
                 else
                     rm /tmp/"${s##.*\/}"_temp.webp
                 fi
