@@ -40,7 +40,7 @@ grep -e "https://$site/$avatarfolder/" "$tmpfile" | sed -e "s/.*$site/$folderesc
 					#Specific compression for large GIF files
 					while [[ $(stat -c%s "${p}") -ge 512000 ]]
 					do
-						gifsicle "${p}" `seq -f "#%g" 0 2 99` -O3 --lossy=80 --colors=255 -o "${p}" & #&> /dev/null
+						gifsicle "${p}" $(seq -f "#%g" 0 2 99) -O3 --lossy=80 --colors=255 -o "${p}" & #&> /dev/null
 						if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]
 						then
 							wait -n

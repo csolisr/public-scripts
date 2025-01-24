@@ -39,7 +39,7 @@ then
 		echo "Amount of unique sites: ${#sites[@]}"
 		for a in "${sites[@]}"
 		do
-			loop_1 $a &
+			loop_1 "$a" &
 			if [[ $(jobs -r -p | wc -l) -ge $(expr $(getconf _NPROCESSORS_ONLN)*2) ]]
 			then
 				wait -n
@@ -56,7 +56,7 @@ then
 	then
 		for b in "${sitesdown[@]}"
 		do
-			loop_2 $b &
+			loop_2 "$b" &
 			if [[ $(jobs -r -p | wc -l) -ge $(expr $(getconf _NPROCESSORS_ONLN)/2) ]]
 			then
 				wait -n
@@ -67,7 +67,7 @@ then
 	fi
 	while read -r lineb; do
 		#The community no longer exists, delete
-		loop_3 $lineb &
+		loop_3 "$lineb" &
 		if [[ $(jobs -r -p | wc -l) -ge $(expr $(getconf _NPROCESSORS_ONLN)/2) ]]
 		then
 			wait -n

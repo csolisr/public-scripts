@@ -46,7 +46,7 @@ IFS="
                 size_original=$(stat -c%s "${s}")
                 if [ "$size_original" -gt "$size_new" ]
                 then
-                    mv /tmp/"${s##.*\/}"_temp.webp $s
+                    mv /tmp/"${s##.*\/}"_temp.webp "$s"
                 else
                     rm /tmp/"${s##.*\/}"_temp.webp
                 fi
