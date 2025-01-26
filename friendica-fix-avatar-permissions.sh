@@ -11,18 +11,28 @@ folder=/var/www/friendica
 folderescaped=${folder////\\/}
 tmpfile=/tmp/friendica-fix-avatar-permissions.txt
 avatarfolder=avatar
+
+loop_1(){
+	gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" #&> /dev/null
+	#Specific compression for large GIF files
+	while [[ $(stat -c%s "${p}") -ge 512000 ]]
+	do
+		gifsicle "${p}" $(seq -f "#%g" 0 2 99) -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
+	done
+}
+
 cd "${folder}" || exit
 if [[ ! -f "${tmpfile}" ]]
 then
 	sudo -u "${user}" bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
 fi
 grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${folderescaped}/g" -e "s/-.*/\*/g" | (
-	while read n
+	while read -r n
 	do
 		find "${folder}/${avatarfolder}" -path "${n}" -type f | (
-			while read p
+			while read -r p
 			do
-				if [[ "${p}" =~ ".jpeg" || "${p}" =~ ".jpg" ]]
+				if [[ "${p}" =~ .jpeg || "${p}" =~ .jpg ]]
 				then
 					jpegoptim -m 76 "${p}" & #&> /dev/null
 					if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]
@@ -30,24 +40,15 @@ grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${
 						wait -n
 					fi
 				fi
-				if [[ "${p}" =~  ".gif" ]]
+				if [[ "${p}" =~  .gif ]]
 				then
-					gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" & #&> /dev/null
+					loop_1 "${n}" & #&> /dev/null
 					if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]
 					then
 						wait -n
 					fi
-					#Specific compression for large GIF files
-					while [[ $(stat -c%s "${p}") -ge 512000 ]]
-					do
-						gifsicle "${p}" $(seq -f "#%g" 0 2 99) -O3 --lossy=80 --colors=255 -o "${p}" & #&> /dev/null
-						if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]
-						then
-							wait -n
-						fi
-					done
 				fi
-				if [[ "${p}" =~ ".png" ]]
+				if [[ "${p}" =~ .png ]]
 				then
 					oxipng -o max "${p}" & #&> /dev/null
 					if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]
@@ -55,7 +56,7 @@ grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${
 						wait -n
 					fi
 				fi
-				if [[ "${p}" =~ ".webp" ]]
+				if [[ "${p}" =~ .webp ]]
 				then
 					cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
 					if [[ -f /tmp/temp.webp ]]
