@@ -50,21 +50,16 @@ then
 	sudo -u "${user}" bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
 fi
 grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${folderescaped}/g" -e "s/?ts=.*//g" | (
-	while read -r n
+	while read -r i
 	do
-		find "${folder}/${avatarfolder}" -path "${n}" -type f | (
-			while read -r i
-			do
-				for p in "${i}" "${i//-320/-80}" "${i//-320/-48}"
-				do
-					loop_1 "${p}" &
-					if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]
-					then
-						wait -n
-					fi
-				done
-			done
-		)
+		for p in "${i}" "${i//-320/-80}" "${i//-320/-48}"
+		do
+			loop_1 "${p}" &
+			if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]
+			then
+				wait -n
+			fi
+		done
 	done
 )
 wait
