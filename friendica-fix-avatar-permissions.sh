@@ -20,7 +20,7 @@ loop_1(){
 	then
 		nice -n 10 gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" #&> /dev/null
 		#Specific compression for large GIF files
-		while [[ $(stat -c%s "${p}") -ge 512000 ]]
+		while [[ $(stat -c%s "${p}" || 0) -ge 512000 ]]
 		do
 			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 99) -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
 		done
@@ -32,13 +32,13 @@ loop_1(){
 		nice -n 10 cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
 		if [[ -f /tmp/temp.webp ]]
 		then
-			size_new=$(stat -c%s "/tmp/temp.webp")
+			size_new=$(stat -c%s "/tmp/temp.webp" || 0 )
 			size_original=$(stat -c%s "${p}")
 			if [[ "${size_original}" -gt "${size_new}" ]]
 			then
-				mv /tmp/temp.webp "${p}"
+				mv /tmp/temp.webp "${p}" #&> /dev/null
 			else
-				rm /tmp/temp.webp
+				rm /tmp/temp.webp #&> /dev/null
 			fi
 		fi
 	fi
