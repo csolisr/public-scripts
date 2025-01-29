@@ -29,16 +29,20 @@ loop_1(){
 		nice -n 10 oxipng -o max "${p}" #&> /dev/null
 	elif [[ "${p}" =~ .webp ]]
 	then
-		nice -n 10 cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
-		if [[ -f /tmp/temp.webp ]]
+		#If file is not animated
+		if [[ $(grep -v -q -e "ANIM" -e "ANMF" "${p}" ]]
 		then
-			size_new=$(stat -c%s "/tmp/temp.webp" || 0 )
-			size_original=$(stat -c%s "${p}")
-			if [[ "${size_original}" -gt "${size_new}" ]]
+			nice -n 10 cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
+			if [[ -f /tmp/temp.webp ]]
 			then
-				mv /tmp/temp.webp "${p}" #&> /dev/null
-			else
-				rm /tmp/temp.webp #&> /dev/null
+				size_new=$(stat -c%s "/tmp/temp.webp" || 0 )
+				size_original=$(stat -c%s "${p}")
+				if [[ "${size_original}" -gt "${size_new}" ]]
+				then
+					mv /tmp/temp.webp "${p}" #&> /dev/null
+				else
+					rm /tmp/temp.webp #&> /dev/null
+				fi
 			fi
 		fi
 	fi
