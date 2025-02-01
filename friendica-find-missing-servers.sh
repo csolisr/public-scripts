@@ -3,7 +3,7 @@ db="friendica"
 tmpfile="/tmp/sitesdown.txt"
 idsdownfile="/tmp/idsdown.txt"
 loop_1() {
-	sitereq=$(curl -s -L --head -m 10 --request GET "${a}")
+	sitereq=$(curl -s -L --head -m 20 --request GET "${a}")
 	status=$(echo "${sitereq}" | grep -e "200" -e "cloudflare")
 	if [[ -z ${status} ]]
 	then
@@ -13,12 +13,11 @@ loop_1() {
 }
 loop_2() {
 	echo "Finding users for ${b}"
-	mariadb "${db}" -N -B -q -e "select \`id\` from contact c where \"${b}\" not in (select \`contact-id\` from group_member) and (c.baseurl = \"${b}\" or c.url = \"${b}\")" | sudo tee -a "${idsdownfile}" &> /dev/null
+	mariadb "${db}" -N -B -q -e "select \`id\`, \`name\` from contact c where c.\`id\` not in (select \`contact-id\` from group_member) and (c.baseurl = \"${b}\" or c.url = \"${b}\")" | sudo tee -a "${idsdownfile}" #&> /dev/null
 }
 
 loop_3() {
-	echo "Deleting user ${lineb}"
-	mariadb "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${lineb}"
+	echo "Deleting user ${lineb} - ${username}"
 	mariadb "${db}" -N -B -q -e "delete from \`post-thread\` where \`author-id\` = ${lineb} or \`causer-id\` = ${lineb} or \`owner-id\` = ${lineb}"
 	mariadb "${db}" -N -B -q -e "delete from \`post-thread-user\` where \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}  or \`owner-id\` = ${lineb}"
 	mariadb "${db}" -N -B -q -e "delete from \`post-user\` where \`author-id\` = ${lineb}  or \`causer-id\` = ${lineb} or \`owner-id\` = ${lineb}"
@@ -65,7 +64,10 @@ then
 		wait
 		#cat "$idsdownfile" | sort -n | uniq > "$idsdownfile"
 	fi
-	while read -r lineb; do
+	#idsdown=()
+	#echo "$idsdownfile" | sort | uniq > "$idsdownfile"
+	while read -r lineb username; do
+		#idsdown+=($lineb)
 		#The community no longer exists, delete
 		loop_3 "${lineb}" &
 		if [[ $(jobs -r -p | wc -l) -ge $(expr $(getconf _NPROCESSORS_ONLN)/2) ]]
