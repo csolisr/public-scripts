@@ -3,12 +3,11 @@ db="friendica"
 tmpfile="/tmp/sitesdown.txt"
 idsdownfile="/tmp/idsdown.txt"
 url=friendica.example.net
-folder=/var/www/friendica
-folderescaped=${folder////\\/}
 avatarfolder=/var/www/friendica/avatar
 avatarfolderescaped=${avatarfolder////\\/}
 loop_1() {
-	sitereq=$(curl -s -L --head -m 20 --request GET "${a}")
+	sitereq=$(curl -s -L --head -m 30 --request GET "${a}")
+	#Skip check if the message contains a reference to Cloudflare
 	status=$(echo "${sitereq}" | grep -e "200" -e "cloudflare")
 	if [[ -z ${status} ]]
 	then
@@ -18,7 +17,7 @@ loop_1() {
 }
 loop_2() {
 	echo "Finding users for ${b}"
-	"${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`name\` from contact c where c.\`id\` not in (select \`contact-id\` from group_member) and (c.baseurl = \"${b}\" or c.url = \"${b}\")" | sudo tee -a "${idsdownfile}" #&> /dev/null
+	"${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`nick\`, \`baseurl\` from contact c where c.\`id\` not in (select \`contact-id\` from group_member) and (c.baseurl = \"${b}\" or c.url = \"${b}\")" | sudo tee -a "${idsdownfile}" #&> /dev/null
 }
 
 loop_3() {
@@ -28,9 +27,12 @@ loop_3() {
 	"${dbengine}" "${db}" -N -B -q -e "select \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${lineb}" | while read -r photo thumb micro
 	do
 		#If stored in avatar folder
-		if [[ -z $(echo "${photo}" | grep "${url}/avatar") ]]
+		if $(echo "${photo}" | grep -q "${url}/avatar")
+		#isavatar=$(grep -q "${url}/avatar" <<< "${photo}")
+		#if [[ -z "${isavatar}" ]]
 		then
 			phototrimmed=$(echo "${photo}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
+			echo "${phototrimmed}"
 			rm -rfv "${phototrimmed}"
 			thumbtrimmed=$(echo "${thumb}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
 			rm -rfv "${thumbtrimmed}"
@@ -63,12 +65,14 @@ then
 	if [[ ! -f "${tmpfile}" ]]
 	then
 		echo "Listing sites"
-		sites=($("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl from contact" | sort -n | uniq ))
+		#sites=($("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl from contact where baseurl != \"\"" | sort -n | uniq ))
+		sites=()
+		mapfile -t sites < <("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl from contact where baseurl != \"\"" | sort -b -f -n | uniq -i )
 		echo "Amount of unique sites: ${#sites[@]}"
 		for a in "${sites[@]}"
 		do
 			loop_1 "${a}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(expr $(getconf _NPROCESSORS_ONLN)*2) ]]
+			if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) * 2 )) ]]
 			then
 				wait -n
 			fi
@@ -77,7 +81,7 @@ then
 	fi
 	sitesdown=()
 	while read -r line; do
-		sitesdown+=(${line})
+		sitesdown+=("${line}")
 	done < "${tmpfile}"
 	echo "Amount of sites down: ${#sitesdown[@]} / ${#sites[@]}"
 	if [[ ! -f "${idsdownfile}" ]]
@@ -85,7 +89,7 @@ then
 		for b in "${sitesdown[@]}"
 		do
 			loop_2 "${b}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(expr $(getconf _NPROCESSORS_ONLN)/2) ]]
+			if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) / 2 )) ]]
 			then
 				wait -n
 			fi
@@ -99,7 +103,7 @@ then
 		#idsdown+=($lineb)
 		#The community no longer exists, delete
 		loop_3 "${lineb}" "${nick}" "${baseurl}" &
-		if [[ $(jobs -r -p | wc -l) -ge $(expr $(getconf _NPROCESSORS_ONLN)/2) ]]
+		if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) / 2 )) ]]
 		then
 			wait -n
 		fi
