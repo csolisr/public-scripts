@@ -2,6 +2,11 @@
 db="friendica"
 tmpfile="/tmp/sitesdown.txt"
 idsdownfile="/tmp/idsdown.txt"
+url=friendica.example.net
+folder=/var/www/friendica
+folderescaped=${folder////\\/}
+avatarfolder=/var/www/friendica/avatar
+avatarfolderescaped=${avatarfolder////\\/}
 loop_1() {
 	sitereq=$(curl -s -L --head -m 20 --request GET "${a}")
 	status=$(echo "${sitereq}" | grep -e "200" -e "cloudflare")
@@ -19,6 +24,20 @@ loop_2() {
 loop_3() {
 	baseurltrimmed=$(echo "${baseurl}" | sed -e "s/http[s]*:\/\///g")
 	echo "Deleting user ${lineb} - ${nick}@${baseurltrimmed}"
+	#Find the pictures in the avatar folders and delete them
+	"${dbengine}" "${db}" -N -B -q -e "select \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${lineb}" | while read -r photo thumb micro
+	do
+		#If stored in avatar folder
+		if [[ -z $(echo "${photo}" | grep "${url}/avatar") ]]
+		then
+			phototrimmed=$(echo "${photo}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
+			rm -rfv "${phototrimmed}"
+			thumbtrimmed=$(echo "${thumb}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
+			rm -rfv "${thumbtrimmed}"
+			microtrimmed=$(echo "${micro}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
+			rm -rfv "${microtrimmed}"
+		fi
+	done
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-thread\` where \`author-id\` = ${lineb} or \`causer-id\` = ${lineb} or \`owner-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-thread-user\` where \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}  or \`owner-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-user\` where \`author-id\` = ${lineb}  or \`causer-id\` = ${lineb} or \`owner-id\` = ${lineb}"
