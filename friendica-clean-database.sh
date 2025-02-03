@@ -140,7 +140,7 @@ tmp_item_uri_not_in_valid_post_thread_q="${limit}"
 until [[ "${tmp_item_uri_not_in_valid_post_thread_q}" -lt "${limit}" ]]
 do
 	tmp_item_uri_not_in_valid_post_thread=$(sudo mariadb friendica -N -B -q -e \
-		"SELECT \`id\` FROM \`item-uri\` WHERE \`id\` IN (SELECT \`uri-id\` FROM \`post-thread\` WHERE \`received\` < (CURDATE() - INTERVAL ${interval} DAY) \
+		"SELECT \`uri-id\` FROM \`post-thread\` WHERE \`received\` < (CURDATE() - INTERVAL ${interval} DAY) \
 			AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-thread-user\` WHERE (\`mention\` OR \`starred\` OR \`wall\`) \
 			AND \`uri-id\` = \`post-thread\`.\`uri-id\`) \
 			AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-category\` WHERE \`uri-id\` = \`post-thread\`.\`uri-id\`) \
@@ -150,7 +150,7 @@ do
 				AND \`notify_new_posts\` WHERE \`parent-uri-id\` = \`post-thread\`.\`uri-id\`) \
 			AND NOT \`uri-id\` IN (SELECT \`parent-uri-id\` FROM \`post-user\` WHERE (\`origin\` OR \`event-id\` != 0 OR \`post-type\` = 128) \
 				AND \`parent-uri-id\` = \`post-thread\`.\`uri-id\`) \
-			AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-content\` WHERE \`resource-id\` != 0 AND \`uri-id\` = \`post-thread\`.\`uri-id\`)) \
+			AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-content\` WHERE \`resource-id\` != 0 AND \`uri-id\` = \`post-thread\`.\`uri-id\`) \
 			LIMIT ${limit}");
 	tmp_item_uri_not_in_valid_post_thread_q=$(echo "${tmp_item_uri_not_in_valid_post_thread}" | wc -l)
 	echo "${tmp_item_uri_not_in_valid_post_thread_q}"
@@ -173,10 +173,10 @@ tmp_item_uri_not_in_valid_post_user_q="${limit}"
 until [[ "${tmp_item_uri_not_in_valid_post_user_q}" -lt "${limit}" ]]
 do
 	tmp_item_uri_not_in_valid_post_user=$(sudo mariadb friendica -N -B -q -e \
-		"SELECT \`id\` FROM \`item-uri\` WHERE \`id\` IN (SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`uid\` = 0 \
+		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`uid\` = 0 \
 		AND \`received\` < (CURDATE() - INTERVAL ${interval} DAY) AND NOT \`uri-id\` IN ( SELECT \`parent-uri-id\` FROM \`post-user\` AS \`i\` WHERE \`i\`.\`uid\` != 0 \
 		AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` ) AND NOT \`uri-id\` IN ( SELECT \`parent-uri-id\` FROM \`post-user\` AS \`i\` WHERE \`i\`.\`uid\` = 0 \
-		AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` AND \`i\`.\`received\` > (CURDATE() - INTERVAL ${interval} DAY) ) ) LIMIT ${limit}");
+		AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` AND \`i\`.\`received\` > (CURDATE() - INTERVAL ${interval} DAY) ) LIMIT ${limit}");
 	tmp_item_uri_not_in_valid_post_user_q=$(echo "${tmp_item_uri_not_in_valid_post_user}" | wc -l)
 	echo "${tmp_item_uri_not_in_valid_post_user_q}"
 	if [[ "${tmp_item_uri_not_in_valid_post_user_q}" -gt 0 ]]
@@ -240,7 +240,7 @@ do
 		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-delivery\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
 		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-delivery\` WHERE \`inbox-id\` = \`item-uri\`.\`id\` ) \
 		AND NOT EXISTS ( SELECT \`parent-uri-id\` FROM \`mail\` WHERE \`parent-uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`mail\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` )) \
+		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`mail\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
 		LIMIT ${limit}");
 	tmp_item_uri_not_valid_q=$(echo "${tmp_item_uri_not_valid}" | wc -l)
 	echo "${tmp_item_uri_not_valid_q}"
@@ -263,7 +263,7 @@ tmp_item_uri_duplicate_q="${limit}"
 until [[ "${tmp_item_uri_duplicate_q}" -lt "${limit}" ]]
 do
 	tmp_item_uri_duplicate=$(sudo mariadb friendica -N -B -q -e \
-		"SELECT \`id\` FROM \`item-uri\` t1 INNER JOIN \`item-uri\` t2 WHERE t1.\`id\` < t2.\`id\` AND t1.\`uri\` = t2.\`uri\` LIMIT ${limit}")
+		"SELECT t1.\`id\` FROM \`item-uri\` t1 INNER JOIN \`item-uri\` t2 WHERE t1.\`id\` < t2.\`id\` AND t1.\`uri\` = t2.\`uri\` LIMIT ${limit}")
 	tmp_item_uri_duplicate_q=$(echo "${tmp_item_uri_duplicate}" | wc -l)
 	echo "${tmp_item_uri_duplicate_q}"
 	if [[ "${tmp_item_uri_duplicate_q}" -gt 0 ]]
@@ -285,7 +285,7 @@ tmp_post_media_duplicate_q="${limit}"
 until [[ "${tmp_post_media_duplicate_q}" -lt "${limit}" ]]
 do
 	tmp_post_media_duplicate=$(sudo mariadb friendica -N -B -q -e \
-		"SELECT \`id\` FROM \`post-media\` u1 INNER JOIN \`post-media\` u2 WHERE u1.\`id\` < u2.\`id\` AND u1.\`uri-id\` = u2.\`uri-id\` AND u1.\`url\`= u2.\`url\` LIMIT ${limit}")
+		"SELECT u1.\`id\` FROM \`post-media\` u1 INNER JOIN \`post-media\` u2 WHERE u1.\`id\` < u2.\`id\` AND u1.\`uri-id\` = u2.\`uri-id\` AND u1.\`url\`= u2.\`url\` LIMIT ${limit}")
 	tmp_post_media_duplicate_q=$(echo "${tmp_post_media_duplicate}" | wc -l)
 	echo "${tmp_post_media_duplicate_q}"
 	if [[ "${tmp_post_media_duplicate_q}" -gt 0 ]]
@@ -307,7 +307,7 @@ tmp_post_user_duplicate_q="${limit}"
 until [[ "${tmp_post_user_duplicate_q}" -lt "${limit}" ]]
 do
 	tmp_post_user_duplicate=$(sudo mariadb friendica -N -B -q -e \
-		"SELECT \`id\` FROM \`post-user\` v1 INNER JOIN \`post-media\` v2 WHERE v1.\`id\` = v2.\`id\` AND v1.\`uri-id\` = v2.\`uri-id\` LIMIT ${limit}")
+		"SELECT v1.\`id\` FROM \`post-user\` v1 INNER JOIN \`post-media\` v2 WHERE v1.\`id\` = v2.\`id\` AND v1.\`uri-id\` = v2.\`uri-id\` LIMIT ${limit}")
 	tmp_post_user_duplicate_q=$(echo "${tmp_post_user_duplicate}" | wc -l)
 	echo "${tmp_post_user_duplicate_q}"
 	if [[ "${tmp_post_user_duplicate_q}" -gt 0 ]]
