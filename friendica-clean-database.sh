@@ -1,6 +1,6 @@
 #!/bin/bash
 interval=7
-limit=100000
+limit=1000
 
 echo "tmp_post_origin_deleted"
 tmp_post_origin_deleted_q="${limit}"
