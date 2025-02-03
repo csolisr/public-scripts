@@ -24,13 +24,13 @@ find . -type f -iname "*.gif" -size +500k | (
     done;
     wait
 )
-#Specific compression for large GIF files
-find . -type f -iname "*.gif" -size +512000 | (
+#Specific compression for large GIF files: halving the frame rate
+find . -type f -size +500k -iname "*-320.gif" -or -iname "*-80.gif" -or -iname "*-48.gif" | (
     while read p
     do
         while [[ $(stat -c%s "${p}" || 0) -ge 512000 ]]
         do
-            frameamount=$(exiftool -b -FrameCount "${p}")
+            frameamount=$(( $(exiftool -b -FrameCount "${p}" || 1) - 1 ))
             nice -n 15 gifsicle "${p}" $(seq -f "#%g" 0 2 "${frameamount}") -O3 --lossy=80 --colors=255 -o "${p}"
         done
     done
