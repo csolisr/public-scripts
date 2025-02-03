@@ -22,7 +22,8 @@ loop_1(){
 		#Specific compression for large GIF files
 		while [[ $(stat -c%s "${p}" || 0) -ge 512000 ]]
 		do
-			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 99) -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
+			frameamount=$(exiftool -b -FrameCount "${p}" || 1)
+			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 "${frameamount}") -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
 		done
 	elif [[ "${p}" =~ .png ]]
 	then
@@ -30,7 +31,7 @@ loop_1(){
 	elif [[ "${p}" =~ .webp ]]
 	then
 		#If file is not animated
-		if [[ $(grep -v -q -e "ANIM" -e "ANMF" "${p}") ]]
+		if ! grep -v -q -e "ANIM" -e "ANMF" "${p}"
 		then
 			nice -n 10 cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
 			if [[ -f /tmp/temp.webp ]]
