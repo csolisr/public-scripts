@@ -51,7 +51,7 @@ do
 				echo "$id $avatar"
                                 sudo -u $user curl "$avatar" -s -o "$k_photo"
                                 #If the file is a valid picture (not empty, not text)
-                                if file "$k_photo" | grep -q -v -e "text" -e "Empty"
+                                if file "$k_photo" | grep -q -v -e "text" -e "empty" -e "symbolic link" -e "directory"
                                 then
                                         #Also fetch for thumb/micro and resize
                                         #As the photo is the largest version we have, we will use it as the base, and leave it last to convert
