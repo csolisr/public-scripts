@@ -1,6 +1,6 @@
 #!/bin/bash
 #Set your parameters here
-url=hub.azkware.net
+url=friendica.example.net
 user=friendica
 group=www-data
 fileperm=640
