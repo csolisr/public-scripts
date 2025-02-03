@@ -2,7 +2,7 @@
 IFS="
 "
 #Set your parameters here
-url=hub.example.net
+url=friendica.example.net
 db=friendica
 folder=/var/www/friendica
 folderavatar=/var/www/friendica/avatar
@@ -44,11 +44,12 @@ do
 			do
 				m=$(( m + 1 ))
 				loop "${x}" "${m}" "${n}" "${d}" &
-			        if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) / 1 )) ]]
+			        if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) * 2 )) ]]
 			        then
                 			wait -n
 			        fi
-			done < <(sudo find "${x}" -type f -mtime -8)
+			#done < <(sudo find "${x}" -type f -mtime -8)
+			done < <(sudo find "${x}" -type f)
                 fi
         fi
 done
