@@ -14,6 +14,8 @@ iteration=0
 n=1
 #Number of entries processed
 nx=0
+#Last known ID to have been successfully processed
+lastid=0
 #Generate an index to make searches faster
 ((indexlength=37+${#url}))
 echo "Generating photo index..."
@@ -27,7 +29,7 @@ do
         iteration=$(("$iteration" + 1))
         n=0
         nx=0
-        dblist=$(mariadb $db -B -N -q -e "select id, photo, thumb, micro from contact where photo like 'https:\/\/$url/avatar/%' order by id")
+        dblist=$(mariadb $db -B -N -q -e "select id, photo, thumb, micro from contact where id > $lastid and photo like 'https:\/\/$url/avatar/%' order by id")
         m=$(echo "$dblist" | wc -l)
         echo "$dblist" | while read -r id photo thumb micro
         do
@@ -69,6 +71,7 @@ do
                         fi
                         n=$(( n + 1 ))
                 fi
+                lastid="${id}"
                 printf "\rIteration %s\tPhotos: %s\tEntry %s/%s " "$iteration" "$n" "$nx" "$m"
         done
         wait
