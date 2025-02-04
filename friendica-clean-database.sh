@@ -2,6 +2,7 @@
 interval=7
 limit=1000
 
+touch /tmp/fcb
 echo "tmp_post_origin_deleted"
 tmp_post_origin_deleted_q="${limit}"
 tmp_post_origin_deleted_current_uri_id=0
@@ -12,7 +13,7 @@ do
 			AND ( \`uri-id\` > ${tmp_post_origin_deleted_current_uri_id} ) \
 			ORDER BY \`uri-id\`, \`uid\` LIMIT ${limit}");
 	tmp_post_origin_deleted_q=$(echo "${tmp_post_origin_deleted}" | grep -c '.')
-	echo "${tmp_post_origin_deleted_q}"
+	#echo "${tmp_post_origin_deleted_q}"
 	if [[ "${tmp_post_origin_deleted_q}" -gt 0 ]]
 	then
 		echo "${tmp_post_origin_deleted}" | while read -r uri_id uid
@@ -21,7 +22,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`post-origin\` WHERE \`parent-uri-id\` = ${uri_id} AND \`uid\` = ${uid}"
-				echo "${uri_id} ${uid}"
+				#echo "${uri_id} ${uid}"
+				echo "${uri_id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -29,8 +31,13 @@ do
 	then
 		tmp_post_origin_deleted_current_uid=$(tac $(echo "${tmp_post_origin_deleted}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_post_origin_deleted_current_uid=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_post_origin_deleted_q} item(s) deleted until ${tmp_post_origin_deleted_current_uri_id} ${tmp_post_origin_deleted_current_uid}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_post_user_deleted"
 tmp_post_user_deleted_q="${limit}"
@@ -41,7 +48,7 @@ do
 		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL ${interval} DAY) \
 			AND \`uri-id\` > ${tmp_post_user_deleted_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}");
 	tmp_post_user_deleted_q=$(echo "${tmp_post_user_deleted}" | grep -c '.')
-	echo "${tmp_post_user_deleted_q}"
+	#echo "${tmp_post_user_deleted_q}"
 	if [[ "${tmp_post_user_deleted_q}" -gt 0 ]]
 	then
 		echo "${tmp_post_user_deleted}" | while read -r uri_id
@@ -50,7 +57,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`post-user\` WHERE \`uri-id\` = ${uri_id}"
-				echo "${uri_id}"
+				#echo "${uri_id}"
+				echo "${uri_id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -58,8 +66,13 @@ do
 	then
 		tmp_post_user_deleted_current_uri_id=$(tac $(echo "${tmp_post_user_deleted}") | grep -m 1 '.')
 	fi
+		if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_post_user_deleted_current_uri_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_post_user_deleted_q} item(s) deleted until ${tmp_post_user_deleted_current_uri_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_post_uri_id_not_in_post_user"
 tmp_post_uri_id_not_in_post_user_q="${limit}"
@@ -70,7 +83,7 @@ do
 		"SELECT \`uri-id\` FROM \`post\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 			AND \`uri-id\` > ${tmp_post_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}");
 	tmp_post_uri_id_not_in_post_user_q=$(echo "${tmp_post_uri_id_not_in_post_user}" | grep -c '.')
-	echo "${tmp_post_uri_id_not_in_post_user_q}"
+	#echo "${tmp_post_uri_id_not_in_post_user_q}"
 	if [[ "${tmp_post_uri_id_not_in_post_user_q}" -gt 0 ]]
 	then
 		echo "${tmp_post_uri_id_not_in_post_user}" | while read -r uri_id
@@ -79,7 +92,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`post\` WHERE \`uri-id\` = ${uri_id}"
-				echo "${uri_id}"
+				#echo "${uri_id}"
+				echo "${uri_id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -87,8 +101,13 @@ do
 	then
 		tmp_post_uri_id_not_in_post_user_current_uri_id=$(tac $(echo "${tmp_post_uri_id_not_in_post_user}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_post_uri_id_not_in_post_user_current_uri_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_post_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_uri_id_not_in_post_user_current_uri_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_post_content_uri_id_not_in_post_user"
 tmp_post_content_uri_id_not_in_post_user_q="${limit}"
@@ -99,7 +118,7 @@ do
 		"SELECT \`uri-id\` FROM \`post-content\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 			AND \`uri-id\` > ${tmp_post_content_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}");
 	tmp_post_content_uri_id_not_in_post_user_q=$(echo "${tmp_post_content_uri_id_not_in_post_user}" | grep -c '.')
-	echo "${tmp_post_content_uri_id_not_in_post_user_q}"
+	#echo "${tmp_post_content_uri_id_not_in_post_user_q}"
 	if [[ "${tmp_post_content_uri_id_not_in_post_user_q}" -gt 0 ]]
 	then
 		echo "${tmp_post_content_uri_id_not_in_post_user}" | while read -r uri_id
@@ -108,7 +127,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`post-content\` WHERE \`uri-id\` = ${uri_id}"
-				echo "${uri_id}"
+				#echo "${uri_id}"
+				echo "${uri_id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -116,8 +136,13 @@ do
 	then
 		tmp_post_content_uri_id_not_in_post_user_current_uri_id=$(tac $(echo "${tmp_post_content_uri_id_not_in_post_user}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_post_content_uri_id_not_in_post_user_current_uri_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_post_content_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_content_uri_id_not_in_post_user_current_uri_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_post_thread_uri_id_not_in_post_user"
 tmp_post_thread_uri_id_not_in_post_user_q="${limit}"
@@ -128,7 +153,7 @@ do
 		"SELECT \`uri-id\` FROM \`post-thread\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 			AND \`uri-id\` > ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}");
 	tmp_post_thread_uri_id_not_in_post_user_q=$(echo "${tmp_post_thread_uri_id_not_in_post_user}" | grep -c '.')
-	echo "${tmp_post_thread_uri_id_not_in_post_user_q}"
+	#echo "${tmp_post_thread_uri_id_not_in_post_user_q}"
 	if [[ "${tmp_post_thread_uri_id_not_in_post_user_q}" -gt 0 ]]
 	then
 		echo "${tmp_post_thread_uri_id_not_in_post_user}" | while read -r uri_id
@@ -137,7 +162,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`post-thread\` WHERE \`uri-id\` = ${uri_id}"
-				echo "${uri_id}"
+				#echo "${uri_id}"
+				echo "${uri_id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -145,8 +171,13 @@ do
 	then
 		tmp_post_thread_uri_id_not_in_post_user_current_uri_id=$(tac $(echo "${tmp_post_thread_uri_id_not_in_post_user}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_post_thread_uri_id_not_in_post_user_current_uri_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_post_thread_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_post_user_uri_id_not_in_post"
 tmp_post_user_uri_id_not_in_post_q="${limit}"
@@ -157,7 +188,7 @@ do
 		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post\`) \
 			AND \`uri-id\` > ${tmp_post_user_uri_id_not_in_post_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}");
 	tmp_post_user_uri_id_not_in_post_q=$(echo "${tmp_post_user_uri_id_not_in_post}" | grep -c '.')
-	echo "${tmp_post_user_uri_id_not_in_post_q}"
+	#echo "${tmp_post_user_uri_id_not_in_post_q}"
 	if [[ "${tmp_post_user_uri_id_not_in_post_q}" -gt 0 ]]
 	then
 		echo "${tmp_post_user_uri_id_not_in_post}" | while read -r uri_id
@@ -166,7 +197,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`post-user\` WHERE \`uri-id\` = ${uri_id}"
-				echo "${uri_id}"
+				#echo "${uri_id}"
+				echo "${uri_id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -174,8 +206,13 @@ do
 	then
 		tmp_post_user_uri_id_not_in_post_current_uri_id=$(tac $(echo "${tmp_post_user_uri_id_not_in_post}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_post_user_uri_id_not_in_post_current_uri_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_post_user_uri_id_not_in_post_q} item(s) deleted until ${tmp_post_user_uri_id_not_in_post_current_uri_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_item_uri_not_in_valid_post_thread"
 tmp_item_uri_not_in_valid_post_thread_q="${limit}"
@@ -196,7 +233,7 @@ do
 			AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-content\` WHERE \`resource-id\` != 0 AND \`uri-id\` = \`post-thread\`.\`uri-id\`) \
 			AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_thread_current_id} ORDER BY \`uri-id\` LIMIT ${limit}");
 	tmp_item_uri_not_in_valid_post_thread_q=$(echo "${tmp_item_uri_not_in_valid_post_thread}" | grep -c '.')
-	echo "${tmp_item_uri_not_in_valid_post_thread_q}"
+	#echo "${tmp_item_uri_not_in_valid_post_thread_q}"
 	if [[ "${tmp_item_uri_not_in_valid_post_thread_q}" -gt 0 ]]
 	then
 		echo "${tmp_item_uri_not_in_valid_post_thread}" | while read -r id
@@ -205,7 +242,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}"
-				echo "${id}"
+				#echo "${id}"
+				echo "${id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -213,8 +251,13 @@ do
 	then
 		tmp_item_uri_not_in_valid_post_thread_current_id=$(tac $(echo "${tmp_item_uri_not_in_valid_post_thread}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_item_uri_not_in_valid_post_thread_current_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_item_uri_not_in_valid_post_thread_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_thread_current_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_item_uri_not_in_valid_post_user"
 tmp_item_uri_not_in_valid_post_user_q="${limit}"
@@ -228,7 +271,7 @@ do
 		AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` AND \`i\`.\`received\` > (CURDATE() - INTERVAL ${interval} DAY) ) \
 		AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_user_current_id} ORDER BY \`uri-id\` LIMIT ${limit}");
 	tmp_item_uri_not_in_valid_post_user_q=$(echo "${tmp_item_uri_not_in_valid_post_user}" | grep -c '.')
-	echo "${tmp_item_uri_not_in_valid_post_user_q}"
+	#echo "${tmp_item_uri_not_in_valid_post_user_q}"
 	if [[ "${tmp_item_uri_not_in_valid_post_user_q}" -gt 0 ]]
 	then
 		echo "${tmp_item_uri_not_in_valid_post_user}" | while read -r id
@@ -237,7 +280,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}"
-				echo "${id}"
+				#echo "${id}"
+				echo "${id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -245,8 +289,13 @@ do
 	then
 		tmp_item_uri_not_in_valid_post_user_current_id=$(tac $(echo "${tmp_item_uri_not_in_valid_post_user}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_item_uri_id_not_in_valid_post_current_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_item_uri_not_in_valid_post_user_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_user_current_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_attach_not_in_post_media"
 tmp_attach_not_in_post_media_q="${limit}"
@@ -257,7 +306,7 @@ do
 		"SELECT \`id\` FROM \`attach\` WHERE \`id\` NOT IN (SELECT \`attach-id\` FROM \`post-media\`) \
 		AND \`id\` > ${tmp_attach_not_in_post_media_current_id} ORDER BY \`id\` LIMIT ${limit}");
 	tmp_attach_not_in_post_media_q=$(echo "${tmp_attach_not_in_post_media}" | grep -c '.')
-	echo "${tmp_attach_not_in_post_media_q}"
+	#echo "${tmp_attach_not_in_post_media_q}"
 	if [[ "${tmp_attach_not_in_post_media_q}" -gt 0 ]]
 	then
 		echo "${tmp_attach_not_in_post_media}" | while read -r id
@@ -266,7 +315,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`attach\` WHERE \`id\` = ${id}"
-				echo "${id}"
+				#echo "${id}"
+				echo "${id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -274,8 +324,13 @@ do
 	then
 		tmp_attach_not_in_post_media_current_id=$(tac $(echo "${tmp_attach_not_in_post_media}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_attach_not_in_post_media_current_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_attach_not_in_post_media_q} item(s) deleted until ${tmp_attach_not_in_post_media_current_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_item_uri_not_valid"
 tmp_item_uri_not_valid_q="${limit}"
@@ -306,7 +361,7 @@ do
 		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`mail\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
 		AND (\`id\` > ${tmp_item_uri_not_valid_current_id} ) ORDER BY \`id\` LIMIT ${limit}");
 	tmp_item_uri_not_valid_q=$(echo "${tmp_item_uri_not_valid}" | grep -c '.')
-	echo "${tmp_item_uri_not_valid_q}"
+	#echo "${tmp_item_uri_not_valid_q}"
 	if [[ "${tmp_item_uri_not_valid_q}" -gt 0 ]]
 	then
 		echo "${tmp_item_uri_not_valid}" | while read -r id
@@ -315,7 +370,8 @@ do
 			then
 				sudo mariadb friendica -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}"
-				echo "${id}"
+				#echo "${id}"
+				echo "${id}" > /tmp/fcb
 			fi
 		done
 	fi
@@ -323,8 +379,13 @@ do
 	then
 		tmp_item_uri_not_valid_current_id=$(tac $(echo "${tmp_item_uri_not_valid}") | grep -m 1 '.')
 	fi
+	if [[ -f /tmp/fcb && -s /tmp/fcb ]]
+	then
+		tmp_item_uri_id_not_valid_current_id=$(cat /tmp/fcb)
+	fi
 	echo "${tmp_item_uri_not_valid_q} item(s) deleted until ${tmp_item_uri_not_valid_current_id}"
 done
+rm /tmp/fcb && touch /tmp/fcb
 
 echo "tmp_item_uri_duplicate"
 tmp_item_uri_duplicate_q="${limit}"
