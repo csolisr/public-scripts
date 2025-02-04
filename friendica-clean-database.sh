@@ -170,9 +170,9 @@ do
 			fi
 		done
 	fi
-	if [[ -s $(echo "${tmp_post_user_uri_id_not_in_post}") && "${tmp_post_user_uri_id_not_in_post_current_uri_id}" -lt $(tac $(echo ${tmp_post_user_uri_id_not_in_post})) ]]
+	if [[ -s $(echo "${tmp_post_user_uri_id_not_in_post}") && "${tmp_post_user_uri_id_not_in_post_current_uri_id}" -lt $(tac $(echo "${tmp_post_user_uri_id_not_in_post}") | grep -m 1 '.') ]]
 	then
-		tmp_post_user_uri_id_not_in_post_current_uri_id=$(tac $(echo ${tmp_post_user_uri_id_not_in_post}))
+		tmp_post_user_uri_id_not_in_post_current_uri_id=$(tac $(echo "${tmp_post_user_uri_id_not_in_post}") | grep -m 1 '.')
 	fi
 	echo "${tmp_post_user_uri_id_not_in_post_q} item(s) deleted until ${tmp_post_user_uri_id_not_in_post_current_uri_id}"
 done
@@ -209,9 +209,9 @@ do
 			fi
 		done
 	fi
-	if [[ -s $(echo "${tmp_item_uri_not_in_valid_post_thread}") && "${tmp_item_uri_not_in_valid_post_thread_current_id}" -lt $(tac $(echo "${tmp_item_uri_not_in_valid_post_thread})) ]]
+	if [[ -s $(echo "${tmp_item_uri_not_in_valid_post_thread}") && "${tmp_item_uri_not_in_valid_post_thread_current_id}" -lt $(tac $(echo "${tmp_item_uri_not_in_valid_post_thread}") | grep -m 1 '.') ]]
 	then
-		tmp_item_uri_not_in_valid_post_thread_current_id=$(tac $(echo "${tmp_item_uri_not_in_valid_post_thread}))
+		tmp_item_uri_not_in_valid_post_thread_current_id=$(tac $(echo "${tmp_item_uri_not_in_valid_post_thread}") | grep -m 1 '.')
 	fi
 	echo "${tmp_item_uri_not_in_valid_post_thread_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_thread_current_id}"
 done
@@ -270,9 +270,9 @@ do
 			fi
 		done
 	fi
-	if [[ -s $(echo "${tmp_attach_not_in_post_media}") && "${tmp_attach_not_in_post_media_current_id}" -lt $(tac $(echo "${tmp_attach_not_in_post_media})) ]]
+	if [[ -s $(echo "${tmp_attach_not_in_post_media}") && "${tmp_attach_not_in_post_media_current_id}" -lt $(tac $(echo "${tmp_attach_not_in_post_media}") | grep -m 1 '.') ]]
 	then
-		tmp_attach_not_in_post_media_current_id=$(tac $(echo "${tmp_attach_not_in_post_media}))
+		tmp_attach_not_in_post_media_current_id=$(tac $(echo "${tmp_attach_not_in_post_media}") | grep -m 1 '.')
 	fi
 	echo "${tmp_attach_not_in_post_media_q} item(s) deleted until ${tmp_attach_not_in_post_media_current_id}"
 done
@@ -319,9 +319,9 @@ do
 			fi
 		done
 	fi
-	if [[ -s $(echo "${tmp_item_uri_not_valid_current_id}") && "${tmp_item_uri_not_valid_current_id}" -lt $(tac $(echo "${tmp_item_uri_not_valid})) ]]
+	if [[ -s $(echo "${tmp_item_uri_not_valid_current_id}") && "${tmp_item_uri_not_valid_current_id}" -lt $(tac $(echo "${tmp_item_uri_not_valid}") | grep -m 1 '.') ]]
 	then
-		tmp_item_uri_not_valid_current_id=$(tac $(echo "${tmp_item_uri_not_valid}))
+		tmp_item_uri_not_valid_current_id=$(tac $(echo "${tmp_item_uri_not_valid}") | grep -m 1 '.')
 	fi
 	echo "${tmp_item_uri_not_valid_q} item(s) deleted until ${tmp_item_uri_not_valid_current_id}"
 done
