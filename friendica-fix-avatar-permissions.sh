@@ -12,34 +12,26 @@ folderescaped=${folder////\\/}
 tmpfile=/tmp/friendica-fix-avatar-permissions.txt
 avatarfolder=avatar
 
-loop_1(){
-	if [[ "${p}" =~ .jpeg || "${p}" =~ .jpg ]]
-	then
+loop_1() {
+	if [[ "${p}" =~ .jpeg || "${p}" =~ .jpg ]]; then
 		nice -n 10 jpegoptim -m 76 "${p}" #&> /dev/null
-	elif [[ "${p}" =~  .gif ]]
-	then
+	elif [[ "${p}" =~ .gif ]]; then
 		nice -n 10 gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" #&> /dev/null
 		#Specific compression for large GIF files
-		while [[ $(stat -c%s "${p}" || 0) -ge 512000 ]]
-		do
+		while [[ $(stat -c%s "${p}" || 0) -ge 512000 ]]; do
 			frameamount=$(exiftool -b -FrameCount "${p}" || 1)
 			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 "${frameamount}") -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
 		done
-	elif [[ "${p}" =~ .png ]]
-	then
+	elif [[ "${p}" =~ .png ]]; then
 		nice -n 10 oxipng -o max "${p}" #&> /dev/null
-	elif [[ "${p}" =~ .webp ]]
-	then
+	elif [[ "${p}" =~ .webp ]]; then
 		#If file is not animated
-		if ! grep -v -q -e "ANIM" -e "ANMF" "${p}"
-		then
+		if ! grep -v -q -e "ANIM" -e "ANMF" "${p}"; then
 			nice -n 10 cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
-			if [[ -f /tmp/temp.webp ]]
-			then
-				size_new=$(stat -c%s "/tmp/temp.webp" || 0 )
+			if [[ -f /tmp/temp.webp ]]; then
+				size_new=$(stat -c%s "/tmp/temp.webp" || 0)
 				size_original=$(stat -c%s "${p}")
-				if [[ "${size_original}" -gt "${size_new}" ]]
-				then
+				if [[ "${size_original}" -gt "${size_new}" ]]; then
 					mv /tmp/temp.webp "${p}" #&> /dev/null
 				else
 					rm /tmp/temp.webp #&> /dev/null
@@ -50,18 +42,14 @@ loop_1(){
 }
 
 cd "${folder}" || exit
-if [[ ! -f "${tmpfile}" ]]
-then
+if [[ ! -f "${tmpfile}" ]]; then
 	sudo -u "${user}" bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
 fi
 grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${folderescaped}/g" -e "s/?ts=.*//g" | (
-	while read -r i
-	do
-		for p in "${i}" "${i//-320/-80}" "${i//-320/-48}"
-		do
+	while read -r i; do
+		for p in "${i}" "${i//-320/-80}" "${i//-320/-48}"; do
 			loop_1 "${p}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]
-			then
+			if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
 				wait -n
 			fi
 		done
@@ -72,6 +60,6 @@ rm "${tmpfile}"
 /usr/bin/find "${folder}"/avatar -type d -empty -delete
 /usr/bin/chmod "${folderperm}" "${folder}"/avatar
 /usr/bin/chown -R "${user}":"${group}" "${folder}"/avatar
-/usr/bin/find "${folder}"/avatar -depth -not -user "${user}" -or -not -group "${group}" -print0 | xargs -0 -r chown -v "${user}":"${group}" #&> /dev/null
+/usr/bin/find "${folder}"/avatar -depth -not -user "${user}" -or -not -group "${group}" -print0 | xargs -0 -r chown -v "${user}":"${group}"      #&> /dev/null
 /usr/bin/find "${folder}"/avatar -depth -type d -and -not -type f -and -not -perm "${folderperm}" -print0 | xargs -0 -r chmod -v "${folderperm}" #&> /dev/null
-/usr/bin/find "${folder}"/avatar -depth -type f -and -not -type d -and -not -perm "${fileperm}" -print0 | xargs -0 -r chmod -v "${fileperm}" #&> /dev/null
+/usr/bin/find "${folder}"/avatar -depth -type f -and -not -type d -and -not -perm "${fileperm}" -print0 | xargs -0 -r chmod -v "${fileperm}"     #&> /dev/null

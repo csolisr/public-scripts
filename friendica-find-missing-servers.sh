@@ -9,9 +9,8 @@ loop_1() {
 	sitereq=$(curl -s -L --head -m 30 --request GET "${a}")
 	#Skip check if the message contains a reference to Cloudflare
 	status=$(echo "${sitereq}" | grep -e "200" -e "cloudflare")
-	if [[ -z ${status} ]]
-	then
-		echo "${a}" >> "${tmpfile}"
+	if [[ -z ${status} ]]; then
+		echo "${a}" >>"${tmpfile}"
 		echo "Added ${a}"
 	fi
 }
@@ -24,13 +23,10 @@ loop_3() {
 	baseurltrimmed=$(echo "${baseurl}" | sed -e "s/http[s]*:\/\///g")
 	echo "Deleting user ${lineb} - ${nick}@${baseurltrimmed}"
 	#Find the pictures in the avatar folders and delete them
-	"${dbengine}" "${db}" -N -B -q -e "select \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${lineb}" | while read -r photo thumb micro
-	do
+	"${dbengine}" "${db}" -N -B -q -e "select \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${lineb}" | while read -r photo thumb micro; do
 		#If stored in avatar folder
-		if $(echo "${photo}" | grep -q "${url}/avatar")
-		#isavatar=$(grep -q "${url}/avatar" <<< "${photo}")
-		#if [[ -z "${isavatar}" ]]
-		then
+		if $(echo "${photo}" | grep -q "${url}/avatar"); then #isavatar=$(grep -q "${url}/avatar" <<< "${photo}")
+			#if [[ -z "${isavatar}" ]]
 			phototrimmed=$(echo "${photo}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
 			echo "${phototrimmed}"
 			rm -rfv "${phototrimmed}"
@@ -51,29 +47,23 @@ loop_3() {
 
 #Check for mariadb vs. mysql
 dbengine=""
-if [[ -n $(type mariadb) ]]
-then
-      dbengine="mariadb"
-elif [[ -n $(type mysql) ]]
-then
-      dbengine="mysql"
+if [[ -n $(type mariadb) ]]; then
+	dbengine="mariadb"
+elif [[ -n $(type mysql) ]]; then
+	dbengine="mysql"
 fi
 #Check if our dependencies are installed
-if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]
-then
+if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
-	if [[ ! -f "${tmpfile}" ]]
-	then
+	if [[ ! -f "${tmpfile}" ]]; then
 		echo "Listing sites"
 		#sites=($("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl from contact where baseurl != \"\"" | sort -n | uniq ))
 		sites=()
-		mapfile -t sites < <("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl from contact where baseurl != \"\"" | sort -b -f -n | uniq -i )
+		mapfile -t sites < <("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl from contact where baseurl != \"\"" | sort -b -f -n | uniq -i)
 		echo "Amount of unique sites: ${#sites[@]}"
-		for a in "${sites[@]}"
-		do
+		for a in "${sites[@]}"; do
 			loop_1 "${a}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) * 2 )) ]]
-			then
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
 				wait -n
 			fi
 		done
@@ -82,15 +72,12 @@ then
 	sitesdown=()
 	while read -r line; do
 		sitesdown+=("${line}")
-	done < "${tmpfile}"
+	done <"${tmpfile}"
 	echo "Amount of sites down: ${#sitesdown[@]} / ${#sites[@]}"
-	if [[ ! -f "${idsdownfile}" ]]
-	then
-		for b in "${sitesdown[@]}"
-		do
+	if [[ ! -f "${idsdownfile}" ]]; then
+		for b in "${sitesdown[@]}"; do
 			loop_2 "${b}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) / 2 )) ]]
-			then
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
 				wait -n
 			fi
 		done
@@ -103,13 +90,12 @@ then
 		#idsdown+=($lineb)
 		#The community no longer exists, delete
 		loop_3 "${lineb}" "${nick}" "${baseurl}" &
-		if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) / 2 )) ]]
-		then
+		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
 			wait -n
 		fi
 		wait
-	done < "${idsdownfile}"
-	rm "${tmpfile}" 2> /dev/null
-	rm "${idsdownfile}" 2> /dev/null
+	done <"${idsdownfile}"
+	rm "${tmpfile}" 2>/dev/null
+	rm "${idsdownfile}" 2>/dev/null
 	date
 fi
