@@ -252,7 +252,6 @@ until [[ "${tmp_item_uri_not_valid_q}" -lt "${limit}" ]]; do
 	while read -r id; do
 		if [[ -n "${id}" ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`item-uri\` WHERE \`id\` IN (${id_array[*]}" &
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
 				wait -n
