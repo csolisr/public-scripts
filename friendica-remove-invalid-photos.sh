@@ -21,7 +21,7 @@ lastid=0
 #Highest possible ID known
 maxid=$(mariadb "${db}" -B -N -q -e "select max(\`id\`) from contact")
 #Limit per batch
-limit=$(( ( maxid / 1000 ) + 1 ))
+limit=$(((maxid / 1000) + 1))
 if [[ -f /tmp/lastid ]]; then
 	rm /tmp/lastid && touch /tmp/lastid
 else
@@ -53,7 +53,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 			if [[ -s "${lastid_i}" ]]; then
 				lastid="${lastid_i}"
 			fi
-		done < /tmp/lastid
+		done </tmp/lastid
 	fi
 	#dboutput=$(mariadb "${db}" -B -N -q -e "select \`id\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` > ${lastid} and \`photo\` like \"https:\/\/${url}/avatar/%\" and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
 	dboutput=$(mariadb "${db}" -B -N -q -e "select \`id\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` > ${lastid} and \`photo\` like \"https:\/\/${url}/avatar/%\" order by id limit ${limit}")
@@ -76,7 +76,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 				curl -s "${micro}" | file - | grep -q -e "text" -e "empty" -e "symbolic link" -e "directory"; then
 				#Request the user data to be regenerated in the system through the database
 				mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
-				if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
+				if [[ -n $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
 					mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());"
 				fi
 				echo "${id} ${photo}"
@@ -103,7 +103,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 						rm -rf "${k_photo}"
 					fi
 					#Request the user data to be regenerated in the system through the database
-					if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
+					if [[ -n $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
 						mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());"
 					fi
 				else
@@ -111,7 +111,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 					#If no remote avatar is found, then we blank the photo/thumb/micro and let the avatar cache process fix them later
 					mariadb "${db}" -e "update contact set photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 					#Request the user data to be regenerated in the system through the database
-					if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
+					if [[ -n $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
 						mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());"
 					fi
 				fi
@@ -127,7 +127,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 			fi
 			lastid="${id}"
 			touch /tmp/lastid
-			echo "${n} ${nt} ${lastid}" > /tmp/lastid
+			echo "${n} ${nt} ${lastid}" >/tmp/lastid
 		fi
 		printf "\rB. %5d Fd. %8d E. %8d Ct. %4d/%4d To. %8d/%8d Dt. %6d " "${batch}" "${n}" "${nt}" "${nx}" "${limit}" "${lastid}" "${maxid}" "${k_photo_delta}"
 	done < <(echo "${dboutput}")

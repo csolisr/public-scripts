@@ -282,7 +282,6 @@ until [[ "${tmp_item_uri_not_valid_q}" -lt "${limit}" ]]; do
 		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`mail\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
 		ORDER BY \`id\` LIMIT ${limit}")
 
-
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_item_uri_not_valid_q} item(s) deleted until ${tmp_item_uri_not_valid_current_id} in ${final_i}s"
 done
