@@ -4,7 +4,7 @@ IFS="
 #Set your parameters here
 site=friendica.example.net
 user=friendica
-group=friendica
+group=www-data
 fileperm=640
 folderperm=750
 folder=/var/www/friendica
