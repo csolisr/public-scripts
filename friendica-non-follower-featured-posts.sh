@@ -22,23 +22,23 @@ printf "\rContactDiscovery\t%s\n\r" "${cbmax}"
 cc=100
 ccmax=0
 while [[ ${cc} -gt 0 ]]; do
-	cc=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`)) and \`command\` = \"FetchFeaturedPosts\" limit ${cc}; select row_count();")
+	cc=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') in (select \`url\` from \`contact\` where \`id\` not in (select \`contact-id\` from \`group_member\`)) and \`command\` = \"UpdateGServer\" limit ${cd}; select row_count();")
 	ccmax=$((ccmax + cc))
-	printf "\rFetchFeaturedPosts\t%s\r" "${ccmax}"
-
+	printf "\rUpdateGServer\t\t%s\r" "${ccmax}"
 done
-printf "\rFetchFeaturedPosts\t%s\n\r" "${ccmax}"
-#echo "FetchFeaturedPosts $ccmax"
+printf "\rUpdateGServer\t\t%s\n\r" "${ccmax}"
+#echo "UpdateGServer      $ccmax"
 
 cd=100
 cdmax=0
 while [[ ${cd} -gt 0 ]]; do
-	cd=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`)) and \`command\` = \"UpdateGServer\" limit ${cd}; select row_count();")
-	cdmax=$((cdmax + cd))
-	printf "\rUpdateGServer\t\t%s\r" "${cdmax}"
+	cd=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') in (select \`url\` from \`contact\` where \`id\` not in (select \`contact-id\` from \`group_member\`)) and \`command\` = \"FetchFeaturedPosts\" limit ${cc}; select row_count();")
+	cdmax=$((ccmax + cc))
+	printf "\rFetchFeaturedPosts\t%s\r" "${cdmax}"
+
 done
-printf "\rUpdateGServer\t\t%s\n\r" "${cdmax}"
-#echo "UpdateGServer      $cdmax"
+printf "\rFetchFeaturedPosts\t%s\n\r" "${cdmax}"
+#echo "FetchFeaturedPosts $cdmax"
 
 ce=100
 cemax=0
