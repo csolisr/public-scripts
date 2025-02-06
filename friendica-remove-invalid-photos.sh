@@ -21,8 +21,7 @@ lastid=0
 #Highest possible ID known
 maxid=$(mariadb "${db}" -B -N -q -e "select max(\`id\`) from contact")
 #Limit per batch
-#limit=1000
-limit=$maxid
+limit=$(( ( maxid / 1000 ) + 1 ))
 if [[ -f /tmp/lastid ]]; then
 	rm /tmp/lastid && touch /tmp/lastid
 else
@@ -34,24 +33,31 @@ cd "${folder}" || exit
 n=0
 nt=0
 maxid=$(mariadb "${db}" -B -N -q -e "select max(\`id\`) from contact")
-dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%' and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+#dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%' and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%'")
 echo "${dbcount}"
-until [[ $((nt + limit)) -ge ${dbcount} ]]; do
+until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 	nx=0
 	maxid=$(mariadb "${db}" -B -N -q -e "select max(\`id\`) from contact")
 	batch=$(("${batch}" + 1))
 	#Read lastid outside of the loop with a temporary file
 	if [[ -f /tmp/lastid && -s /tmp/lastid ]]; then
+		count=0
 		while read -r n_i nt_i lastid_i; do
-			if [[ -s "${n_i}" && -s "${nt_i}" && -n "${lastid_i}" ]]; then
+			if [[ -s "${n_i}" ]]; then
 				n="${n_i}"
+			fi
+			if [[ -s "${nt_i}" ]]; then
 				nt="${nt_i}"
+			fi
+			if [[ -s "${lastid_i}" ]]; then
 				lastid="${lastid_i}"
 			fi
-		done < <(cat /tmp/lastid)
+		done < /tmp/lastid
 	fi
-	dboutput=$(mariadb "${db}" -B -N -q -e "select \`id\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` > ${lastid} and \`photo\` like \"https:\/\/${url}/avatar/%\" and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
-	echo "${dboutput}" | while read -r id photo thumb micro; do
+	#dboutput=$(mariadb "${db}" -B -N -q -e "select \`id\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` > ${lastid} and \`photo\` like \"https:\/\/${url}/avatar/%\" and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
+	dboutput=$(mariadb "${db}" -B -N -q -e "select \`id\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` > ${lastid} and \`photo\` like \"https:\/\/${url}/avatar/%\" order by id limit ${limit}")
+	while read -r id photo thumb micro; do
 		if [[ -n "${id}" && -n "${photo}" && -n "${thumb}" && -n "${micro}" ]]; then
 			nx=$(("${nx}" + 1))
 			nt=$(("${nt}" + 1))
@@ -70,7 +76,9 @@ until [[ $((nt + limit)) -ge ${dbcount} ]]; do
 				curl -s "${micro}" | file - | grep -q -e "text" -e "empty" -e "symbolic link" -e "directory"; then
 				#Request the user data to be regenerated in the system through the database
 				mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
-				mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority) values (\"UpdateContact\", \"[${id}]\", 20);"
+				if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
+					mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());"
+				fi
 				echo "${id} ${photo}"
 				error_found=1
 			fi
@@ -95,13 +103,17 @@ until [[ $((nt + limit)) -ge ${dbcount} ]]; do
 						rm -rf "${k_photo}"
 					fi
 					#Request the user data to be regenerated in the system through the database
-					mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());"
+					if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
+						mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());"
+					fi
 				else
 					echo "${id}"
 					#If no remote avatar is found, then we blank the photo/thumb/micro and let the avatar cache process fix them later
 					mariadb "${db}" -e "update contact set photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 					#Request the user data to be regenerated in the system through the database
-					mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());"
+					if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\"" -gt 0) ]]; then
+						mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());"
+					fi
 				fi
 				error_found=1
 				k_photo_delta=$(echo "${photo}" | sed -e "s/.*?ts=//g")
@@ -113,12 +125,12 @@ until [[ $((nt + limit)) -ge ${dbcount} ]]; do
 			if [[ "${error_found}" -gt 0 ]]; then
 				n=$((n + 1))
 			fi
+			lastid="${id}"
+			touch /tmp/lastid
+			echo "${n} ${nt} ${lastid}" > /tmp/lastid
 		fi
-		lastid="${id}"
-		touch /tmp/lastid
-		echo "${n} ${nt} ${lastid}" >/tmp/lastid
-		printf "\rB. %5d Fd. %8d E. %8d Ct. %4d/%4d To. %8d/%8d Dt. %d " "${batch}" "${n}" "${nt}" "${nx}" "${limit}" "${lastid}" "${maxid}" "${k_photo_delta}"
-	done
+		printf "\rB. %5d Fd. %8d E. %8d Ct. %4d/%4d To. %8d/%8d Dt. %6d " "${batch}" "${n}" "${nt}" "${nx}" "${limit}" "${lastid}" "${maxid}" "${k_photo_delta}"
+	done < <(echo "${dboutput}")
 done
 printf "\nFixing folders and moving to avatar cache...\n"
 #sudo -u "${user}" bin/console movetoavatarcache #&> /dev/null
