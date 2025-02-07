@@ -44,7 +44,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		c.\`id\` not in (select \`cid\` from \`user-contact\`) and \
 		c.\`id\` not in (select \`uid\` from \`user\`) and \
 		c.\`id\` not in ( select \`contact-id\` from \`group_member\`) and \
-		not pending and \`last-item\` < CURDATE() - INTERVAL 1 YEAR" |
+		c.\`contact-type\` != 4 and not pending and \`last-discovery\` < CURDATE() - INTERVAL 1 YEAR and \`last-item\` < CURDATE() - INTERVAL 1 YEAR" |
 		while read -r lineb nick baseurl; do
 			loop "${lineb}" "${nick}" "${baseurl}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
