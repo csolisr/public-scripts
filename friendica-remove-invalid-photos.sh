@@ -3,8 +3,8 @@
 url=friendica.example.net
 user=friendica
 group=www-data
-fileperm=640
-folderperm=750
+fileperm=660
+folderperm=770
 db=friendica
 folder=/var/www/friendica
 #Internal parameters:
