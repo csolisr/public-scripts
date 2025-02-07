@@ -324,7 +324,7 @@ until [[ "${tmp_post_media_duplicate_q}" -lt "${limit}" ]]; do
 			tmp_post_media_duplicate_current_id="${id}"
 		fi
 	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT u1.\`id\` FROM \`post-media\` u1 INNER JOIN \`post-media\` u2 WHERE u1.\`id\` > $(id) AND u1.\`id\` < u2.\`id\` AND u1.\`uri-id\` = u2.\`uri-id\` AND u1.\`url\`= u2.\`url\` LIMIT ${limit}")
+		"SELECT u1.\`id\` FROM \`post-media\` u1 INNER JOIN \`post-media\` u2 WHERE u1.\`id\` > ${id} AND u1.\`id\` < u2.\`id\` AND u1.\`uri-id\` = u2.\`uri-id\` AND u1.\`url\`= u2.\`url\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_media_duplicate_q} item(s) deleted until ${tmp_post_media_duplicate_current_id} in ${final_i}s"
 done
@@ -346,7 +346,7 @@ until [[ "${tmp_post_user_duplicate_q}" -lt "${limit}" ]]; do
 				tmp_post_user_duplicate_current_id="${id}"
 			fi
 		done < <("${dbengine}" "${db}" -N -B -q -e \
-			"SELECT v1.\`id\` FROM \`post-user\` v1 INNER JOIN \`post-media\` v2 WHERE v1.\`id\` > $(id) AND v1.\`id\` < v2.\`id\` AND v1.\`uri-id\` = v2.\`uri-id\` LIMIT ${limit}")
+			"SELECT v1.\`id\` FROM \`post-user\` v1 INNER JOIN \`post-media\` v2 WHERE v1.\`id\` > ${id} AND v1.\`id\` < v2.\`id\` AND v1.\`uri-id\` = v2.\`uri-id\` LIMIT ${limit}")
 	fi
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_user_duplicate_q} item(s) deleted until ${tmp_post_user_duplicate_current_id} in ${final_i}s"
