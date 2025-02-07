@@ -80,7 +80,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 						curl -s "${micro}" | file - | grep -q -e "text" -e "empty" -e "symbolic link" -e "directory"; then
 						#Request the user data to be regenerated in the system through the database
 						mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
-						if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -gt 0 ]]; then
+						if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -eq 0 ]]; then
 							mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());" &
 							result_string=$(printf "%s (added)" "${result_string}")
 						else
@@ -112,7 +112,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 								result_string=$(printf "%s (blanked)" "${result_string}")
 							fi
 							#Request the user data to be regenerated in the system through the database
-							if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -gt 0 ]]; then
+							if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -eq 0 ]]; then
 								mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());" &
 								result_string=$(printf "%s (added)" "${result_string}")
 							else
@@ -123,7 +123,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 							#If no remote avatar is found, then we blank the photo/thumb/micro and let the avatar cache process fix them later
 							mariadb "${db}" -e "update contact set photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\"" &
 							#Request the user data to be regenerated in the system through the database
-							if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -gt 0 ]]; then
+							if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -eq 0 ]]; then
 								mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());" &
 								result_string=$(printf "%s (added)" "${result_string}")
 							else
@@ -162,7 +162,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 							result_string=$(printf "%s (blanked)" "${result_string}")
 						fi
 						#Request the user data to be regenerated in the system through the database
-						if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -gt 0 ]]; then
+						if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -eq 0 ]]; then
 							mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());" &
 							result_string=$(printf "%s (added)" "${result_string}")
 						else
@@ -171,7 +171,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 					else
 						result_string=$(printf "${result_string} No remote avatar: %s" "${id}")
 						#Request the user data to be regenerated in the system through the database
-						if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -gt 0 ]]; then
+						if [[ $(mariadb "${db}" -N -B -q -e "select count(*) from workerqueue where command = \"UpdateContact\" and parameter = \"[${id}]\" and done = 0") -eq 0 ]]; then
 							mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) values (\"UpdateContact\", \"[${id}]\", 20, CURTIME());" &
 							result_string=$(printf "%s (added)" "${result_string}")
 						else
@@ -193,11 +193,7 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 		printf "\rFound %8d/%8d Total %8d/%8d Delta %6d %s " "${n}" "${nt}" "${lastid}" "${maxid}" "${k_photo_delta}" "${result_string}"
 		#Line clearance
 		printf "\r"
-		#for space in $(seq 1 "${COLUMNS}")
-		#do
-		#printf " "
-		#done
-		for space in $(seq 1 "${COLUMNS}"); do
+		for ((count = 0; count < "${COLUMNS}"; count++)); do
 			printf "\b"
 		done
 	done < <(echo "${dbid}")
