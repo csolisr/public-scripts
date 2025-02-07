@@ -25,7 +25,7 @@ loop_3() {
 	#Find the pictures in the avatar folders and delete them
 	"${dbengine}" "${db}" -N -B -q -e "select \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${lineb}" | while read -r photo thumb micro; do
 		#If stored in avatar folder
-		if $(echo "${photo}" | grep -q "${url}/avatar"); then #isavatar=$(grep -q "${url}/avatar" <<< "${photo}")
+		if grep -v -q "${url}/avatar" <(echo "${photo}"); then
 			#if [[ -z "${isavatar}" ]]
 			phototrimmed=$(echo "${photo}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
 			echo "${phototrimmed}"

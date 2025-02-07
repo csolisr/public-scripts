@@ -42,7 +42,6 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 	batch=$(("${batch}" + 1))
 	#Read lastid outside of the loop with a temporary file
 	if [[ -f /tmp/lastid && -s /tmp/lastid ]]; then
-		count=0
 		while read -r n_i nt_i lastid_i; do
 			if [[ -s "${n_i}" ]]; then
 				n="${n_i}"
@@ -116,9 +115,11 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 					fi
 				fi
 				error_found=1
-				k_photo_delta=$(echo "${photo}" | sed -e "s/.*?ts=//g")
+				k_photo_delta="${photo//.*?ts=//}"
+				#k_photo_delta=$(echo "${photo}" | sed -e "s/.*?ts=//g")
 			else
-				k_photo_original_time=$(echo "${photo}" | sed -e "s/.*?ts=//g")
+				#k_photo_original_time=$(echo "${photo}" | sed -e "s/.*?ts=//g")
+				k_photo_original_time="${photo//.*?ts=//}"
 				k_photo_found_time=$(stat -c%W "${k_photo}")
 				k_photo_delta=$((k_photo_found_time - k_photo_original_time))
 			fi

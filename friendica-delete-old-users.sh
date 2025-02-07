@@ -1,6 +1,5 @@
 #!/bin/bash
 db="friendica"
-idsdownfile="/tmp/idsdown.txt"
 url=friendica.example.net
 avatarfolder=/var/www/friendica/avatar
 avatarfolderescaped=${avatarfolder////\\/}
@@ -11,7 +10,7 @@ loop() {
 	#Find the pictures in the avatar folders and delete them
 	"${dbengine}" "${db}" -N -B -q -e "select \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${lineb}" | while read -r photo thumb micro; do
 		#If stored in avatar folder
-		if [[ -z $(echo "${photo}" | grep "${url}/avatar") ]]; then
+		if ! grep -v -q "${url}/avatar" <(echo "${photo}"); then
 			phototrimmed=$(echo "${photo}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
 			rm -rfv "${phototrimmed}"
 			thumbtrimmed=$(echo "${thumb}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
