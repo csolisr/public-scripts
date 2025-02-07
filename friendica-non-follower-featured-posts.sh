@@ -22,7 +22,7 @@ printf "\rContactDiscovery\t%s\n\r" "${cbmax}"
 cc=100
 ccmax=0
 while [[ ${cc} -gt 0 ]]; do
-	cc=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"FetchFeaturedPosts\" limit ${cc}; select row_count();")
+	cc=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_fetchfeaturedposts (select \`url\` from \`contact\` where \`id\` not in (select \`contact-id\` from \`group_member\`) and \`id\` not in (select \`cid\` from \`user-contact\`) and \`id\` not in (select \`uid\` from \`user\`)); delete from workerqueue where regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') in (select \`url\` from tmp_fetchfeaturedposts) and \`command\` = \"FetchFeaturedPosts\" limit ${cc}; select row_count();")
 	ccmax=$((ccmax + cc))
 	printf "\rFetchFeaturedPosts\t%s\r" "${ccmax}"
 
@@ -33,7 +33,7 @@ printf "\rFetchFeaturedPosts\t%s\n\r" "${ccmax}"
 cd=100
 cdmax=0
 while [[ ${cd} -gt 0 ]]; do
-	cd=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"UpdateGServer\" limit ${cd}; select row_count();")
+	cd=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_updategserver (select \`url\` from \`contact\` where \`id\` not in (select \`contact-id\` from \`group_member\`) and \`id\` not in (select \`cid\` from \`user-contact\`) and \`id\` not in (select \`uid\` from \`user\`)); delete from workerqueue where regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') in (select \`url\` from tmp_updategserver) and \`command\` = \"UpdateGServer\" limit ${cd}; select row_count();")
 	cdmax=$((cdmax + cd))
 	printf "\rUpdateGServer\t\t%s\r" "${cdmax}"
 done
