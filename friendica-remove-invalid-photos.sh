@@ -195,10 +195,9 @@ until [[ $((nt + limit)) -gt ${dbcount} ]]; do
 		printf "\r"
 		#for space in $(seq 1 "${COLUMNS}")
 		#do
-			#printf " "
+		#printf " "
 		#done
-		for space in $(seq 1 "${COLUMNS}")
-		do
+		for space in $(seq 1 "${COLUMNS}"); do
 			printf "\b"
 		done
 	done < <(echo "${dbid}")

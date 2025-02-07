@@ -12,10 +12,10 @@ loop() {
 	ky=$(echo "${y}" | sed -e "s/${folderescaped}/https:\/\/${url}/g" -e "s/-[0-9]*\..*\$//g")
 	f=$(mariadb "${db}" -N -B -q -e "select photo from contact where photo like '${ky}%' limit 1")
 	if [[ $? -eq 0 && -z ${f} && -f ${y} ]]; then
-		( ls -lh "${y}" && rm -rf "${y}" ) &
-				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
-					wait -n
-				fi
+		(ls -lh "${y}" && rm -rf "${y}") &
+		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
+			wait -n
+		fi
 
 		d=$((d + 1))
 	fi
