@@ -1,7 +1,8 @@
 #!/bin/bash
 for i in ./*.sh; do
 	shfmt -w "${i}"
-	shellcheck -o all -f diff "${i}" | patch -p1
+	shellcheck -o all -e SC2312 -f diff "${i}" | patch -p1
+	shellcheck -o all -e SC2312 "${i}"
 	i_tmp="${i##./}"
 	find /etc/cron.* -iname "${i_tmp%.sh}" | while read -r j; do
 		echo "${j}"
