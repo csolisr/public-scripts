@@ -6,7 +6,7 @@ user=friendica
 phpversion=php8.2
 dbengine=mariadb
 db=friendica
-dboptimizer=mariadboptimize
+dboptimizer=mariadb-optimize
 
 bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null;
 
@@ -318,6 +318,7 @@ tmp_post_media_duplicate_q="${limit}"
 tmp_post_media_duplicate_current_id=0
 until [[ "${tmp_post_media_duplicate_q}" -lt "${limit}" ]]; do
 	initial_i=$(date +%s)
+	tmp_post_media_duplicate_q=0
 	while read -r id; do
 		if [[ -s "${id}" ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
@@ -341,6 +342,7 @@ tmp_post_user_duplicate_q="${limit}"
 tmp_post_user_duplicate_current_id=0
 until [[ "${tmp_post_user_duplicate_q}" -lt "${limit}" ]]; do
 	initial_i=$(date +%s)
+	tmp_post_user_duplicate_q=0
 	while read -r id; do
 		if [[ -s "${id}" ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
