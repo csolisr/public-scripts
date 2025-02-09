@@ -5,7 +5,7 @@ IFS="
 site=friendica.example.net
 user=friendica
 group=www-data
-fileperm=640
+fileperm=660
 folderperm=770
 folder=/var/www/friendica
 folderescaped=${folder////\\/}
@@ -19,7 +19,7 @@ loop_1() {
 		nice -n 10 gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" #&> /dev/null
 		#Specific compression for large GIF files
 		while [[ $(stat -c%s "${p}" || 0) -ge 512000 ]]; do
-			frameamount=$(exiftool -b -FrameCount "${p}" || 1)
+			frameamount=$(($(exiftool -b -FrameCount "${p}" || 1) - 1))
 			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 "${frameamount}") -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
 		done
 	elif [[ "${p}" =~ .png ]]; then
@@ -43,7 +43,8 @@ loop_1() {
 
 cd "${folder}" || exit
 if [[ ! -f "${tmpfile}" ]]; then
-	sudo -u "${user}" bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
+	#sudo -u "${user}" bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
+	sudo bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
 fi
 grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${folderescaped}/g" -e "s/?ts=.*//g" | (
 	while read -r i; do
