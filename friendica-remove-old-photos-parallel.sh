@@ -12,7 +12,7 @@ loop() {
 	ky=$(echo "${y}" | sed -e "s/${folderescaped}/https:\/\/${url}/g" -e "s/-[0-9]*\..*\$//g")
 	f=$(mariadb "${db}" -N -B -q -e "select photo from contact where photo like '${ky}%' limit 1")
 	if [[ $? -eq 0 && -z ${f} && -f ${y} ]]; then
-		(ls -lh "${y}" && rm -rf "${y}") &
+		rm -rvf "${y}" &
 		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
 			wait -n
 		fi
@@ -27,28 +27,23 @@ loop() {
 date
 #Go to the Friendica installation
 cd "${folderavatar}" || exit
-indexlength=$((49 + ${#url}))
-mariadb "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
+#indexlength=$((49 + ${#url}))
+#mariadb "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
 n=0
 d=0
-find "${folderavatar}" -depth -mindepth 1 -maxdepth 1 -type d | while read -r x; do
+while read -r x; do
 	n=$((n + 1))
 	#If the directory still exists
 	if [[ -d "${x}" ]]; then
-		folderescaped=${folder////\\/}
-		#kx=$(echo "${x}" | sed -e "s/${folderescaped}/https:\/\/${url}/g" -e "s/-[0-9]*\..*\$//g")
-		if [[ -d ${x} ]]; then
-			m=0
-			while read -r y; do
-				m=$((m + 1))
-				loop "${x}" "${m}" "${n}" "${d}" &
-				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
-					wait -n
-				fi
-				#done < <(find "${x}" -type f -mtime -8)
-			done < <(find "${x}" -type f)
-		fi
+		m=0
+		while read -r y; do
+			m=$((m + 1))
+			loop "${x}" "${m}" "${n}" "${d}" "${y}" &
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
+				wait -n
+			fi
+		done < <(find "${x}" -type f)
 	fi
-done
-mariadb "${db}" -e "alter table contact drop index photo_index"
+done < <(find "${folderavatar}" -depth -mindepth 1 -maxdepth 1 -type d)
+#mariadb "${db}" -e "alter table contact drop index photo_index"
 date
