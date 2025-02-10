@@ -223,7 +223,7 @@ loop() {
 #Go to the Friendica installation
 cd "${folder}" || exit
 echo "${n} ${nt}" >"${nfile}"
-until [[ "${nt}" -ge "${dbcount}" || "${lastid}" -ge "${maxid}" ]]; do
+until [[ $((nt + limit)) -ge "${dbcount}" || "${lastid}" -ge "${maxid}" ]]; do
 	c=""
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
 		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
@@ -273,8 +273,7 @@ fi
 if [[ ! -d "${nfolder}" && $(find "${nfolder}" | wc -l) -eq 0 ]]; then
 	rm -rf "${nfolder}"
 fi
-"${dbengine}" "${db}" -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` \
-	and w1.\`command\` = \"UpdateContact\" and w1.\`done\` = 0)"
+"${dbengine}" "${db}" -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` \ and w1.\`command\` = \"UpdateContact\" and w1.\`done\` = 0)"
 if [[ "${intense_optimizations}" -gt 0 ]]; then
 	"${dbengine}" "${db}" -e "alter table contact drop index photo_index"
 fi
