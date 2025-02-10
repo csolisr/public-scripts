@@ -52,7 +52,7 @@ printf "\rProcessQueue\t\t%s\n\r" "${cemax}"
 cf=100
 cfmax=0
 while [[ ${cf} -gt 0 ]]; do
-	cf=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.parameter = w2.parameter and w1.command = \"UpdateContact\" and w1.done = 0) limit ${ce}; select row_count();")
+	cf=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` and w1.command = \"UpdateContact\" and w1.\`pid\` = 0 and w1.\`done\` = 0) limit ${cf}; select row_count();")
 	cfmax=$((cfmax + cf))
 	printf "\rWorkerQueue\t\t%s\r" "${cfmax}"
 done
