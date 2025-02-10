@@ -41,15 +41,24 @@ dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where p
 loop() {
 	#Wait until lock no longer exists
 	r=0
+	t_r=$(($(date +%s%N) / 1000000))
 	while [[ "${r}" -eq 0 ]]; do
 		#Read data from file, delete lock
 		if [[ ! -f "${nlock}" ]]; then
-			touch "${nlock}" && read -r lastid n nx nt <"${nfile}" && rm -rf "${nlock}" && r=1
+			touch "${nlock}"
+			echo "${id}" >"${nlock}" || break
+			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
+				read -r n nx nt <"${nfile}" || break
+				if [[ -f "${nlock}" ]]; then
+					rm -rf "${nlock}"
+				fi
+				r=1
+			fi
 		fi
 	done
+	result_string=$(printf "%s R%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_r)))
 	nx=$(("${nx}" + 1))
 	nt=$(("${nt}" + 1))
-	#Continue only if lastid is lower than current id
 	t_id=$(($(date +%s%N) / 1000000))
 	if [[ -n "${id}" ]]; then
 		while read -r avatar photo thumb micro; do
@@ -156,14 +165,29 @@ loop() {
 		done < <(mariadb "${db}" -B -N -q -e "select \`avatar\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${id}")
 	fi
 	w=0
+	t_w=$(($(date +%s%N) / 1000000))
 	while [[ "${w}" -eq 0 ]]; do
 		if [[ ! -f "${nlock}" ]]; then
 			#Write data to file, delete lock
 			#n is increased only if error_found = 1
-			touch "${nlock}" && read -r lastid n nx nt <"${nfile}" && n=$((n + error_found)) && nx=$((nx + 1)) && nt=$((nt + 1)) && lastid="${id}" &&
-				echo "${lastid} ${n} ${nx} ${nt}" >"${nfile}" && rm -rf "${nlock}" && w=1
+			touch "${nlock}"
+			echo "${id}" >"${nlock}"
+			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
+				read -r n_tmp nx_tmp nt_tmp <"${nfile}" || break
+				n=$((n_tmp + error_found))
+				nx=$((nx_tmp + 1))
+				nt=$((nt_tmp + 1))
+				if [[ $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
+					echo "${n} ${nx} ${nt}" >"${nfile}" || break
+					if [[ -f "${nlock}" ]]; then
+						rm -rf "${nlock}"
+					fi
+					w=1
+				fi
+			fi
 		fi
 	done
+	result_string=$(printf "%s W%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_w)))
 	result_string=$(printf "%s T%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_id)))
 	final_string=$(printf "E%8d F%8d/%8d T%8d/%8d %s" "${n}" "${nt}" "${dbcount}" "${lastid}" "${maxid}" "${result_string}")
 	final_string_length="${#final_string}"
@@ -190,7 +214,7 @@ until [[ $((nt + limit)) -gt "${dbcount}" ]]; do
 	result_string=""
 	nl=0
 	error_found=0
-	echo "${lastid} ${n} ${nx} ${nt}" >"${nfile}"
+	echo "${n} ${nx} ${nt}" >"${nfile}"
 	while read -r id; do
 		loop "${batch}" "${result_string}" "${nl}" "${nx}" "${nt}" "${error_found}" &
 		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; do
