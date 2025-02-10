@@ -73,7 +73,6 @@ loop() {
 		fi
 	done
 	result_string=$(printf "%s R%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_r)))
-	nt=$(("${nt}" + 1))
 	t_id=$(($(date +%s%N) / 1000000))
 	if [[ -n "${id}" ]]; then
 		while read -r avatar photo thumb micro; do
@@ -196,8 +195,16 @@ loop() {
 			if [[ -f "${nlock}" && $(cat "${nlock}") == "${id}" ]]; then
 				read -r n_tmp nt_tmp <"${nfile}"
 				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
-					n=$((n_tmp + error_found))
-					nt=$((nt_tmp + 1))
+					if [[ "${n_tmp}" -ge "${n}" ]]; then
+						n=$((n_tmp + error_found))
+					else
+						n=$((n + error_found))
+					fi
+					if [[ "${nt_tmp}" -ge "${nt}" ]]; then
+						nt=$((nt_tmp + 1))
+					else
+						nt=$((nt + 1))
+					fi
 					if [[ $(cat "${nlock}") == "${id}" ]]; then
 						echo "${n} ${nt}" >"${nfile}"
 						if [[ -f "${nlock}" ]]; then
@@ -231,7 +238,7 @@ loop() {
 #Go to the Friendica installation
 cd "${folder}" || exit
 echo "${n} ${nt}" >"${nfile}"
-until [[ $((nt + limit)) -ge "${dbcount}" || "${lastid}" -ge "${maxid}" ]]; do
+until [[ $((nt + limit)) -gt "${dbcount}" || "${lastid}" -gt "${maxid}" ]]; do
 	c=""
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
 		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
@@ -265,8 +272,9 @@ until [[ $((nt + limit)) -ge "${dbcount}" || "${lastid}" -ge "${maxid}" ]]; do
 					if [[ -f "${nlock}" ]]; then
 						echo "" >"${nlock}"
 					fi
-					rl=1
+					#If the data can't be read, we just regenerate it the next loop
 				fi
+				rl=1
 			fi
 		fi
 	done
