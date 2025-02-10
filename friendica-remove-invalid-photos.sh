@@ -55,13 +55,15 @@ loop() {
 		#Read data from file, delete lock
 		if [[ ! -f "${nlock}" ]]; then
 			touch "${nlock}"
-			echo "${id}" >"${nlock}" || break
+			echo "${id}" >"${nlock}"
 			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
-				read -r n nt <"${nfile}" || break
-				if [[ -f "${nlock}" ]]; then
-					rm -rf "${nlock}"
+				read -r n nt <"${nfile}"
+				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+					if [[ -f "${nlock}" ]]; then
+						rm -rf "${nlock}"
+					fi
+					r=1
 				fi
-				r=1
 			fi
 		fi
 	done
@@ -184,15 +186,17 @@ loop() {
 			touch "${nlock}"
 			echo "${id}" >"${nlock}"
 			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
-				read -r n_tmp nt_tmp <"${nfile}" || break
-				n=$((n_tmp + error_found))
-				nt=$((nt_tmp + 1))
-				if [[ $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
-					echo "${n} ${nt}" >"${nfile}" || break
-					if [[ -f "${nlock}" ]]; then
-						rm -rf "${nlock}"
+				read -r n_tmp nt_tmp <"${nfile}"
+				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+					n=$((n_tmp + error_found))
+					nt=$((nt_tmp + 1))
+					if [[ $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
+						echo "${n} ${nt}" >"${nfile}"
+						if [[ -f "${nlock}" ]]; then
+							rm -rf "${nlock}"
+						fi
+						w=1
 					fi
-					w=1
 				fi
 			fi
 		fi
@@ -219,7 +223,7 @@ loop() {
 #Go to the Friendica installation
 cd "${folder}" || exit
 echo "${n} ${nt}" >"${nfile}"
-until [[ "${nt}" -ge "${dbcount}" ]]; do
+until [[ "${nt}" -ge "${dbcount}" || "${lastid}" -ge "${maxid}" ]]; do
 	c=""
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
 		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
@@ -238,6 +242,27 @@ until [[ "${nt}" -ge "${dbcount}" ]]; do
 		done
 	done < <(echo "${c}")
 	wait
+	#Read current state here, before the loop is restarted
+	#Wait until lock no longer exists
+	r=0
+	t_r=$(($(date +%s%N) / 1000000))
+	while [[ "${r}" -eq 0 ]]; do
+		#Read data from file, delete lock
+		if [[ ! -f "${nlock}" ]]; then
+			touch "${nlock}"
+			echo "${lastid}" >"${nlock}"
+			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${lastid}" ]]; then
+				read -r n nt <"${nfile}"
+				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+					if [[ -f "${nlock}" ]]; then
+						rm -rf "${nlock}"
+					fi
+					r=1
+				fi
+			fi
+		fi
+	done
+
 done
 if [[ -f "${nfile}" ]]; then
 	rm -rf "${nfile}"
