@@ -128,7 +128,6 @@ until [[ "${tmp_post_thread_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
 	done < <("${dbengine}" "${db}" -N -B -q -e \
 		"SELECT \`uri-id\` FROM \`post-thread\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 			AND \`uri-id\` > ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
-
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_thread_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} in ${final_i}s"
 done
@@ -153,7 +152,6 @@ until [[ "${tmp_post_user_uri_id_not_in_post_q}" -lt "${limit}" ]]; do
 	done < <("${dbengine}" "${db}" -N -B -q -e \
 		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post\`) \
 			AND \`uri-id\` > ${tmp_post_user_uri_id_not_in_post_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
-
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_user_uri_id_not_in_post_q} item(s) deleted until ${tmp_post_user_uri_id_not_in_post_current_uri_id} in ${final_i}s"
 done
@@ -239,7 +237,7 @@ until [[ "${tmp_attach_not_in_post_media_q}" -lt "${limit}" ]]; do
 	done < <("${dbengine}" "${db}" -N -B -q -e \
 		"SELECT \`id\` FROM \`attach\` WHERE \`id\` NOT IN (SELECT \`attach-id\` FROM \`post-media\`) \
 		AND \`id\` > ${tmp_attach_not_in_post_media_current_id} ORDER BY \`id\` LIMIT ${limit}")
-
+	"${dbengine}" "${db}" -N -B -q -e "ALTER TABLE \`attach\` AUTO_INCREMENT = 1"
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_attach_not_in_post_media_q} item(s) deleted until ${tmp_attach_not_in_post_media_current_id} in ${final_i}s"
 done
@@ -362,6 +360,9 @@ if [[ "${intense_optimizations}" -gt 0 ]]; then
 		echo "${tmp_post_user_duplicate_q} item(s) deleted until ${tmp_post_user_duplicate_current_id} in ${final_i}s"
 	done
 	wait
+
+	"${dbengine}" "${db}" -N -B -q -e "ALTER TABLE \`post-user\` AUTO_INCREMENT = 1; ALTER TABLE \`post\` AUTO_INCREMENT = 1; ALTER TABLE \`post-content\` AUTO_INCREMENT = 1; \
+		ALTER TABLE \`post-thread\` AUTO_INCREMENT = 1; ALTER TABLE \`item-uri\` AUTO_INCREMENT = 1; ALTER TABLE \`post-media\` AUTO_INCREMENT = 1;"
 
 	"${dboptimizer}" "${db}" #&> /dev/null
 fi
