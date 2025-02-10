@@ -21,7 +21,9 @@ else
 	touch "${nfile}"
 fi
 if [[ -f "${nlock}" ]]; then
-	rm -rf "${nlock}"
+	rm -rf "${nlock}" && touch "${nlock}"
+else
+	touch "${nlock}"
 fi
 #Internal parameters:
 #Number of invalid avatars found
@@ -52,15 +54,18 @@ loop() {
 	r=0
 	t_r=$(($(date +%s%N) / 1000000))
 	while [[ "${r}" -eq 0 ]]; do
-		#Read data from file, delete lock
 		if [[ ! -f "${nlock}" ]]; then
 			touch "${nlock}"
+		fi
+		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "" ]]; then
 			echo "${id}" >"${nlock}"
 			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
-				read -r n nt <"${nfile}"
+				read -r n_tmp nt_tmp <"${nfile}"
 				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+					n="${n_tmp}"
+					nt="${nt_tmp}"
 					if [[ -f "${nlock}" ]]; then
-						rm -rf "${nlock}"
+						echo "" >"${nlock}"
 					fi
 					r=1
 				fi
@@ -176,14 +181,17 @@ loop() {
 			fi
 			lastid="${id}"
 		done < <("${dbengine}" "${db}" -B -N -q -e "select \`avatar\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${id}")
+	else
+		echo "${n}" "${nt}" "${dbcount}" "${lastid}" "${maxid}" "${result_string}"
 	fi
 	w=0
 	t_w=$(($(date +%s%N) / 1000000))
 	while [[ "${w}" -eq 0 ]]; do
 		if [[ ! -f "${nlock}" ]]; then
-			#Write data to file, delete lock
 			#n is increased only if error_found = 1
 			touch "${nlock}"
+		fi
+		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "" ]]; then
 			echo "${id}" >"${nlock}"
 			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
 				read -r n_tmp nt_tmp <"${nfile}"
@@ -193,7 +201,7 @@ loop() {
 					if [[ $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
 						echo "${n} ${nt}" >"${nfile}"
 						if [[ -f "${nlock}" ]]; then
-							rm -rf "${nlock}"
+							echo "" >"${nlock}"
 						fi
 						w=1
 					fi
@@ -241,28 +249,33 @@ until [[ $((nt + limit)) -ge "${dbcount}" || "${lastid}" -ge "${maxid}" ]]; do
 			wait -n
 		done
 	done < <(echo "${c}")
-	wait
-	#Read current state here, before the loop is restarted
-	#Wait until lock no longer exists
-	r=0
-	t_r=$(($(date +%s%N) / 1000000))
-	while [[ "${r}" -eq 0 ]]; do
-		#Read data from file, delete lock
+	#Read data before next iteration
+	rl=0
+	while [[ "${rl}" -eq 0 ]]; do
 		if [[ ! -f "${nlock}" ]]; then
 			touch "${nlock}"
+		fi
+		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "" ]]; then
 			echo "${lastid}" >"${nlock}"
 			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${lastid}" ]]; then
-				read -r n nt <"${nfile}"
-				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+				read -r n_tmp_l nt_tmp_l <"${nfile}"
+				if [[ -n "${n_tmp_l}" && -n "${nt_tmp_l}" ]]; then
+					n="${n_tmp_l}"
+					nt="${nt_tmp_l}"
 					if [[ -f "${nlock}" ]]; then
-						rm -rf "${nlock}"
+						echo "" >"${nlock}"
 					fi
-					r=1
+					rl=1
+				else
+					sleep 1s
 				fi
+			else
+				sleep 1s
 			fi
+		else
+			sleep 1s
 		fi
 	done
-
 done
 if [[ -f "${nfile}" ]]; then
 	rm -rf "${nfile}"
