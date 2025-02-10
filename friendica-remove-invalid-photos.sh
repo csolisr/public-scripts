@@ -176,12 +176,9 @@ loop() {
 						values (\"UpdateContact\", \"[${id}]\", 20, concat(curdate(), \" \", curtime()));"
 				result_string=$(printf "%s (added)" "${result_string}")
 				nl=1
-				n=$((n + 1))
 			fi
 			lastid="${id}"
 		done < <("${dbengine}" "${db}" -B -N -q -e "select \`avatar\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${id}")
-	else
-		echo "${n}" "${nt}" "${dbcount}" "${lastid}" "${maxid}" "${result_string}"
 	fi
 	w=0
 	t_w=$(($(date +%s%N) / 1000000))
@@ -262,9 +259,9 @@ until [[ $((nt + limit)) -gt "${dbcount}" || "${lastid}" -gt "${maxid}" ]]; do
 		if [[ ! -f "${nlock}" ]]; then
 			touch "${nlock}"
 		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "" ]]; then
+		if [[ -f "${nlock}" && $(cat "${nlock}") == "" ]]; then
 			echo "${lastid}" >"${nlock}"
-			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${lastid}" ]]; then
+			if [[ -f "${nlock}" && $(cat "${nlock}") == "${lastid}" ]]; then
 				read -r n_tmp_l nt_tmp_l <"${nfile}"
 				if [[ -n "${n_tmp_l}" && -n "${nt_tmp_l}" ]]; then
 					n="${n_tmp_l}"
