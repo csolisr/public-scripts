@@ -9,7 +9,7 @@ db=friendica
 folder=/var/www/friendica
 intense_optimizations=${1:-"0"}
 thread_multiplier=1
-nfolder="/tmpʾfriendica-remove-invalid-photos"
+nfolder="/tmp/friendica-remove-invalid-photos"
 nfile="${nfolder}/n$(date +%s).csv"
 nlock="${nfolder}/n$(date +%s).lock"
 if [[ ! -d "${nfolder}" ]]; then
@@ -57,9 +57,9 @@ loop() {
 		if [[ ! -f "${nlock}" ]]; then
 			touch "${nlock}"
 		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "" ]]; then
+		if [[ -f "${nlock}" && $(cat "${nlock}") -eq "" ]]; then
 			echo "${id}" >"${nlock}"
-			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
+			if [[ -f "${nlock}" && $(cat "${nlock}") -eq "${id}" ]]; then
 				read -r n_tmp nt_tmp <"${nfile}"
 				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
 					n="${n_tmp}"
@@ -191,14 +191,14 @@ loop() {
 			#n is increased only if error_found = 1
 			touch "${nlock}"
 		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "" ]]; then
+		if [[ -f "${nlock}" && $(cat "${nlock}") -eq "" ]]; then
 			echo "${id}" >"${nlock}"
-			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
+			if [[ -f "${nlock}" && $(cat "${nlock}") -eq "${id}" ]]; then
 				read -r n_tmp nt_tmp <"${nfile}"
 				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
 					n=$((n_tmp + error_found))
 					nt=$((nt_tmp + 1))
-					if [[ $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
+					if [[ $(cat "${nlock}") -eq "${id}" ]]; then
 						echo "${n} ${nt}" >"${nfile}"
 						if [[ -f "${nlock}" ]]; then
 							echo "" >"${nlock}"
