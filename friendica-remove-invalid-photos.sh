@@ -8,7 +8,7 @@ dbengine=mariadb
 db=friendica
 folder=/var/www/friendica
 intense_optimizations=${1:-"0"}
-thread_multiplier=1
+thread_multiplier=2
 nfolder="/tmp/friendica-remove-invalid-photos"
 nfile="${nfolder}/n$(date +%s).csv"
 nlock="${nfolder}/n$(date +%s).lock"
@@ -266,14 +266,8 @@ until [[ $((nt + limit)) -ge "${dbcount}" || "${lastid}" -ge "${maxid}" ]]; do
 						echo "" >"${nlock}"
 					fi
 					rl=1
-				else
-					sleep 1s
 				fi
-			else
-				sleep 1s
 			fi
-		else
-			sleep 1s
 		fi
 	done
 done
