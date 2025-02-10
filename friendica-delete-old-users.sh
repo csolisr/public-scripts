@@ -50,8 +50,8 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 				wait -n
 			fi
 		done
-		wait
-			"${dbengine}" "${db}" -N -B -q -e "alter table \`post-thread\` auto_increment = 1"
+	wait
+	"${dbengine}" "${db}" -N -B -q -e "alter table \`post-thread\` auto_increment = 1"
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`post-thread-user\` auto_increment = 1"
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`post-user\` auto_increment = 1"
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`post-tag\` auto_increment = 1"
