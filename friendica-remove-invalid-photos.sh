@@ -38,9 +38,9 @@ if [[ "${intense_optimizations}" -gt 0 ]]; then
 	#https:// = 8 characters | /avatar/ = 8 characters
 	indexlength=$(("${#url}" + 16))
 	mariadb "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
-	dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%'")
+	dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or \`photo\` like '')")
 else
-	dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%' and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+	dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or \`photo\` like '') and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
 fi
 
 loop() {
