@@ -7,8 +7,9 @@ phpversion=php8.2
 dbengine=mariadb
 db=friendica
 dboptimizer=mariadb-optimize
+intense_optimizations=${1:-"0"}
 
-bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null;
+bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
 
 echo "tmp_post_origin_deleted"
 tmp_post_origin_deleted_q="${limit}"
@@ -289,77 +290,79 @@ until [[ "${tmp_item_uri_not_valid_q}" -lt "${limit}" ]]; do
 done
 wait
 
-echo "tmp_item_uri_duplicate"
-tmp_item_uri_duplicate_q="${limit}"
-tmp_item_uri_duplicate_current_id=0
-until [[ "${tmp_item_uri_duplicate_q}" -lt "${limit}" ]]; do
-	initial_i=$(date +%s)
-	tmp_item_uri_duplicate_q=0
-	while read -r id; do
-		if [[ -s "${id}" ]]; then
-			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
-				wait -n
+if [[ "${intense_optimizations}" -gt 0 ]]; then
+	echo "tmp_item_uri_duplicate"
+	tmp_item_uri_duplicate_q="${limit}"
+	tmp_item_uri_duplicate_current_id=0
+	until [[ "${tmp_item_uri_duplicate_q}" -lt "${limit}" ]]; do
+		initial_i=$(date +%s)
+		tmp_item_uri_duplicate_q=0
+		while read -r id; do
+			if [[ -s "${id}" ]]; then
+				"${dbengine}" "${db}" -N -B -q -e \
+					"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
+				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
+					wait -n
+				fi
+				tmp_item_uri_duplicate_q=$((tmp_item_uri_duplicate_q + 1))
+				tmp_item_uri_duplicate_current_id="${id}"
 			fi
-			tmp_item_uri_duplicate_q=$((tmp_item_uri_duplicate_q + 1))
-			tmp_item_uri_duplicate_current_id="${id}"
-		fi
-	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT t1.\`id\` FROM \`item-uri\` t1 INNER JOIN \`item-uri\` t2 WHERE t1.\`id\` > ${tmp_item_uri_duplicate_current_id} \
+		done < <("${dbengine}" "${db}" -N -B -q -e \
+			"SELECT t1.\`id\` FROM \`item-uri\` t1 INNER JOIN \`item-uri\` t2 WHERE t1.\`id\` > ${tmp_item_uri_duplicate_current_id} \
 			AND t1.\`id\` < t2.\`id\` AND t1.\`uri\` = t2.\`uri\` LIMIT ${limit}")
-	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_item_uri_duplicate_q} item(s) deleted until ${tmp_item_uri_duplicate_current_id} in ${final_i}s"
-done
-wait
+		final_i=$(($(date +%s) - initial_i))
+		echo "${tmp_item_uri_duplicate_q} item(s) deleted until ${tmp_item_uri_duplicate_current_id} in ${final_i}s"
+	done
+	wait
 
-echo "tmp_post_media_duplicate"
-tmp_post_media_duplicate_q="${limit}"
-tmp_post_media_duplicate_current_id=0
-until [[ "${tmp_post_media_duplicate_q}" -lt "${limit}" ]]; do
-	initial_i=$(date +%s)
-	tmp_post_media_duplicate_q=0
-	while read -r id; do
-		if [[ -s "${id}" ]]; then
-			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`post-media\` WHERE \`id\` = ${id}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
-				wait -n
+	echo "tmp_post_media_duplicate"
+	tmp_post_media_duplicate_q="${limit}"
+	tmp_post_media_duplicate_current_id=0
+	until [[ "${tmp_post_media_duplicate_q}" -lt "${limit}" ]]; do
+		initial_i=$(date +%s)
+		tmp_post_media_duplicate_q=0
+		while read -r id; do
+			if [[ -s "${id}" ]]; then
+				"${dbengine}" "${db}" -N -B -q -e \
+					"DELETE FROM \`post-media\` WHERE \`id\` = ${id}" &
+				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
+					wait -n
+				fi
+				tmp_post_media_duplicate_q=$((tmp_post_media_duplicate_q + 1))
+				tmp_post_media_duplicate_current_id="${id}"
 			fi
-			tmp_post_media_duplicate_q=$((tmp_post_media_duplicate_q + 1))
-			tmp_post_media_duplicate_current_id="${id}"
-		fi
-	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT u1.\`id\` FROM \`post-media\` u1 INNER JOIN \`post-media\` u2 WHERE u1.\`id\` > ${tmp_post_media_duplicate_current_id} \
+		done < <("${dbengine}" "${db}" -N -B -q -e \
+			"SELECT u1.\`id\` FROM \`post-media\` u1 INNER JOIN \`post-media\` u2 WHERE u1.\`id\` > ${tmp_post_media_duplicate_current_id} \
 			AND u1.\`id\` < u2.\`id\` AND u1.\`uri-id\` = u2.\`uri-id\` AND u1.\`url\`= u2.\`url\` LIMIT ${limit}")
-	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_post_media_duplicate_q} item(s) deleted until ${tmp_post_media_duplicate_current_id} in ${final_i}s"
-done
-wait
+		final_i=$(($(date +%s) - initial_i))
+		echo "${tmp_post_media_duplicate_q} item(s) deleted until ${tmp_post_media_duplicate_current_id} in ${final_i}s"
+	done
+	wait
 
-echo "tmp_post_user_duplicate"
-tmp_post_user_duplicate_q="${limit}"
-tmp_post_user_duplicate_current_id=0
-until [[ "${tmp_post_user_duplicate_q}" -lt "${limit}" ]]; do
-	initial_i=$(date +%s)
-	tmp_post_user_duplicate_q=0
-	while read -r id; do
-		if [[ -s "${id}" ]]; then
-			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`post-user\` WHERE \`id\` = ${id}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
-				wait -n
+	echo "tmp_post_user_duplicate"
+	tmp_post_user_duplicate_q="${limit}"
+	tmp_post_user_duplicate_current_id=0
+	until [[ "${tmp_post_user_duplicate_q}" -lt "${limit}" ]]; do
+		initial_i=$(date +%s)
+		tmp_post_user_duplicate_q=0
+		while read -r id; do
+			if [[ -s "${id}" ]]; then
+				"${dbengine}" "${db}" -N -B -q -e \
+					"DELETE FROM \`post-user\` WHERE \`id\` = ${id}" &
+				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
+					wait -n
+				fi
+				tmp_post_user_duplicate_q=$((tmp_post_user_duplicate_q + 1))
+				tmp_post_user_duplicate_current_id="${id}"
 			fi
-			tmp_post_user_duplicate_q=$((tmp_post_user_duplicate_q + 1))
-			tmp_post_user_duplicate_current_id="${id}"
-		fi
-	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT v1.\`id\` FROM \`post-user\` v1 INNER JOIN \`post-media\` v2 WHERE v1.\`id\` > ${tmp_post_user_duplicate_current_id} \
+		done < <("${dbengine}" "${db}" -N -B -q -e \
+			"SELECT v1.\`id\` FROM \`post-user\` v1 INNER JOIN \`post-media\` v2 WHERE v1.\`id\` > ${tmp_post_user_duplicate_current_id} \
 				AND v1.\`id\` < v2.\`id\` AND v1.\`uri-id\` = v2.\`uri-id\` LIMIT ${limit}")
-	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_post_user_duplicate_q} item(s) deleted until ${tmp_post_user_duplicate_current_id} in ${final_i}s"
-done
-wait
+		final_i=$(($(date +%s) - initial_i))
+		echo "${tmp_post_user_duplicate_q} item(s) deleted until ${tmp_post_user_duplicate_current_id} in ${final_i}s"
+	done
+	wait
 
-"${dboptimizer}" "${db}"                                                              #&> /dev/null;
-bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 0" #&> /dev/null;
+	"${dboptimizer}" "${db}" #&> /dev/null
+fi
+bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 0" #&> /dev/null
