@@ -37,15 +37,17 @@ wait
 #compress-webp
 while read -r s; do
 	#If file is not animated
-	if ! grep -v -q -e "ANIM" -e "ANMF" "${s}"; then
-		cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp #&>/dev/null
-		if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]; then
-			size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp || 0)
-			size_original=$(stat -c%s "${s}" || 0)
-			if [[ -n "${size_original}" && -n "${size_new}" && "${size_original}" -gt "${size_new}" ]]; then
-				mv /tmp/"${s##.*\/}"_temp.webp "${s}"
-			else
-				rm /tmp/"${s##.*\/}"_temp.webp
+	if [[ -f "${s}" ]]; then
+		if grep -v -q -e "ANIM" -e "ANMF" "${s}"; then
+			cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp #&>/dev/null
+			if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]; then
+				size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp || 0)
+				size_original=$(stat -c%s "${s}" || 0)
+				if [[ -n "${size_original}" && -n "${size_new}" && "${size_original}" -gt "${size_new}" ]]; then
+					mv /tmp/"${s##.*\/}"_temp.webp "${s}"
+				else
+					rm /tmp/"${s##.*\/}"_temp.webp
+				fi
 			fi
 		fi
 	fi
@@ -76,15 +78,17 @@ while read -r j; do
 		elif file -b "${j}" | grep -q "Web/P"; then
 			mv "${j}" "${j%.*}".webp
 			#If file is not animated
-			if ! grep -v -q -e "ANIM" -e "ANMF" "${s}"; then
-				cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp #&>/dev/null
-				if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]; then
-					size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp || 0)
-					size_original=$(stat -c%s "${s}" || 0)
-					if [[ -n "${size_original}" && -n "${size_new}" && "${size_original}" -gt "${size_new}" ]]; then
-						mv /tmp/"${s##.*\/}"_temp.webp "${s}"
-					else
-						rm /tmp/"${s##.*\/}"_temp.webp
+			if [[ -f "${j}" ]]; then
+				if grep -v -q -e "ANIM" -e "ANMF" "${s}"; then
+					cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp #&>/dev/null
+					if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]; then
+						size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp || 0)
+						size_original=$(stat -c%s "${s}" || 0)
+						if [[ -n "${size_original}" && -n "${size_new}" && "${size_original}" -gt "${size_new}" ]]; then
+							mv /tmp/"${s##.*\/}"_temp.webp "${s}"
+						else
+							rm /tmp/"${s##.*\/}"_temp.webp
+						fi
 					fi
 				fi
 			fi
@@ -102,15 +106,17 @@ while read -r k; do
 		elif file -b "${k}" | grep -q "Web/P"; then
 			mv "${k}" "${k%.*}".webp
 			#If file is not animated
-			if ! grep -v -q -e "ANIM" -e "ANMF" "${s}"; then
-				cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp #&>/dev/null
-				if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]; then
-					size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp || 0)
-					size_original=$(stat -c%s "${s}" || 0)
-					if [[ -n "${size_original}" && -n "${size_new}" && "${size_original}" -gt "${size_new}" ]]; then
-						mv /tmp/"${s##.*\/}"_temp.webp "${s}"
-					else
-						rm /tmp/"${s##.*\/}"_temp.webp
+			if [[ -f "${k}" ]]; then
+				if grep -v -q -e "ANIM" -e "ANMF" "${s}"; then
+					cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp #&>/dev/null
+					if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]; then
+						size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp || 0)
+						size_original=$(stat -c%s "${s}" || 0)
+						if [[ -n "${size_original}" && -n "${size_new}" && "${size_original}" -gt "${size_new}" ]]; then
+							mv /tmp/"${s##.*\/}"_temp.webp "${s}"
+						else
+							rm /tmp/"${s##.*\/}"_temp.webp
+						fi
 					fi
 				fi
 			fi
