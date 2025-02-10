@@ -6,14 +6,20 @@ group=www-data
 fileperm=660
 db=friendica
 folder=/var/www/friendica
-nfile=/tmp/n.csv
-nlock=/tmp/n.lock
-if [[ -f ${nfile} ]]; then
+intense_optimizations=${1:-"0"}
+thread_multiplier=1
+nfolder="/tmpʾfriendica-remove-invalid-photos"
+nfile="${nfolder}/n$(date +%s).csv"
+nlock="${nfolder}/n$(date +%s).lock"
+if [[ ! -d "${nfolder}" ]]; then
+	mkdir "${nfolder}"
+fi
+if [[ -f "${nfile}" ]]; then
 	rm -rf "${nfile}" && touch "${nfile}"
 else
 	touch "${nfile}"
 fi
-if [[ -f ${nlock} ]]; then
+if [[ -f "${nlock}" ]]; then
 	rm -rf "${nlock}"
 fi
 #Internal parameters:
@@ -27,12 +33,15 @@ lastid=0
 maxid=$(mariadb "${db}" -B -N -q -e "select max(\`id\`) from contact")
 #Limit per batch
 limit=$(((maxid / 1000) + 1))
-#https:// = 8 characters | /avatar/ = 8 characters
-#indexlength=$(("${#url}" + 16))
-#mariadb "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
-#Add to the loop, reset values
-#dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%' and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
-dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%'")
+dbcount=0
+if [[ "${intense_optimizations}" -gt 0 ]]; then
+	#https:// = 8 characters | /avatar/ = 8 characters
+	indexlength=$(("${#url}" + 16))
+	mariadb "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
+	dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%'")
+else
+	dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%' and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+fi
 
 loop() {
 	result_string=""
@@ -148,6 +157,9 @@ loop() {
 					fi
 				else
 					result_string=$(printf "%s No remote" "${result_string}")
+					#If the avatar is not valid, set it as blank in the database
+					mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\"" &
+					result_string=$(printf "%s (blanked)" "${result_string}")
 					#If no remote avatar is found, we would blank the photo/thumb/micro and let the avatar cache process fix them later, but it's empty already here
 					error_found=1
 				fi
@@ -207,15 +219,30 @@ loop() {
 cd "${folder}" || exit
 echo "${n} ${nt}" >"${nfile}"
 until [[ $((nt + limit)) -gt "${dbcount}" ]]; do
+	c=""
+	if [[ "${intense_optimizations}" -gt 0 ]]; then
+		c=$(mariadb "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
+	else
+		c=$(mariadb "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
+	fi
 	while read -r id; do
 		lastid="${id}"
 		loop &
-		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; do
+		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) * thread_multiplier)) ]]; do
 			wait -n
 		done
-	done < <(mariadb "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
+	done < <(echo "${c}")
 	wait
 done
-rm -rf "${nfile}" "${nlock}"
-#mariadb "${db}" -e "alter table contact drop index photo_index"
-#printf "\nFixing folders and moving to avatar cache...\n"
+if [[ -f "${nfile}" ]]; then
+	rm -rf "${nfile}"
+fi
+if [[ -f "${nlock}" ]]; then
+	rm -rf "${nlock}"
+fi
+if [[ ! -d "${nfolder}" && $(find "${nfolder}" | wc -l) -eq 0 ]]; then
+	rm -rf "${nfolder}"
+fi
+if [[ "${intense_optimizations}" -gt 0 ]]; then
+	mariadb "${db}" -e "alter table contact drop index photo_index"
+fi
