@@ -98,7 +98,7 @@ loop() {
 							error_found=1
 						else
 							#If the avatar is not valid, set it as blank in the database
-							mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\"" &
+							mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 							rm -rf "${k_photo}" "${k_thumb}" "${k_micro}" &
 							result_string=$(printf "%s (blanked)" "${result_string}")
 							error_found=1
@@ -120,7 +120,7 @@ loop() {
 						grep -q "content-type: image") ]]; then
 						result_string=$(printf "%s F%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t)))
 						result_string=$(printf "${result_string} Fetch error: %s" "${photo}")
-						mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\"" &
+						mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 						result_string=$(printf "%s (blanked)" "${result_string}")
 						nl=1
 						error_found=1
@@ -150,7 +150,7 @@ loop() {
 						error_found=1
 					else
 						#If the avatar is not valid, set it as blank in the database
-						mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\"" &
+						mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 						rm -rf "${k_photo}" "${k_thumb}" "{k_micro}" &
 						result_string=$(printf "%s (blanked)" "${result_string}")
 						error_found=1
@@ -158,7 +158,7 @@ loop() {
 				else
 					result_string=$(printf "%s No remote" "${result_string}")
 					#If the avatar is not valid, set it as blank in the database
-					mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\"" &
+					mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 					result_string=$(printf "%s (blanked)" "${result_string}")
 					#If no remote avatar is found, we would blank the photo/thumb/micro and let the avatar cache process fix them later, but it's empty already here
 					error_found=1
