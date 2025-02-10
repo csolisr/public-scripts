@@ -17,12 +17,8 @@ if [[ -f ${nlock} ]]; then
 	rm -rf "${nlock}"
 fi
 #Internal parameters:
-#Amount of times the internal loop has run
-batch=0
-#Number of invalid avatars found.
+#Number of invalid avatars found
 n=0
-#Number of entries processed this loop
-nx=0
 #Total number of entries processed
 nt=0
 #Last known ID to have been successfully processed
@@ -39,6 +35,9 @@ limit=$(((maxid / 1000) + 1))
 dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from contact where photo like 'https:\/\/${url}/avatar/%'")
 
 loop() {
+	result_string=""
+	nl=0
+	error_found=0
 	#Wait until lock no longer exists
 	r=0
 	t_r=$(($(date +%s%N) / 1000000))
@@ -48,7 +47,7 @@ loop() {
 			touch "${nlock}"
 			echo "${id}" >"${nlock}" || break
 			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
-				read -r n nx nt <"${nfile}" || break
+				read -r n nt <"${nfile}" || break
 				if [[ -f "${nlock}" ]]; then
 					rm -rf "${nlock}"
 				fi
@@ -57,7 +56,6 @@ loop() {
 		fi
 	done
 	result_string=$(printf "%s R%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_r)))
-	nx=$(("${nx}" + 1))
 	nt=$(("${nt}" + 1))
 	t_id=$(($(date +%s%N) / 1000000))
 	if [[ -n "${id}" ]]; then
@@ -173,12 +171,11 @@ loop() {
 			touch "${nlock}"
 			echo "${id}" >"${nlock}"
 			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
-				read -r n_tmp nx_tmp nt_tmp <"${nfile}" || break
+				read -r n_tmp nt_tmp <"${nfile}" || break
 				n=$((n_tmp + error_found))
-				nx=$((nx_tmp + 1))
 				nt=$((nt_tmp + 1))
 				if [[ $(cat "${nlock}" 2>/dev/null || echo 0) -eq "${id}" ]]; then
-					echo "${n} ${nx} ${nt}" >"${nfile}" || break
+					echo "${n} ${nt}" >"${nfile}" || break
 					if [[ -f "${nlock}" ]]; then
 						rm -rf "${nlock}"
 					fi
@@ -208,15 +205,11 @@ loop() {
 
 #Go to the Friendica installation
 cd "${folder}" || exit
+echo "${n} ${nt}" >"${nfile}"
 until [[ $((nt + limit)) -gt "${dbcount}" ]]; do
-	nx=0
-	batch=$(("${batch}" + 1))
-	result_string=""
-	nl=0
-	error_found=0
-	echo "${n} ${nx} ${nt}" >"${nfile}"
 	while read -r id; do
-		loop "${batch}" "${result_string}" "${nl}" "${nx}" "${nt}" "${error_found}" &
+		lastid="${id}"
+		loop &
 		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; do
 			wait -n
 		done
