@@ -4,6 +4,7 @@ url=friendica.example.net
 user=friendica
 group=www-data
 fileperm=660
+dbengine=mariadb
 db=friendica
 folder=/var/www/friendica
 intense_optimizations=${1:-"0"}
@@ -30,17 +31,17 @@ nt=0
 #Last known ID to have been successfully processed
 lastid=0
 #Highest possible ID known
-maxid=$(mariadb "${db}" -B -N -q -e "select max(\`id\`) from contact")
+maxid=$("${dbengine}" "${db}" -B -N -q -e "select max(\`id\`) from contact")
 #Limit per batch
 limit=$(((maxid / 1000) + 1))
 dbcount=0
 if [[ "${intense_optimizations}" -gt 0 ]]; then
 	#https:// = 8 characters | /avatar/ = 8 characters
 	indexlength=$(("${#url}" + 16))
-	mariadb "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
-	dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or \`photo\` like '')")
+	"${dbengine}" "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
+	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or \`photo\` like '')")
 else
-	dbcount=$(mariadb "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or \`photo\` like '') and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or \`photo\` like '') and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
 fi
 
 loop() {
@@ -91,22 +92,22 @@ loop() {
 						if file "${k_photo}" | grep -q -v -e "text" -e "empty" -e "symbolic link" -e "directory"; then
 							#Also fetch for thumb/micro and resize
 							#As the photo is the largest version we have, we will use it as the base, and leave it last to convert
-							(convert "${k_photo}" -resize 80x80 -depth 16 "${k_thumb}" && chmod "${fileperm}" "${k_thumb}" && chown "${user}:${group}" "${k_thumb}") &
-							(convert "${k_photo}" -resize 48x48 -depth 16 "${k_micro}" && chmod "${fileperm}" "${k_micro}" && chown "${user}:${group}" "${k_micro}") &
-							(convert "${k_photo}" -resize 300x300 -depth 16 "${k_photo}" && chmod "${fileperm}" "${k_photo}" && chown "${user}:${group}" "${k_photo}") &
+							convert "${k_photo}" -resize 80x80 -depth 16 "${k_thumb}" && chmod "${fileperm}" "${k_thumb}" && chown "${user}:${group}" "${k_thumb}"
+							convert "${k_photo}" -resize 48x48 -depth 16 "${k_micro}" && chmod "${fileperm}" "${k_micro}" && chown "${user}:${group}" "${k_micro}"
+							convert "${k_photo}" -resize 300x300 -depth 16 "${k_photo}" && chmod "${fileperm}" "${k_photo}" && chown "${user}:${group}" "${k_photo}"
 							result_string=$(printf "%s (generated)" "${result_string}")
 							error_found=1
 						else
 							#If the avatar is not valid, set it as blank in the database
-							mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
-							rm -rf "${k_photo}" "${k_thumb}" "${k_micro}" &
+							"${dbengine}" "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
+							rm -rf "${k_photo}" "${k_thumb}" "${k_micro}"
 							result_string=$(printf "%s (blanked)" "${result_string}")
 							error_found=1
 						fi
 					else
 						result_string=$(printf "%s No remote" "${result_string}")
 						#If no remote avatar is found, then we blank the photo/thumb/micro and let the avatar cache process fix them later
-						mariadb "${db}" -N -B -q -e "update contact set photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\"" &
+						"${dbengine}" "${db}" -N -B -q -e "update contact set photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 						result_string=$(printf "%s (blanked)" "${result_string}")
 						error_found=1
 					fi
@@ -120,7 +121,7 @@ loop() {
 						grep -q "content-type: image") ]]; then
 						result_string=$(printf "%s F%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t)))
 						result_string=$(printf "${result_string} Fetch error: %s" "${photo}")
-						mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
+						"${dbengine}" "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 						result_string=$(printf "%s (blanked)" "${result_string}")
 						nl=1
 						error_found=1
@@ -143,36 +144,36 @@ loop() {
 					if file "${k_photo}" | grep -q -v -e "text" -e "empty" -e "symbolic link" -e "directory"; then
 						#Also fetch for thumb/micro and resize
 						#As the photo is the largest version we have, we will use it as the base, and leave it last to convert
-						(convert "${k_photo}" -resize 80x80 -depth 16 "${k_thumb}" && chmod "${fileperm}" "${k_thumb}" && chown "${user}:${group}" "${k_thumb}") &
-						(convert "${k_photo}" -resize 48x48 -depth 16 "${k_micro}" && chmod "${fileperm}" "${k_micro}" && chown "${user}:${group}" "${k_micro}") &
-						(convert "${k_photo}" -resize 300x300 -depth 16 "${k_photo}" && chmod "${fileperm}" "${k_photo}" && chown "${user}:${group}" "${k_photo}") &
+						convert "${k_photo}" -resize 80x80 -depth 16 "${k_thumb}" && chmod "${fileperm}" "${k_thumb}" && chown "${user}:${group}" "${k_thumb}"
+						convert "${k_photo}" -resize 48x48 -depth 16 "${k_micro}" && chmod "${fileperm}" "${k_micro}" && chown "${user}:${group}" "${k_micro}"
+						convert "${k_photo}" -resize 300x300 -depth 16 "${k_photo}" && chmod "${fileperm}" "${k_photo}" && chown "${user}:${group}" "${k_photo}"
 						result_string=$(printf "%s (generated)" "${result_string}")
 						error_found=1
 					else
 						#If the avatar is not valid, set it as blank in the database
-						mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
-						rm -rf "${k_photo}" "${k_thumb}" "{k_micro}" &
+						"${dbengine}" "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
+						rm -rf "${k_photo}" "${k_thumb}" "{k_micro}"
 						result_string=$(printf "%s (blanked)" "${result_string}")
 						error_found=1
 					fi
 				else
 					result_string=$(printf "%s No remote" "${result_string}")
 					#If the avatar is not valid, set it as blank in the database
-					mariadb "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
+					"${dbengine}" "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 					result_string=$(printf "%s (blanked)" "${result_string}")
 					#If no remote avatar is found, we would blank the photo/thumb/micro and let the avatar cache process fix them later, but it's empty already here
 					error_found=1
 				fi
 			fi
 			if [[ "${error_found}" -gt 0 ]]; then
-				mariadb "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) \
-						values (\"UpdateContact\", \"[${id}]\", 20, concat(curdate(), \" \", curtime()));" &
+				"${dbengine}" "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) \
+						values (\"UpdateContact\", \"[${id}]\", 20, concat(curdate(), \" \", curtime()));"
 				result_string=$(printf "%s (added)" "${result_string}")
 				nl=1
 				n=$((n + 1))
 			fi
 			lastid="${id}"
-		done < <(mariadb "${db}" -B -N -q -e "select \`avatar\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${id}")
+		done < <("${dbengine}" "${db}" -B -N -q -e "select \`avatar\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${id}")
 	fi
 	w=0
 	t_w=$(($(date +%s%N) / 1000000))
@@ -218,16 +219,20 @@ loop() {
 #Go to the Friendica installation
 cd "${folder}" || exit
 echo "${n} ${nt}" >"${nfile}"
-until [[ $((nt + limit)) -gt "${dbcount}" ]]; do
+until [[ "${nt}" -ge "${dbcount}" ]]; do
 	c=""
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
-		c=$(mariadb "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
+		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
 	else
-		c=$(mariadb "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
+		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
 	fi
 	while read -r id; do
-		lastid="${id}"
-		loop &
+		if [[ -n "${id}" ]]; then
+			lastid="${id}"
+		fi
+		if [[ -n "${lastid}" ]]; then
+			loop &
+		fi
 		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) * thread_multiplier)) ]]; do
 			wait -n
 		done
@@ -243,6 +248,8 @@ fi
 if [[ ! -d "${nfolder}" && $(find "${nfolder}" | wc -l) -eq 0 ]]; then
 	rm -rf "${nfolder}"
 fi
+"${dbengine}" "${db}" -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` \
+	and w1.\`command\` = \"UpdateContact\" and w1.\`done\` = 0)"
 if [[ "${intense_optimizations}" -gt 0 ]]; then
-	mariadb "${db}" -e "alter table contact drop index photo_index"
+	"${dbengine}" "${db}" -e "alter table contact drop index photo_index"
 fi
