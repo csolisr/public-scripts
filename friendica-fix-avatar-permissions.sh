@@ -18,7 +18,7 @@ loop_1() {
 	elif [[ "${p}" =~ .gif ]]; then
 		nice -n 10 gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" #&> /dev/null
 		#Specific compression for large GIF files
-		while [[ $(stat -c%s "${p}" || 0) -ge 512000 ]]; do
+		while [[ $(stat -c%s "${p}" || echo 0) -ge 512000 ]]; do
 			frameamount=$(($(exiftool -b -FrameCount "${p}" || 1) - 1))
 			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 "${frameamount}") -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
 		done
@@ -28,14 +28,15 @@ loop_1() {
 		#If file is not animated
 		if [[ -f "${p}" ]]; then
 			if grep -q -v -e "ANIM" -e "ANMF" "${p}"; then
-				nice -n 10 cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
-				if [[ -f /tmp/temp.webp ]]; then
-					size_new=$(stat -c%s "/tmp/temp.webp" || 0)
-					size_original=$(stat -c%s "${p}")
+				tmppic="/tmp/temp_$(date +%s).webp"
+				nice -n 10 cwebp -mt -af -quiet "${p}" -o "${tmppic}" #&> /dev/null
+				if [[ -f "${tmppic}" ]]; then
+					size_new=$(stat -c%s "${tmppic}" || echo 0)
+					size_original=$(stat -c%s "${p}" || echo 0)
 					if [[ "${size_original}" -gt "${size_new}" ]]; then
-						mv /tmp/temp.webp "${p}" #&> /dev/null
+						mv "${tmppic}" "${p}" #&> /dev/null
 					else
-						rm /tmp/temp.webp #&> /dev/null
+						rm "${tmppic}" #&> /dev/null
 					fi
 				fi
 			fi
@@ -45,7 +46,6 @@ loop_1() {
 
 cd "${folder}" || exit
 if [[ ! -f "${tmpfile}" ]]; then
-	#sudo -u "${user}" bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
 	sudo bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
 fi
 grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${folderescaped}/g" -e "s/?ts=.*//g" | (
