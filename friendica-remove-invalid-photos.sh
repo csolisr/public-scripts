@@ -7,8 +7,22 @@ fileperm=660
 dbengine=mariadb
 db=friendica
 folder=/var/www/friendica
-intense_optimizations=${1:-"0"}
-thread_multiplier=2
+timeout=60
+#Command-line parameter number 1: whether to enable the more intensive optimizations (1=on). Defaults to 0=off.
+intensive_optimizations=${1:-"0"}
+if [[ "${intensive_optimizations}" != "0" && "${intensive_optimizations}" != "1" ]]; then
+	intensive_optimizations=0
+fi
+#Command-line parameter number 2: multiplier for the amount of threads, 1 = as many as the device has cores. Defaults to 1.
+thread_multiplier=${2:-"1"}
+if [[ ! "${thread_multiplier}" =~ ^[0-9]+$ || $((10#${thread_multiplier})) -le 0 ]]; then
+	thread_multiplier=1
+fi
+#Command-line parameter number 3: whether to display the amount of time taken for certain processes (1=on). Defaults to 0=off.
+time_counter=${3:-"0"}
+if [[ "${time_counter}" != "0" && "${time_counter}" != "1" ]]; then
+	time_counter=0
+fi
 nfolder="/tmp/friendica-remove-invalid-photos"
 nfile="${nfolder}/n$(date +%s).csv"
 nlock="${nfolder}/n$(date +%s).lock"
@@ -37,7 +51,8 @@ maxid=$("${dbengine}" "${db}" -B -N -q -e "select max(\`id\`) from contact")
 #Limit per batch
 limit=$(((maxid / 1000) + 1))
 dbcount=0
-if [[ "${intense_optimizations}" -gt 0 ]]; then
+idcount=0
+if [[ "${intensive_optimizations}" -gt 0 ]]; then
 	#https:// = 8 characters | /avatar/ = 8 characters
 	indexlength=$(("${#url}" + 16))
 	"${dbengine}" "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
@@ -47,33 +62,59 @@ else
 fi
 
 loop() {
+	if [[ "${time_counter}" -eq 1 ]]; then
+		t_id=$(($(date +%s%N) / 1000000))
+	fi
 	result_string=""
 	nl=0
 	error_found=0
-	#Wait until lock no longer exists
+	#Lockfile-protected read
 	r=0
-	t_r=$(($(date +%s%N) / 1000000))
+	if [[ "${time_counter}" -eq 1 ]]; then
+		t_r=$(($(date +%s%N) / 1000000))
+	fi
+	#Fallback in case the process dies
+	(
+		sleep "${timeout}"s
+		if [[ "${r}" -eq 0 ]]; then
+			rm -rf "${nlock}"
+		fi
+	) &
 	while [[ "${r}" -eq 0 ]]; do
+		if [[ ! -d "${nfolder}" ]]; then
+			mkdir "${nfolder}"
+		fi
 		if [[ ! -f "${nlock}" ]]; then
 			touch "${nlock}"
 		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}") == "" ]]; then
-			echo "${id}" >"${nlock}"
-			if [[ -f "${nlock}" && $(cat "${nlock}") == "${id}" ]]; then
-				read -r n_tmp nt_tmp <"${nfile}"
+		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) == "" ]]; then
+			rm -rf "${nlock}" && touch "${nlock}" && echo "${id}" | tee "${nlock}" &>/dev/null
+			if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
+				read -r n_tmp nt_tmp <"${nfile}" || break
 				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
 					n="${n_tmp}"
 					nt="${nt_tmp}"
 					if [[ -f "${nlock}" ]]; then
-						echo "" >"${nlock}"
+						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 					fi
 					r=1
+				fi
+			elif [[ -f "${nlock}" ]]; then
+				nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
+				if [[ -n "${nlm}" ]]; then
+					nlmt=$((10#${nlm}))
+					if [[ "${nlmt}" -lt $((id + limit)) ]]; then
+						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+					fi
+				else
+					rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 				fi
 			fi
 		fi
 	done
-	result_string=$(printf "%s R%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_r)))
-	t_id=$(($(date +%s%N) / 1000000))
+	if [[ "${time_counter}" -eq 1 ]]; then
+		result_string=$(printf "%s R%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_r)))
+	fi
 	if [[ -n "${id}" ]]; then
 		while read -r avatar photo thumb micro; do
 			if [[ -n "${photo}" && -n "${thumb}" && -n "${micro}" ]]; then
@@ -118,21 +159,27 @@ loop() {
 						error_found=1
 					fi
 				else
-					t=$(($(date +%s%N) / 1000000))
+					if [[ "${time_counter}" -eq 1 ]]; then
+						t=$(($(date +%s%N) / 1000000))
+					fi
 					#If the images are all found in the filesystem, but fetching any of the images causes an error
 					if [[ -s $(curl --fail-early \
 						-s "${photo}" -X HEAD -I --http2-prior-knowledge -4 -N --next \
 						-s "${thumb}" -X HEAD -I --http2-prior-knowledge -4 -N --next \
 						-s "${micro}" -X HEAD -I --http2-prior-knowledge -4 -N |
 						grep -q "content-type: image") ]]; then
-						result_string=$(printf "%s F%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t)))
+						if [[ "${time_counter}" -eq 1 ]]; then
+							result_string=$(printf "%s F%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t)))
+						fi
 						result_string=$(printf "${result_string} Fetch error: %s" "${photo}")
 						"${dbengine}" "${db}" -N -B -q -e "update contact set avatar= \"\", photo = \"\", thumb = \"\", micro = \"\" where id = \"${id}\""
 						result_string=$(printf "%s (blanked)" "${result_string}")
 						nl=1
 						error_found=1
 					else
-						result_string=$(printf "%s F%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t)))
+						if [[ "${time_counter}" -eq 1 ]]; then
+							result_string=$(printf "%s F%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t)))
+						fi
 						result_string=$(printf "%s (FOUND)" "${result_string}")
 						error_found=0
 					fi
@@ -181,31 +228,36 @@ loop() {
 		done < <("${dbengine}" "${db}" -B -N -q -e "select \`avatar\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${id}")
 	fi
 	w=0
-	t_w=$(($(date +%s%N) / 1000000))
+	if [[ "${time_counter}" -eq 1 ]]; then
+		t_w=$(($(date +%s%N) / 1000000))
+	fi
 	while [[ "${w}" -eq 0 ]]; do
+		if [[ ! -d "${nfolder}" ]]; then
+			mkdir "${nfolder}"
+		fi
 		if [[ ! -f "${nlock}" ]]; then
 			#n is increased only if error_found = 1
 			touch "${nlock}"
 		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}") == "" ]]; then
-			echo "${id}" >"${nlock}"
-			if [[ -f "${nlock}" && $(cat "${nlock}") == "${id}" ]]; then
-				read -r n_tmp nt_tmp <"${nfile}"
+		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
+			rm -rf "${nlock}" && touch "${nlock}" && echo "${id}" | tee "${nlock}" &>/dev/null
+			if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
+				read -r n_tmp nt_tmp <"${nfile}" || break
 				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
-					if [[ "${n_tmp}" -ge "${n}" ]]; then
-						n=$((n_tmp + error_found))
-					else
-						n=$((n + error_found))
-					fi
-					if [[ "${nt_tmp}" -ge "${nt}" ]]; then
-						nt=$((nt_tmp + 1))
-					else
-						nt=$((nt + 1))
-					fi
-					if [[ $(cat "${nlock}") == "${id}" ]]; then
+					if [[ $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
+						if [[ "${n_tmp}" -ge "${n}" ]]; then
+							n=$((n_tmp + error_found))
+						else
+							n=$((n + error_found))
+						fi
+						if [[ "${nt_tmp}" -ge "${nt}" ]]; then
+							nt=$((nt_tmp + 1))
+						else
+							nt=$((nt + 1))
+						fi
 						echo "${n} ${nt}" >"${nfile}"
 						if [[ -f "${nlock}" ]]; then
-							echo "" >"${nlock}"
+							rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 						fi
 						w=1
 					fi
@@ -213,8 +265,10 @@ loop() {
 			fi
 		fi
 	done
-	result_string=$(printf "%s W%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_w)))
-	result_string=$(printf "%s T%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_id)))
+	if [[ "${time_counter}" -eq 1 ]]; then
+		result_string=$(printf "%s W%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_w)))
+		result_string=$(printf "%s T%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_id)))
+	fi
 	final_string=$(printf "E%8d F%8d/%8d T%8d/%8d %s" "${n}" "${nt}" "${dbcount}" "${lastid}" "${maxid}" "${result_string}")
 	final_string_length="${#final_string}"
 	#Previous line clearance
@@ -225,6 +279,9 @@ loop() {
 		blank_string=$(printf "%s " "${blank_string}")
 	done
 	final_string=$(printf "%s%s" "${final_string}" "${blank_string}")
+	for ((count = 0; count < "${blank_string_length}"; count++)); do
+		final_string=$(printf "%s\b" "${final_string}")
+	done
 	#Add a new line only when necessary
 	if [[ "${nl}" -eq 1 ]]; then
 		final_string=$(printf "%s\n\r\n" "${final_string}")
@@ -235,43 +292,59 @@ loop() {
 #Go to the Friendica installation
 cd "${folder}" || exit
 echo "${n} ${nt}" >"${nfile}"
-until [[ $((nt + limit)) -gt "${dbcount}" || "${lastid}" -gt "${maxid}" ]]; do
+until [[ "${idcount}" -ge "${dbcount}" || "${nt}" -gt "${dbcount}" || "${lastid}" -gt "${maxid}" ]]; do
 	c=""
-	if [[ "${intense_optimizations}" -gt 0 ]]; then
+	if [[ "${intensive_optimizations}" -gt 0 ]]; then
 		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
 	else
 		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
 	fi
 	while read -r id; do
-		if [[ -n "${id}" ]]; then
-			lastid="${id}"
+		if [[ -n "${id}" && $((10#${id})) -ge "${lastid}" ]]; then
+			lastid=$((10#${id}))
+			id=$((10#${id}))
 		fi
 		if [[ -n "${lastid}" ]]; then
+			idcount=$((idcount + 1))
 			loop &
 		fi
 		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) * thread_multiplier)) ]]; do
 			wait -n
 		done
 	done < <(echo "${c}")
+	wait
 	#Read data before next iteration
 	rl=0
+	(
+		sleep 60s
+		if [[ "${rl}" -eq 0 ]]; then rm -rf "${nlock}"; fi
+	) &
 	while [[ "${rl}" -eq 0 ]]; do
 		if [[ ! -f "${nlock}" ]]; then
 			touch "${nlock}"
 		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}") == "" ]]; then
-			echo "${lastid}" >"${nlock}"
-			if [[ -f "${nlock}" && $(cat "${nlock}") == "${lastid}" ]]; then
-				read -r n_tmp_l nt_tmp_l <"${nfile}"
+		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
+			rm -rf "${nlock}" && touch "${nlock}" && echo "${lastid}" | tee "${nlock}" &>/dev/null
+			if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${lastid}" ]]; then
+				read -r n_tmp_l nt_tmp_l <"${nfile}" || break
 				if [[ -n "${n_tmp_l}" && -n "${nt_tmp_l}" ]]; then
 					n="${n_tmp_l}"
 					nt="${nt_tmp_l}"
 					if [[ -f "${nlock}" ]]; then
-						echo "" >"${nlock}"
+						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 					fi
-					#If the data can't be read, we just regenerate it the next loop
+					rl=1
 				fi
-				rl=1
+			elif [[ -f "${nlock}" ]]; then
+				nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
+				if [[ -n "${nlm}" ]]; then
+					nlmt=$((10#${nlm}))
+					if [[ "${nlmt}" -lt $((id + limit)) ]]; then
+						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+					fi
+				else
+					rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+				fi
 			fi
 		fi
 	done
@@ -285,7 +358,7 @@ fi
 if [[ ! -d "${nfolder}" && $(find "${nfolder}" | wc -l) -eq 0 ]]; then
 	rm -rf "${nfolder}"
 fi
-"${dbengine}" "${db}" -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` \ and w1.\`command\` = \"UpdateContact\" and w1.\`done\` = 0)"
-if [[ "${intense_optimizations}" -gt 0 ]]; then
+"${dbengine}" "${db}" -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` and w1.\`command\` = \"UpdateContact\" and w1.\`done\` = 0)"
+if [[ "${intensive_optimizations}" -gt 0 ]]; then
 	"${dbengine}" "${db}" -e "alter table contact drop index photo_index"
 fi
