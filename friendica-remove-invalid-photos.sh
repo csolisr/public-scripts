@@ -23,6 +23,11 @@ time_counter=${3:-"0"}
 if [[ "${time_counter}" != "0" && "${time_counter}" != "1" ]]; then
 	time_counter=0
 fi
+#Command-line parameter number 4: last known ID to have been successfully processed. Defaults to 0
+lastid=${4:-"0"}
+if [[ ! "${lastid}" =~ ^[0-9]+$ || $((10#${lastid})) -le 0 ]]; then
+	lastid=0
+fi
 nfolder="/tmp/friendica-remove-invalid-photos"
 nfile="${nfolder}/n$(date +%s).csv"
 nlock="${nfolder}/n$(date +%s).lock"
@@ -44,8 +49,6 @@ fi
 n=0
 #Total number of entries processed
 nt=0
-#Last known ID to have been successfully processed
-lastid=0
 #Highest possible ID known
 maxid=$("${dbengine}" "${db}" -B -N -q -e "select max(\`id\`) from contact")
 #Limit per batch
