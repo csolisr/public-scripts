@@ -4,7 +4,14 @@ url=friendica.example.net
 user=friendica
 group=www-data
 fileperm=660
-dbengine=mariadb
+dbengine=""
+if [[ -n $(type mariadb) ]]; then
+	dbengine="mariadb"
+elif [[ -n $(type mysql) ]]; then
+	dbengine="mysql"
+else
+	exit
+fi
 db=friendica
 folder=/var/www/friendica
 timeout=60
@@ -52,16 +59,17 @@ nt=0
 #Highest possible ID known
 maxid=$("${dbengine}" "${db}" -B -N -q -e "select max(\`id\`) from contact")
 #Limit per batch
-limit=$(((maxid / 1000) + 1))
+#limit=$(((maxid / 1000) + 1))
+limit="${maxid}"
 dbcount=0
 idcount=0
 if [[ "${intensive_optimizations}" -gt 0 ]]; then
 	#https:// = 8 characters | /avatar/ = 8 characters
 	indexlength=$(("${#url}" + 16))
 	"${dbengine}" "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
-	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or \`photo\` like '')")
+	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = ''))")
 else
-	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or \`photo\` like '') and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
 fi
 
 loop() {
@@ -295,63 +303,63 @@ loop() {
 #Go to the Friendica installation
 cd "${folder}" || exit
 echo "${n} ${nt}" >"${nfile}"
-until [[ "${idcount}" -ge "${dbcount}" || "${nt}" -gt "${dbcount}" || "${lastid}" -gt "${maxid}" ]]; do
-	c=""
-	if [[ "${intensive_optimizations}" -gt 0 ]]; then
-		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") order by id limit ${limit}")
-	else
-		c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like \"https:\/\/${url}/avatar/%\" or \`photo\` like \"\") and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
+#until [[ "${idcount}" -ge "${dbcount}" || "${nt}" -gt "${dbcount}" || "${lastid}" -gt "${maxid}" ]]; do
+c=""
+if [[ "${intensive_optimizations}" -gt 0 ]]; then
+	c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) order by id limit ${limit}")
+else
+	c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
+fi
+while read -r id; do
+	if [[ -n "${id}" && $((10#${id})) -ge "${lastid}" ]]; then
+		lastid=$((10#${id}))
+		id=$((10#${id}))
 	fi
-	while read -r id; do
-		if [[ -n "${id}" && $((10#${id})) -ge "${lastid}" ]]; then
-			lastid=$((10#${id}))
-			id=$((10#${id}))
-		fi
-		if [[ -n "${lastid}" ]]; then
-			idcount=$((idcount + 1))
-			loop &
-		fi
-		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) * thread_multiplier)) ]]; do
-			wait -n
-		done
-	done < <(echo "${c}")
-	wait
-	#Read data before next iteration
-	rl=0
-	(
-		sleep 60s
-		if [[ "${rl}" -eq 0 ]]; then rm -rf "${nlock}"; fi
-	) &
-	while [[ "${rl}" -eq 0 ]]; do
-		if [[ ! -f "${nlock}" ]]; then
-			touch "${nlock}"
-		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
-			rm -rf "${nlock}" && touch "${nlock}" && echo "${lastid}" | tee "${nlock}" &>/dev/null
-			if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${lastid}" ]]; then
-				read -r n_tmp_l nt_tmp_l <"${nfile}" || break
-				if [[ -n "${n_tmp_l}" && -n "${nt_tmp_l}" ]]; then
-					n="${n_tmp_l}"
-					nt="${nt_tmp_l}"
-					if [[ -f "${nlock}" ]]; then
-						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
-					fi
-					rl=1
-				fi
-			elif [[ -f "${nlock}" ]]; then
-				nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
-				if [[ -n "${nlm}" ]]; then
-					nlmt=$((10#${nlm}))
-					if [[ "${nlmt}" -lt $((id + limit)) ]]; then
-						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
-					fi
-				else
+	if [[ -n "${lastid}" ]]; then
+		idcount=$((idcount + 1))
+		loop &
+	fi
+	until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) * thread_multiplier)) ]]; do
+		wait -n
+	done
+done < <(echo "${c}")
+wait
+#Read data before next iteration
+rl=0
+(
+	sleep 60s
+	if [[ "${rl}" -eq 0 ]]; then rm -rf "${nlock}"; fi
+) &
+while [[ "${rl}" -eq 0 ]]; do
+	if [[ ! -f "${nlock}" ]]; then
+		touch "${nlock}"
+	fi
+	if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
+		rm -rf "${nlock}" && touch "${nlock}" && echo "${lastid}" | tee "${nlock}" &>/dev/null
+		if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${lastid}" ]]; then
+			read -r n_tmp_l nt_tmp_l <"${nfile}" || break
+			if [[ -n "${n_tmp_l}" && -n "${nt_tmp_l}" ]]; then
+				n="${n_tmp_l}"
+				nt="${nt_tmp_l}"
+				if [[ -f "${nlock}" ]]; then
 					rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 				fi
+				rl=1
+			fi
+		elif [[ -f "${nlock}" ]]; then
+			nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
+			if [[ -n "${nlm}" ]]; then
+				nlmt=$((10#${nlm}))
+				if [[ "${nlmt}" -lt $((id + limit)) ]]; then
+					rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+				fi
+			else
+				rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 			fi
 		fi
-	done
+	fi
 done
+#done
 if [[ -f "${nfile}" ]]; then
 	rm -rf "${nfile}"
 fi
