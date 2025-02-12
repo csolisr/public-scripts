@@ -1,4 +1,13 @@
 #!/bin/bash
+#Check for mariadb vs. mysql
+dbengine=""
+if [[ -n $(type mariadb) ]]; then
+	dbengine="mariadb"
+elif [[ -n $(type mysql) ]]; then
+	dbengine="mysql"
+else
+	exit
+fi
 db="friendica"
 tmpfile="/tmp/sitesdown.txt"
 idsdownfile="/tmp/idsdown.txt"
@@ -6,17 +15,31 @@ url=friendica.example.net
 avatarfolder=/var/www/friendica/avatar
 avatarfolderescaped=${avatarfolder////\\/}
 loop_1() {
-	sitereq=$(curl -s -L --head -m 30 --request GET "${a}")
+	site=$(echo "${sites}" | sed -e "s/http[s]*:\/\///g")
+	if [[ "${protocol}" == "apub" ]]; then
+		#For ActivityPub sites, we test the well-known Webfinger
+		#We also need a valid (known) user for the Webfinger test
+		user=$("${dbengine}" "${db}" -N -B -q -e "select \`addr\` from contact where baseurl = \"http://${site}\" or url = \"http://${site}\" or baseurl = \"https://${site}\" or url = \"https://${site}\" limit 1")
+		site_test="https://${site}/.well-known/webfinger?resource=acct:${user}"
+		#If the return message is in "application/jrd+json" format, the site is still up
+		#If the message contains a reference to Cloudflare, we don't add it to the list either, just in case
+		if ! grep -q -e "application/jrd+json" -e "HTTP.*200" -e "cloudflare" <(curl -s -L -I -m 30 -X HEAD "${site_test}"); then
+			echo "${site}" >>"${tmpfile}"
+			echo "Added ${site}"
+		fi
+	fi
+	#This is mostly for RSS feeds, we only check whether the site itself is up
 	#Skip check if the message contains a reference to Cloudflare
-	status=$(echo "${sitereq}" | grep -e "200" -e "cloudflare")
-	if [[ -z ${status} ]]; then
-		echo "${a}" >>"${tmpfile}"
-		echo "Added ${a}"
+	if [[ "${protocol}" != "bsky" ]]; then
+		if ! grep -q -e "HTTP.*200" -e "cloudflare" <(curl -s -L -I -m 30 -X HEAD "https://${site}"); then
+			echo "${site}" >>"${tmpfile}"
+			echo "Added ${site}"
+		fi
 	fi
 }
 loop_2() {
 	echo "Finding users for ${b}"
-	"${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`nick\`, \`baseurl\` from contact c where c.\`id\` not in (select \`contact-id\` from group_member) and (c.baseurl = \"${b}\" or c.url = \"${b}\")" | sudo tee -a "${idsdownfile}" #&> /dev/null
+	"${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`nick\`, \`baseurl\` from contact c where c.\`id\` not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and (c.baseurl = \"http://${b}\" or c.url = \"http://${b}\" or c.baseurl = \"https://${b}\" or c.url = \"https://${b}\")" | sudo tee -a "${idsdownfile}" #&> /dev/null
 }
 
 loop_3() {
@@ -28,7 +51,6 @@ loop_3() {
 		if grep -v -q "${url}/avatar" <(echo "${photo}"); then
 			#if [[ -z "${isavatar}" ]]
 			phototrimmed=$(echo "${photo}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
-			echo "${phototrimmed}"
 			rm -rfv "${phototrimmed}"
 			thumbtrimmed=$(echo "${thumb}" | sed -e "s/https:\/\/${url}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
 			rm -rfv "${thumbtrimmed}"
@@ -40,43 +62,36 @@ loop_3() {
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-thread-user\` where \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}  or \`owner-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-user\` where \`author-id\` = ${lineb}  or \`causer-id\` = ${lineb} or \`owner-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-tag\` where cid = ${lineb}"
+	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`;"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-content\` where \`uri-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`photo\` where \`contact-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${lineb}"
 }
 
-#Check for mariadb vs. mysql
-dbengine=""
-if [[ -n $(type mariadb) ]]; then
-	dbengine="mariadb"
-elif [[ -n $(type mysql) ]]; then
-	dbengine="mysql"
-fi
 #Check if our dependencies are installed
 if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
 	if [[ ! -f "${tmpfile}" ]]; then
 		echo "Listing sites"
-		#sites=($("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl from contact where baseurl != \"\"" | sort -n | uniq ))
-		sites=()
-		mapfile -t sites < <("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl from contact where baseurl != \"\"" | sort -b -f -n | uniq -i)
-		echo "Amount of unique sites: ${#sites[@]}"
-		for a in "${sites[@]}"; do
-			loop_1 "${a}" &
+		siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
+		echo "Amount of unique sites: ${#siteslist[@]}"
+		while read -r sites protocol; do
+			loop_1 "${sites}" "${protocol}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
 				wait -n
 			fi
-		done
+		done < <(echo "${siteslist}")
 		wait
 	fi
 	sitesdown=()
 	while read -r line; do
 		sitesdown+=("${line}")
 	done <"${tmpfile}"
-	echo "Amount of sites down: ${#sitesdown[@]} / ${#sites[@]}"
+	t=$(sort -n "${tmpfile}" | uniq)
+	echo "${t}" >"${tmpfile}"
+	echo "Amount of sites down: ${#sitesdown[@]} / ${#siteslist[@]}"
 	if [[ ! -f "${idsdownfile}" ]]; then
 		for b in "${sitesdown[@]}"; do
 			loop_2 "${b}" &
@@ -85,12 +100,10 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			fi
 		done
 		wait
-		#cat "$idsdownfile" | sort -n | uniq > "$idsdownfile"
+		u=$(sort -n "${idsdownfile}" | uniq)
+		echo "${u}" >"${idsdownfile}"
 	fi
-	#idsdown=()
-	#echo "$idsdownfile" | sort | uniq > "$idsdownfile"
 	while read -r lineb nick baseurl; do
-		#idsdown+=($lineb)
 		#The community no longer exists, delete
 		loop_3 "${lineb}" "${nick}" "${baseurl}" &
 		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
