@@ -1,4 +1,13 @@
 #!/bin/bash
+#Check for mariadb vs. mysql
+dbengine=""
+if [[ -n $(type mariadb) ]]; then
+	dbengine="mariadb"
+elif [[ -n $(type mysql) ]]; then
+	dbengine="mysql"
+else
+	exit
+fi
 db="friendica"
 url=friendica.example.net
 avatarfolder=/var/www/friendica/avatar
@@ -23,21 +32,14 @@ loop() {
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-thread-user\` where \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}  or \`owner-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-user\` where \`author-id\` = ${lineb}  or \`causer-id\` = ${lineb} or \`owner-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-tag\` where cid = ${lineb}"
+	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`;"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-content\` where \`uri-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`photo\` where \`contact-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${lineb}"
 	"${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${lineb}"
 }
 
-#Check for mariadb vs. mysql
-dbengine=""
-if [[ -n $(type mariadb) ]]; then
-	dbengine="mariadb"
-elif [[ -n $(type mysql) ]]; then
-	dbengine="mysql"
-fi
 #Check if our dependencies are installed
 if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date

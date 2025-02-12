@@ -4,9 +4,21 @@ limit=1000
 folder=/var/www/friendica
 user=friendica
 phpversion=php8.2
-dbengine=mariadb
+dbengine=""
+if [[ -n $(type mariadb) ]]; then
+	dbengine="mariadb"
+elif [[ -n $(type mysql) ]]; then
+	dbengine="mysql"
+else
+	exit
+fi
 db=friendica
-dboptimizer=mariadb-optimize
+dboptimizer=""
+if [[ -n $(type mariadb-optimize) ]]; then
+	dboptimizer="mariadb-optimize"
+elif [[ -n $(type mysqloptimize) ]]; then
+	dbengine="mysqloptimize"
+fi
 intense_optimizations=${1:-"0"}
 
 bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
