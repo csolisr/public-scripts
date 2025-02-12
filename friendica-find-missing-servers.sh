@@ -73,6 +73,7 @@ loop_3() {
 #Check if our dependencies are installed
 if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
+	"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` add index if not exists \`contact_baseurl\` (baseurl)"
 	if [[ ! -f "${tmpfile}" ]]; then
 		echo "Listing sites"
 		siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
@@ -120,5 +121,6 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`post\` auto_increment = 1"
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`photo\` auto_increment = 1"
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` auto_increment = 1"
+	"${dbengine}" "${db}" -e "alter table contact drop index \`contact_baseurl\`"
 	date
 fi
