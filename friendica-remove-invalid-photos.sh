@@ -67,9 +67,9 @@ if [[ "${intensive_optimizations}" -gt 0 ]]; then
 	#https:// = 8 characters | /avatar/ = 8 characters
 	indexlength=$(("${#url}" + 16))
 	"${dbengine}" "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
-	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = ''))")
+	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = ''))")
 else
-	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
 fi
 
 loop() {
