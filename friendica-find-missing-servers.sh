@@ -39,7 +39,7 @@ loop_1() {
 }
 loop_2() {
 	echo "Finding users for ${b}"
-	"${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`nick\`, \`baseurl\` from contact c where c.\`id\` not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and (c.baseurl = \"http://${b}\" or c.url = \"http://${b}\" or c.baseurl = \"https://${b}\" or c.url = \"https://${b}\")" | sudo tee -a "${idsdownfile}" #&> /dev/null
+	"${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`nick\`, \`baseurl\` from contact c where c.\`id\` not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and (c.baseurl = \"http://${b}\" or c.baseurl = \"https://${b}\")" | sudo tee -a "${idsdownfile}" #&> /dev/null
 }
 
 loop_3() {
@@ -58,26 +58,38 @@ loop_3() {
 			rm -rfv "${microtrimmed}"
 		fi
 	done
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-thread\` where \`author-id\` = ${lineb} or \`causer-id\` = ${lineb} or \`owner-id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-thread-user\` where \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}  or \`owner-id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-user\` where \`author-id\` = ${lineb}  or \`causer-id\` = ${lineb} or \`owner-id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-tag\` where cid = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`;"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`photo\` where \`contact-id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${lineb}"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${lineb}"
+	printf "post-thread:"
+	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_thread (select \`uri-id\` from \`post-thread\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete h.* from \`post-thread\` h inner join \`tmp_post_thread\` t where h.\`uri-id\` = t.\`uri-id\`; select row_count();"
+	printf "post-thread-user:"
+	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_thread_user (select \`uri-id\` from \`post-thread-user\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete r.* from \`post-thread-user\` r inner join \`tmp_post_thread_user\` t where r.\`uri-id\` = t.\`uri-id\`; select row_count();"
+	printf "post-user":
+	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_user (select \`id\` from \`post-user\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete u.* from \`post-user\` u inner join \`tmp_post_user\` t where u.\`id\` = t.\`id\`; select row_count();"
+	printf "post-tag:"
+	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-tag\` where cid = ${lineb}; select row_count();"
+	printf "post-content:"
+	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count();"
+	printf "post:"
+	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count();"
+	printf "photo:"
+	"${dbengine}" "${db}" -N -B -q -e "delete from \`photo\` where \`contact-id\` = ${lineb}; select row_count();"
+	printf "contact:"
+	"${dbengine}" "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${lineb}; select row_count();"
+	printf "apcontact:"
+	"${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${lineb}; select row_count();"
+	printf "diaspora-contact:"
+	"${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${lineb}; select row_count();"
 }
 
 #Check if our dependencies are installed
 if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
-	"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` add index if not exists \`contact_baseurl\` (baseurl)"
+	"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` add index if not exists \`contact_baseurl\` (\`baseurl\`)"
+	"${dbengine}" "${db}" -N -B -q -e "alter table \`post-user\` add index if not exists \`post_user_id\` (\`author-id\`, \`causer-id\`, \`owner-id\`)"
 	if [[ ! -f "${tmpfile}" ]]; then
 		echo "Listing sites"
 		siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
-		echo "Amount of unique sites: ${#siteslist[@]}"
+		siteslistamount=$(echo "${siteslist}" | wc -l)
+		echo "Amount of unique sites: ${siteslistamount}"
 		while read -r sites protocol; do
 			loop_1 "${sites}" "${protocol}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
@@ -92,7 +104,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	done <"${tmpfile}"
 	t=$(sort -n "${tmpfile}" | uniq)
 	echo "${t}" >"${tmpfile}"
-	echo "Amount of sites down: ${#sitesdown[@]} / ${#siteslist[@]}"
+	echo "Amount of sites down: ${#sitesdown[@]} / ${siteslistamount}"
 	if [[ ! -f "${idsdownfile}" ]]; then
 		for b in "${sitesdown[@]}"; do
 			loop_2 "${b}" &
@@ -121,6 +133,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`post\` auto_increment = 1"
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`photo\` auto_increment = 1"
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` auto_increment = 1"
-	"${dbengine}" "${db}" -e "alter table contact drop index \`contact_baseurl\`"
+	"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` drop index \`contact_baseurl\`"
+	"${dbengine}" "${db}" -N -B -q -e "alter table \`post-user\` drop index \`post_user_id\`"
 	date
 fi
