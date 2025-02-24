@@ -31,8 +31,8 @@ loop_1() {
 				tmppic="/tmp/temp_$(date +%s).webp"
 				nice -n 10 cwebp -mt -af -quiet "${p}" -o "${tmppic}" #&> /dev/null
 				if [[ -f "${tmppic}" ]]; then
-					size_new=$(stat -c%s "${tmppic}" || echo 0)
-					size_original=$(stat -c%s "${p}" || echo 0)
+					size_new=$(stat -c%s "${tmppic}" 2>/dev/null || echo 0)
+					size_original=$(stat -c%s "${p}" 2>/dev/null || echo 0)
 					if [[ "${size_original}" -gt "${size_new}" ]]; then
 						mv "${tmppic}" "${p}" #&> /dev/null
 					else
