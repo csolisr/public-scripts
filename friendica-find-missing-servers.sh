@@ -16,18 +16,18 @@ avatarfolder=/var/www/friendica/avatar
 avatarfolderescaped=${avatarfolder////\\/}
 loop_1() {
 	site=$(echo "${sites}" | sed -e "s/http[s]*:\/\///g")
-	if [[ "${protocol}" == "apub" ]]; then
-		#For ActivityPub sites, we test the well-known Webfinger
-		#We also need a valid (known) user for the Webfinger test
-		user=$("${dbengine}" "${db}" -N -B -q -e "select \`addr\` from contact where baseurl = \"http://${site}\" or url = \"http://${site}\" or baseurl = \"https://${site}\" or url = \"https://${site}\" limit 1")
-		site_test="https://${site}/.well-known/webfinger?resource=acct:${user}"
-		#If the return message is in "application/jrd+json" format, the site is still up
-		#If the message contains a reference to Cloudflare, we don't add it to the list either, just in case
-		if ! grep -q -e "application/jrd+json" -e "HTTP.*200" -e "cloudflare" <(curl -s -L -I -m 30 -X HEAD "${site_test}"); then
-			echo "${site}" >>"${tmpfile}"
-			echo "Added ${site}"
-		fi
-	fi
+	#	if [[ "${protocol}" == "apub" ]]; then
+	#		#For ActivityPub sites, we test the well-known Webfinger
+	#		#We also need a valid (known) user for the Webfinger test
+	#		user=$("${dbengine}" "${db}" -N -B -q -e "select \`addr\` from contact where baseurl = \"http://${site}\" or url = \"http://${site}\" or baseurl = \"https://${site}\" or url = \"https://${site}\" limit 1")
+	#		site_test="https://${site}/.well-known/webfinger?resource=acct:${user}"
+	#		#If the return message is in "application/jrd+json" format, the site is still up
+	#		#If the message contains a reference to Cloudflare, we don't add it to the list either, just in case
+	#		if ! grep -q -e "application/jrd+json" -e "HTTP.*200" -e "cloudflare" <(curl -s -L -I -m 30 -X HEAD "${site_test}"); then
+	#			echo "${site}" >>"${tmpfile}"
+	#			echo "Added ${site}"
+	#		fi
+	#	fi
 	#This is mostly for RSS feeds, we only check whether the site itself is up
 	#Skip check if the message contains a reference to Cloudflare
 	if [[ "${protocol}" != "bsky" ]]; then
@@ -58,26 +58,14 @@ loop_3() {
 			rm -rfv "${microtrimmed}"
 		fi
 	done
-	printf "post-thread:"
-	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_thread (select \`uri-id\` from \`post-thread\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete h.* from \`post-thread\` h inner join \`tmp_post_thread\` t where h.\`uri-id\` = t.\`uri-id\`; select row_count();"
-	printf "post-thread-user:"
-	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_thread_user (select \`uri-id\` from \`post-thread-user\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete r.* from \`post-thread-user\` r inner join \`tmp_post_thread_user\` t where r.\`uri-id\` = t.\`uri-id\`; select row_count();"
-	printf "post-user":
-	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_user (select \`id\` from \`post-user\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete u.* from \`post-user\` u inner join \`tmp_post_user\` t where u.\`id\` = t.\`id\`; select row_count();"
-	printf "post-tag:"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`post-tag\` where cid = ${lineb}; select row_count();"
-	printf "post-content:"
-	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count();"
-	printf "post:"
-	"${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count();"
-	printf "photo:"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`photo\` where \`contact-id\` = ${lineb}; select row_count();"
-	printf "contact:"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${lineb}; select row_count();"
-	printf "apcontact:"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${lineb}; select row_count();"
-	printf "diaspora-contact:"
-	"${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${lineb}; select row_count();"
+	printf "post-thread: %s " $("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_thread (select \`uri-id\` from \`post-thread\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete h.* from \`post-thread\` h inner join \`tmp_post_thread\` t where h.\`uri-id\` = t.\`uri-id\`; select row_count();")                                                                                                                       printf "post-thread-user: %s " $("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_thread_user (select \`uri-id\` from \`post-thread-user\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete r.* from \`post-thread-user\` r inner join \`tmp_post_thread_user\` t where r.\`uri-id\` = t.\`uri-id\`; select row_count();")
+        printf "post-user: %s " $("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_user (select \`id\` from \`post-user\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete u.* from \`post-user\` u inner join \`tmp_post_user\` t where u.\`id\` = t.\`id\`; select row_count();")                                                                                                                                             printf "post-tag: %s " $("${dbengine}" "${db}" -N -B -q -e "delete from \`post-tag\` where cid = ${lineb}; select row_count();")
+        printf "post-content: %s " $("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count();")                                                                                                                                          printf "post: %s " $("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${lineb} or \`author-id\` = ${lineb} or \`causer-id\` = ${lineb}); delete p.* from \`post\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count();")
+        printf "photo: %s " $("${dbengine}" "${db}" -N -B -q -e "delete from \`photo\` where \`contact-id\` = ${lineb}; select row_count();")
+        printf "contact: %s " $("${dbengine}" "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${lineb}; select row_count();")
+        printf "apcontact: %s " $("${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${lineb}; select row_count();")
+        printf "diaspora-contact: %s " $("${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${lineb}; select row_count();")
+        printf "\r\n"
 }
 
 #Check if our dependencies are installed
