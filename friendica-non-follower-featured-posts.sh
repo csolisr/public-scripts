@@ -25,9 +25,9 @@ ccmax=0
 until [[ ${cc} -lt ${limit} ]]; do
 	cc=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_addcontact (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)); delete from workerqueue where \`command\`= \"AddContact\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_addcontact) limit ${cc}; select row_count();")
 	ccmax=$((ccmax + cc))
-	printf "\rAddContact\t%s\r" "${ccmax}"
+	printf "\rAddContact      \t%s\r" "${ccmax}"
 done
-printf "\rAddContact   \t%s\n\r" "${ccmax}"
+printf "\rAddContact      \t%s\n\r" "${ccmax}"
 #echo "AddContact $ccmax"
 
 cd=${limit}
