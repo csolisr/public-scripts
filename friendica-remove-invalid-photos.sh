@@ -35,6 +35,11 @@ lastid=${4:-"0"}
 if [[ ! "${lastid}" =~ ^[0-9]+$ || $((10#${lastid})) -le 0 ]]; then
 	lastid=0
 fi
+#Command-line parameter number 5: whether to enable the lockfile and the item counter, or disable it for a performance boost (0=off). Defaults to 1=on.
+lockfile_enabled=${5:-"1"}
+if [[ "${lockfile_enabled}" != "0" && "${lockfile_enabled}" != "1" ]]; then
+	lockfile_enabled=1
+fi
 nfolder="/tmp/friendica-remove-invalid-photos"
 nfile="${nfolder}/n$(date +%s).csv"
 nlock="${nfolder}/n$(date +%s).lock"
@@ -68,8 +73,12 @@ if [[ "${intensive_optimizations}" -gt 0 ]]; then
 	indexlength=$(("${#url}" + 16))
 	"${dbengine}" "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
 	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = ''))")
+	#dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%')")
+	#dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and ((\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = ''))")
 else
 	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+	#dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%') and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
+	#dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and ((\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (\`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`))")
 fi
 
 loop() {
@@ -80,51 +89,53 @@ loop() {
 	nl=0
 	error_found=0
 	#Lockfile-protected read
-	r=0
-	if [[ "${time_counter}" -eq 1 ]]; then
-		t_r=$(($(date +%s%N) / 1000000))
-	fi
-	#Fallback in case the process dies
-	(
-		sleep "${timeout}"s
-		if [[ "${r}" -eq 0 ]]; then
-			rm -rf "${nlock}"
+	if [[ ${lockfile_enabled} -eq 1 ]]; then
+		r=0
+		if [[ "${time_counter}" -eq 1 ]]; then
+			t_r=$(($(date +%s%N) / 1000000))
 		fi
-	) &
-	while [[ "${r}" -eq 0 ]]; do
-		if [[ ! -d "${nfolder}" ]]; then
-			mkdir "${nfolder}"
-		fi
-		if [[ ! -f "${nlock}" ]]; then
-			touch "${nlock}"
-		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) == "" ]]; then
-			rm -rf "${nlock}" && touch "${nlock}" && echo "${id}" | tee "${nlock}" &>/dev/null
-			if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
-				read -r n_tmp nt_tmp <"${nfile}" || break
-				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
-					n="${n_tmp}"
-					nt="${nt_tmp}"
-					if [[ -f "${nlock}" ]]; then
+		#Fallback in case the process dies
+		(
+			sleep "${timeout}"s
+			if [[ "${r}" -eq 0 ]]; then
+				rm -rf "${nlock}"
+			fi
+		) &
+		while [[ "${r}" -eq 0 ]]; do
+			if [[ ! -d "${nfolder}" ]]; then
+				mkdir "${nfolder}"
+			fi
+			if [[ ! -f "${nlock}" ]]; then
+				touch "${nlock}"
+			fi
+			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) == "" ]]; then
+				rm -rf "${nlock}" && touch "${nlock}" && echo "${id}" | tee "${nlock}" &>/dev/null
+				if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
+					read -r n_tmp nt_tmp <"${nfile}" || break
+					if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+						n="${n_tmp}"
+						nt="${nt_tmp}"
+						if [[ -f "${nlock}" ]]; then
+							rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+						fi
+						r=1
+					fi
+				elif [[ -f "${nlock}" ]]; then
+					nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
+					if [[ -n "${nlm}" ]]; then
+						nlmt=$((10#${nlm}))
+						if [[ "${nlmt}" -lt $((id + limit)) ]]; then
+							rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+						fi
+					else
 						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 					fi
-					r=1
-				fi
-			elif [[ -f "${nlock}" ]]; then
-				nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
-				if [[ -n "${nlm}" ]]; then
-					nlmt=$((10#${nlm}))
-					if [[ "${nlmt}" -lt $((id + limit)) ]]; then
-						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
-					fi
-				else
-					rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 				fi
 			fi
+		done
+		if [[ "${time_counter}" -eq 1 ]]; then
+			result_string=$(printf "%s R%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_r)))
 		fi
-	done
-	if [[ "${time_counter}" -eq 1 ]]; then
-		result_string=$(printf "%s R%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_r)))
 	fi
 	if [[ -n "${id}" ]]; then
 		while read -r avatar photo thumb micro; do
@@ -238,49 +249,57 @@ loop() {
 			lastid="${id}"
 		done < <("${dbengine}" "${db}" -B -N -q -e "select \`avatar\`, \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${id}")
 	fi
-	w=0
-	if [[ "${time_counter}" -eq 1 ]]; then
-		t_w=$(($(date +%s%N) / 1000000))
-	fi
-	while [[ "${w}" -eq 0 ]]; do
-		if [[ ! -d "${nfolder}" ]]; then
-			mkdir "${nfolder}"
+	if [[ ${lockfile_enabled} -eq 1 ]]; then
+		w=0
+		if [[ "${time_counter}" -eq 1 ]]; then
+			t_w=$(($(date +%s%N) / 1000000))
 		fi
-		if [[ ! -f "${nlock}" ]]; then
-			#n is increased only if error_found = 1
-			touch "${nlock}"
-		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
-			rm -rf "${nlock}" && touch "${nlock}" && echo "${id}" | tee "${nlock}" &>/dev/null
-			if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
-				read -r n_tmp nt_tmp <"${nfile}" || break
-				if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
-					if [[ $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
-						if [[ "${n_tmp}" -ge "${n}" ]]; then
-							n=$((n_tmp + error_found))
-						else
-							n=$((n + error_found))
+		while [[ "${w}" -eq 0 ]]; do
+			if [[ ! -d "${nfolder}" ]]; then
+				mkdir "${nfolder}"
+			fi
+			if [[ ! -f "${nlock}" ]]; then
+				#n is increased only if error_found = 1
+				touch "${nlock}"
+			fi
+			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
+				rm -rf "${nlock}" && touch "${nlock}" && echo "${id}" | tee "${nlock}" &>/dev/null
+				if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
+					read -r n_tmp nt_tmp <"${nfile}" || break
+					if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+						if [[ $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
+							if [[ "${n_tmp}" -ge "${n}" ]]; then
+								n=$((n_tmp + error_found))
+							else
+								n=$((n + error_found))
+							fi
+							if [[ "${nt_tmp}" -ge "${nt}" ]]; then
+								nt=$((nt_tmp + 1))
+							else
+								nt=$((nt + 1))
+							fi
+							echo "${n} ${nt}" >"${nfile}"
+							if [[ -f "${nlock}" ]]; then
+								rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+							fi
+							w=1
 						fi
-						if [[ "${nt_tmp}" -ge "${nt}" ]]; then
-							nt=$((nt_tmp + 1))
-						else
-							nt=$((nt + 1))
-						fi
-						echo "${n} ${nt}" >"${nfile}"
-						if [[ -f "${nlock}" ]]; then
-							rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
-						fi
-						w=1
 					fi
 				fi
 			fi
+		done
+		if [[ "${time_counter}" -eq 1 ]]; then
+			result_string=$(printf "%s W%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_w)))
 		fi
-	done
+	fi
 	if [[ "${time_counter}" -eq 1 ]]; then
-		result_string=$(printf "%s W%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_w)))
 		result_string=$(printf "%s T%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_id)))
 	fi
-	final_string=$(printf "E%8d F%8d/%8d T%8d/%8d %s" "${n}" "${nt}" "${dbcount}" "${lastid}" "${maxid}" "${result_string}")
+	final_string=""
+	if [[ ${lockfile_enabled} -eq 1 ]]; then
+		final_string=$(printf "E%8d F%8d/%8d " "${n}" "${nt}" "${dbcount}")
+	fi
+	final_string=$(printf "%sT%8d/%8d %s" "${final_string}" "${lastid}" "${maxid}" "${result_string}")
 	final_string_length="${#final_string}"
 	#Previous line clearance
 	#Measure length of string, blank only the excess
@@ -307,8 +326,12 @@ echo "${n} ${nt}" >"${nfile}"
 c=""
 if [[ "${intensive_optimizations}" -gt 0 ]]; then
 	c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) order by id limit ${limit}")
+	#c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%') order by id limit ${limit}")
+	#c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and ((\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) order by id limit ${limit}")
 else
 	c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
+	#c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%') and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
+	#c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and ((\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
 fi
 while read -r id; do
 	if [[ -n "${id}" && $((10#${id})) -ge "${lastid}" ]]; then
@@ -324,42 +347,43 @@ while read -r id; do
 	done
 done < <(echo "${c}")
 wait
-#Read data before next iteration
-rl=0
-(
-	sleep 60s
-	if [[ "${rl}" -eq 0 ]]; then rm -rf "${nlock}"; fi
-) &
-while [[ "${rl}" -eq 0 ]]; do
-	if [[ ! -f "${nlock}" ]]; then
-		touch "${nlock}"
-	fi
-	if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
-		rm -rf "${nlock}" && touch "${nlock}" && echo "${lastid}" | tee "${nlock}" &>/dev/null
-		if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${lastid}" ]]; then
-			read -r n_tmp_l nt_tmp_l <"${nfile}" || break
-			if [[ -n "${n_tmp_l}" && -n "${nt_tmp_l}" ]]; then
-				n="${n_tmp_l}"
-				nt="${nt_tmp_l}"
-				if [[ -f "${nlock}" ]]; then
+if [[ ${lockfile_enabled} -eq 1 ]]; then
+	#Read data before next iteration
+	rl=0
+	(
+		sleep 60s
+		if [[ "${rl}" -eq 0 ]]; then rm -rf "${nlock}"; fi
+	) &
+	while [[ "${rl}" -eq 0 ]]; do
+		if [[ ! -f "${nlock}" ]]; then
+			touch "${nlock}"
+		fi
+		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
+			rm -rf "${nlock}" && touch "${nlock}" && echo "${lastid}" | tee "${nlock}" &>/dev/null
+			if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${lastid}" ]]; then
+				read -r n_tmp_l nt_tmp_l <"${nfile}" || break
+				if [[ -n "${n_tmp_l}" && -n "${nt_tmp_l}" ]]; then
+					n="${n_tmp_l}"
+					nt="${nt_tmp_l}"
+					if [[ -f "${nlock}" ]]; then
+						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+					fi
+					rl=1
+				fi
+			elif [[ -f "${nlock}" ]]; then
+				nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
+				if [[ -n "${nlm}" ]]; then
+					nlmt=$((10#${nlm}))
+					if [[ "${nlmt}" -lt $((id + limit)) ]]; then
+						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
+					fi
+				else
 					rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 				fi
-				rl=1
-			fi
-		elif [[ -f "${nlock}" ]]; then
-			nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
-			if [[ -n "${nlm}" ]]; then
-				nlmt=$((10#${nlm}))
-				if [[ "${nlmt}" -lt $((id + limit)) ]]; then
-					rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
-				fi
-			else
-				rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 			fi
 		fi
-	fi
-done
-#done
+	done
+fi
 if [[ -f "${nfile}" ]]; then
 	rm -rf "${nfile}"
 fi
