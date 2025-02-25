@@ -13,7 +13,8 @@ loop_1() {
 		nice -n 10 gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" #&> /dev/null
 		#Specific compression for large GIF files
 		while [[ $(stat -c%s "${p}" || 0) -ge 512000 ]]; do
-			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 99) -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
+			frameamount=$(($(exiftool -b -FrameCount "${p}" || 1) - 1))
+			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 "${frameamount}") -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
 		done
 	elif [[ "${t}" =~ PNG ]]; then
 		nice -n 10 oxipng -o max "${p}" #&> /dev/null
