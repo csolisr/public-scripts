@@ -18,7 +18,7 @@ loop_1() {
 	elif [[ "${p}" =~ .gif ]]; then
 		nice -n 10 gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" #&> /dev/null
 		#Specific compression for large GIF files
-		while [[ $(stat -c%s "${p}" || echo 0) -ge 512000 ]]; do
+		while [[ $(stat -c%s "${p}" 2>/dev/null || echo 0) -ge 512000 ]]; do
 			frameamount=$(($(exiftool -b -FrameCount "${p}" || 1) - 1))
 			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 "${frameamount}") -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
 		done
