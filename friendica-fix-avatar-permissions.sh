@@ -52,7 +52,7 @@ grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${
 	while read -r i; do
 		for p in "${i}" "${i//-320/-80}" "${i//-320/-48}"; do
 			loop_1 "${p}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(( $(getconf _NPROCESSORS_ONLN) / 2) ]]; then
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
 				wait -n
 			fi
 		done
