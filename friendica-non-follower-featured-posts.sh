@@ -3,7 +3,7 @@ limit=1000
 ca=${limit}
 camax=0
 until [[ ${ca} -lt ${limit} ]]; do
-	ca=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', '') not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"UpdateContact\" limit ${ca}; select row_count();")
+	ca=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', '') not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"UpdateContact\" and \`done\` = 0 limit ${ca}; select row_count();")
 	camax=$((camax + ca))
 	printf "\rUpdateContact\t\t%s\r" "${camax}"
 done
@@ -13,7 +13,7 @@ printf "\rUpdateContact\t\t%s\n\r" "${camax}"
 cb=${limit}
 cbmax=0
 until [[ ${cb} -lt ${limit} ]]; do
-	cb=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', '') not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"ContactDiscovery\" limit ${cb}; select row_count();")
+	cb=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', '') not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"ContactDiscovery\" and \`done\` = 0 limit ${cb}; select row_count();")
 	cbmax=$((cbmax + cb))
 	printf "\rContactDiscovery\t%s\r" "${cbmax}"
 done
@@ -23,7 +23,7 @@ printf "\rContactDiscovery\t%s\n\r" "${cbmax}"
 cc=${limit}
 ccmax=0
 until [[ ${cc} -lt ${limit} ]]; do
-	cc=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_addcontact (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)); delete from workerqueue where \`command\`= \"AddContact\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_addcontact) limit ${cc}; select row_count();")
+	cc=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_addcontact (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)); delete from workerqueue where \`command\`= \"AddContact\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_addcontact) and \`done\` = 0 limit ${cc}; select row_count();")
 	ccmax=$((ccmax + cc))
 	printf "\rAddContact      \t%s\r" "${ccmax}"
 done
@@ -33,7 +33,7 @@ printf "\rAddContact      \t%s\n\r" "${ccmax}"
 cd=${limit}
 cdmax=0
 until [[ ${cd} -lt ${limit} ]]; do
-	cd=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_updategserver (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)); delete from workerqueue where \`command\` = \"UpdateGServer\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_updategserver) limit ${cd}; select row_count();")
+	cd=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_updategserver (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)); delete from workerqueue where \`command\` = \"UpdateGServer\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_updategserver) and \`done\` = 0 limit ${cd}; select row_count();")
 	cdmax=$((cdmax + cd))
 	printf "\rUpdateGServer\t\t%s\r" "${cdmax}"
 done
@@ -43,7 +43,7 @@ printf "\rUpdateGServer\t\t%s\n\r" "${cdmax}"
 ce=${limit}
 cemax=0
 until [[ ${ce} -lt ${limit} ]]; do
-	ce=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_fetchfeaturedposts (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)); delete from workerqueue where \`command\`= \"FetchFeaturedPosts\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_fetchfeaturedposts) limit ${ce}; select row_count();")
+	ce=$(sudo mariadb friendica -B -N -q -e "create temporary table tmp_fetchfeaturedposts (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)); delete from workerqueue where \`command\`= \"FetchFeaturedPosts\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_fetchfeaturedposts) and \`done\` = 0 limit ${ce}; select row_count();")
 	cemax=$((cemax + ce))
 	printf "\rFetchFeaturedPosts\t%s\r" "${cemax}"
 done
