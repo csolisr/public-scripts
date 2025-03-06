@@ -303,15 +303,23 @@ loop() {
 	final_string_length="${#final_string}"
 	#Previous line clearance
 	#Measure length of string, blank only the excess
+	#The string that will be used to insert the blanks
 	blank_string=""
-	blank_string_length=$((COLUMNS - final_string_length))
+	columns_length="${COLUMNS}"
+	#Account for the case where the string is more than a terminal line long
+	while [[ "${final_string_length}" -gt "${columns_length}" ]]; do
+		columns_length=$((columns_length + COLUMNS))
+	done
+	blank_string_length=$((columns_length - final_string_length))
+	#Add enough blank spaces to fill the rest of the line
 	for ((count = 0; count < "${blank_string_length}"; count++)); do
 		blank_string=$(printf "%s " "${blank_string}")
 	done
-	final_string=$(printf "%s%s" "${final_string}" "${blank_string}")
-	for ((count = 0; count < "${blank_string_length}"; count++)); do
-		final_string=$(printf "%s\b" "${final_string}")
+	#Add backspaces to align the next output
+	for ((count = 0; count < $((final_string_length + blank_string_length)); count++)); do
+		final_string=$(printf "\b%s" "${final_string}")
 	done
+	final_string=$(printf "%s%s" "${final_string}" "${blank_string}")
 	#Add a new line only when necessary
 	if [[ "${nl}" -eq 1 ]]; then
 		final_string=$(printf "%s\n\r\n" "${final_string}")

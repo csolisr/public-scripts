@@ -10,7 +10,7 @@ else
 fi
 intense_optimizations=${1:-"0"}
 db="friendica"
-period="3 MONTH"
+period="1 MONTH"
 tmpfile=/tmp/friendica-delete-old-users.csv
 url=friendica.example.net
 avatarfolder=/var/www/friendica/avatar
@@ -71,22 +71,27 @@ loop() {
 	echo "${picturecount}" "${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount} ${photocount} ${contactcount} ${apcontactcount} ${diasporacontactcount}" >"${tmpfile}"
 	#Previous line clearance
 	#Measure length of string, blank only the excess
+	#Since this string is panned to both sides, we will need to account for two lengths
 	final_string_length_left="${#response_left}"
 	final_string_length_right="${#response}"
 	final_string_length=$((final_string_length_left + final_string_length_right))
+	#The string that will be used to insert the blanks
 	blank_string=""
 	columns_length="${COLUMNS}"
+	#Account for the case where the string is more than a terminal line long
 	while [[ "${final_string_length}" -gt "${columns_length}" ]]; do
 		columns_length=$((columns_length + COLUMNS))
 	done
 	blank_string_length=$((columns_length - final_string_length))
+	#Add enough blank spaces to fill the rest of the line
 	for ((count = 0; count < "${blank_string_length}"; count++)); do
 		blank_string=$(printf "%s " "${blank_string}")
 	done
-	response=$(printf "%s%s%s" "${response_left}" "${blank_string}" "${response}")
-	for ((count = 0; count < "${final_string_length}"; count++)); do
-		response=$(printf "%s\b" "${response}")
+	#Add backspaces to align the next output
+	for ((count = 0; count < $((final_string_length + blank_string_length)); count++)); do
+		response_left=$(printf "\b%s" "${response_left}")
 	done
+	response=$(printf "%s%s%s" "${response_left}" "${blank_string}" "${response}")
 	printf "%s\r" "${response}"
 }
 
@@ -106,12 +111,12 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		c.\`contact-type\` != 4 and not pending and \`last-discovery\` < CURDATE() - INTERVAL ${period} and \`last-item\` < CURDATE() - INTERVAL ${period}" |
 		while read -r id nick baseurl lastitem; do
 			loop "${id}" "${nick}" "${baseurl}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 1)) ]]; then
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
 				wait -n
 			fi
 		done
-	printf "\r\n"
 	wait
+	printf "\n\r"
 	"${dbengine}" "${db}" -N -B -q -e "alter table \`post-thread\` auto_increment = 1; \
 		alter table \`post-thread-user\` auto_increment = 1; \
 		alter table \`post-user\` auto_increment = 1; \

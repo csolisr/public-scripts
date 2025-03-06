@@ -99,22 +99,27 @@ loop_3() {
 	echo "${picturecount}" "${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount} ${photocount} ${contactcount} ${apcontactcount} ${diasporacontactcount}" >"${usrfile}"
 	#Previous line clearance
 	#Measure length of string, blank only the excess
+	#Since this string is panned to both sides, we will need to account for two lengths
 	final_string_length_left="${#response_left}"
 	final_string_length_right="${#response}"
 	final_string_length=$((final_string_length_left + final_string_length_right))
+	#The string that will be used to insert the blanks
 	blank_string=""
 	columns_length="${COLUMNS}"
+	#Account for the case where the string is more than a terminal line long
 	while [[ "${final_string_length}" -gt "${columns_length}" ]]; do
 		columns_length=$((columns_length + COLUMNS))
 	done
 	blank_string_length=$((columns_length - final_string_length))
+	#Add enough blank spaces to fill the rest of the line
 	for ((count = 0; count < "${blank_string_length}"; count++)); do
 		blank_string=$(printf "%s " "${blank_string}")
 	done
-	response=$(printf "%s%s%s" "${response_left}" "${blank_string}" "${response}")
-	for ((count = 0; count < "${final_string_length}"; count++)); do
-		response=$(printf "%s\b" "${response}")
+	#Add backspaces to align the next output
+	for ((count = 0; count < $((final_string_length + blank_string_length)); count++)); do
+		response_left=$(printf "\b%s" "${response_left}")
 	done
+	response=$(printf "%s%s%s" "${response_left}" "${blank_string}" "${response}")
 	printf "%s\r" "${response}"
 }
 
@@ -166,7 +171,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		fi
 		wait
 	done <"${idsdownfile}"
-	printf "\r\n"
+	printf "\n\r"
 	rm "${tmpfile}" 2>/dev/null
 	rm "${idsdownfile}" 2>/dev/null
 	rm "${usrfile}" 2>/dev/null
