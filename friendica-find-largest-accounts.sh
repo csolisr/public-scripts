@@ -34,19 +34,20 @@ db="friendica"
         order by count(*) desc \
         limit 1000 \
     ); \
-    select c.url, \
+    select \
         c.\`id\`, \
-	g.platform, \
-        a.amount \
-        from contact as c \
+        c.name, \
+        c.url, \
+	    g.platform, \
+        (a.amount + o.amount + t.amount) as final_amount \
+    from contact as c \
 	right join tmp_authors as a \
         on c.id = a.\`author-id\` \
 	right join tmp_owners as o \
-	on c.id = o.\`owner-id\` \
+	    on c.id = o.\`owner-id\` \
 	right join tmp_causers as t \
-	on c.id = t.\`causer-id\` \
+	    on c.id = t.\`causer-id\` \
 	left join gserver as g \
-	on g.id = c.gsid \
-	where g.platform != \"lemmy\" \
-	and g.platform != \"\" \
-	limit 100;"
+	    on g.id = c.gsid \
+    order by final_amount asc \
+	limit 1000;"
