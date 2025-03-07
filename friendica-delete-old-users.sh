@@ -43,7 +43,10 @@ loop() {
 	contactcount=$("${dbengine}" "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${id}; select row_count();" || echo 0)
 	apcontactcount=$("${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${id}; select row_count();" || echo 0)
 	diasporacontactcount=$("${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${id}; select row_count();" || echo 0)
-	while read -r tmp_picturecount tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcount tmp_photocount tmp_contactcount tmp_apcontactcount tmp_diasporacontactcount; do
+	while read -r tmp_counter tmp_picturecount tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcount tmp_photocount tmp_contactcount tmp_apcontactcount tmp_diasporacontactcount; do
+		if [[ "${tmp_counter}" -gt "${counter}" ]]; then
+			counter=$((tmp_counter + 1))
+		fi
 		picturecount=$((picturecount + tmp_picturecount))
 		postthreadcount=$((postthreadcount + tmp_postthreadcount))
 		postthreadusercount=$((postthreadusercount + tmp_postthreadusercount))
@@ -56,7 +59,7 @@ loop() {
 		apcontactcount=$((apcontactcount + tmp_apcontactcount))
 		diasporacontactcount=$((diasporacontactcount + tmp_diasporacontactcount))
 	done <"${tmpfile}"
-	response_left=$(printf "%s %s %s@%s " "${id}" "${lastitem::-9}" "${nick}" "${baseurltrimmed}")
+	response_left=$(printf "%s %s %s %s@%s " "${counter}" "${id}" "${lastitem::-9}" "${nick}" "${baseurltrimmed}")
 	response=$(printf "%spicture:%s " "${response}" "${picturecount}")
 	response=$(printf "%spost-thread:%s " "${response}" "${postthreadcount}")
 	response=$(printf "%spost-thread-user:%s " "${response}" "${postthreadusercount}")
@@ -68,7 +71,7 @@ loop() {
 	response=$(printf "%scontact:%s " "${response}" "${contactcount}")
 	response=$(printf "%sapcontact:%s " "${response}" "${apcontactcount}")
 	response=$(printf "%sdiaspora-contact:%s " "${response}" "${diasporacontactcount}")
-	echo "${picturecount}" "${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount} ${photocount} ${contactcount} ${apcontactcount} ${diasporacontactcount}" >"${tmpfile}"
+	echo "${counter}" "${picturecount}" "${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount} ${photocount} ${contactcount} ${apcontactcount} ${diasporacontactcount}" >"${tmpfile}"
 	#Previous line clearance
 	#Measure length of string, blank only the excess
 	#Since this string is panned to both sides, we will need to account for two lengths
@@ -99,22 +102,32 @@ loop() {
 if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
 	touch "${tmpfile}"
-	echo "0 0 0 0 0 0 0 0 0 0 0" >"${tmpfile}"
+	echo "0 0 0 0 0 0 0 0 0 0 0 0" >"${tmpfile}"
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
 		"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` add index if not exists \`contact_baseurl\` (baseurl)"
 	fi
-	while read -r id nick baseurl lastitem; do
-		loop "${id}" "${nick}" "${baseurl}" &
-		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
-			wait -n
+	counter=0
+	was_empty=0
+	while [[ "${was_empty}" -eq 0 ]]; do
+		current_counter=0
+		while read -r id nick baseurl lastitem; do
+			counter=$((counter + 1))
+			current_counter=$((current_counter + 1))
+			loop "${id}" "${nick}" "${baseurl}" "${lastitem}" "${counter}" &
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
+				wait -n
+			fi
+		done < <("${dbengine}" "${db}" -N -B -q -e \
+			"select \`id\`, \`nick\`, \`baseurl\`, \`last-item\` from contact c where \
+			c.\`id\` not in (select \`cid\` from \`user-contact\`) and \
+			c.\`id\` not in (select \`uid\` from \`user\`) and \
+			c.\`id\` not in ( select \`contact-id\` from \`group_member\`) and \
+			c.\`contact-type\` != 4 and not pending and \`last-item\` < CURDATE() - INTERVAL ${period} limit 1000")
+		wait
+		if [[ "${current_counter}" -eq 0 ]]; then
+			was_empty=1
 		fi
-	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"select \`id\`, \`nick\`, \`baseurl\`, \`last-item\` from contact c where \
-		c.\`id\` not in (select \`cid\` from \`user-contact\`) and \
-		c.\`id\` not in (select \`uid\` from \`user\`) and \
-		c.\`id\` not in ( select \`contact-id\` from \`group_member\`) and \
-		c.\`contact-type\` != 4 and not pending and \`last-discovery\` < CURDATE() - INTERVAL ${period} and \`last-item\` < CURDATE() - INTERVAL ${period}")
-	wait
+	done
 	printf "\n\r"
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
 		"${dbengine}" "${db}" -N -B -q -e "alter table \`post-thread\` auto_increment = 1; \
