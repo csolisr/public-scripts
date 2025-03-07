@@ -47,7 +47,7 @@ db="friendica"
 	    on c.id = o.\`owner-id\` \
 	right join tmp_causers as t \
 	    on c.id = t.\`causer-id\` \
-	left join gserver as g \
+	inner join gserver as g \
 	    on g.id = c.gsid \
     order by final_amount asc \
 	limit 1000;"
