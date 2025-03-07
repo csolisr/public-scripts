@@ -103,28 +103,27 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
 		"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` add index if not exists \`contact_baseurl\` (baseurl)"
 	fi
-	"${dbengine}" "${db}" -N -B -q -e \
+	while read -r id nick baseurl lastitem; do
+		loop "${id}" "${nick}" "${baseurl}" &
+		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
+			wait -n
+		fi
+	done < <("${dbengine}" "${db}" -N -B -q -e \
 		"select \`id\`, \`nick\`, \`baseurl\`, \`last-item\` from contact c where \
 		c.\`id\` not in (select \`cid\` from \`user-contact\`) and \
 		c.\`id\` not in (select \`uid\` from \`user\`) and \
 		c.\`id\` not in ( select \`contact-id\` from \`group_member\`) and \
-		c.\`contact-type\` != 4 and not pending and \`last-discovery\` < CURDATE() - INTERVAL ${period} and \`last-item\` < CURDATE() - INTERVAL ${period}" |
-		while read -r id nick baseurl lastitem; do
-			loop "${id}" "${nick}" "${baseurl}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
-				wait -n
-			fi
-		done
+		c.\`contact-type\` != 4 and not pending and \`last-discovery\` < CURDATE() - INTERVAL ${period} and \`last-item\` < CURDATE() - INTERVAL ${period}")
 	wait
 	printf "\n\r"
-	"${dbengine}" "${db}" -N -B -q -e "alter table \`post-thread\` auto_increment = 1; \
-		alter table \`post-thread-user\` auto_increment = 1; \
-		alter table \`post-user\` auto_increment = 1; \
-		alter table \`post-tag\` auto_increment = 1; \
-		alter table \`post\` auto_increment = 1; \
-		alter table \`photo\` auto_increment = 1; \
-		alter table \`contact\` auto_increment = 1"
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
+		"${dbengine}" "${db}" -N -B -q -e "alter table \`post-thread\` auto_increment = 1; \
+			alter table \`post-thread-user\` auto_increment = 1; \
+			alter table \`post-user\` auto_increment = 1; \
+			alter table \`post-tag\` auto_increment = 1; \
+			alter table \`post\` auto_increment = 1; \
+			alter table \`photo\` auto_increment = 1; \
+			alter table \`contact\` auto_increment = 1"
 		"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` drop index \`contact_baseurl\`"
 	fi
 	rm -rf "${tmpfile}"
