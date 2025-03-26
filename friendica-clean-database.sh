@@ -23,7 +23,7 @@ intense_optimizations=${1:-"0"}
 
 bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
 
-echo "tmp_post_origin_deleted"
+echo "tmp_post_origin_deleted" #&> /dev/null
 tmp_post_origin_deleted_q="${limit}"
 tmp_post_origin_deleted_current_uri_id=0
 until [[ "${tmp_post_origin_deleted_q}" -lt "${limit}" ]]; do
@@ -44,11 +44,11 @@ until [[ "${tmp_post_origin_deleted_q}" -lt "${limit}" ]]; do
 		AND ( \`uri-id\` > ${tmp_post_origin_deleted_current_uri_id} ) \
 		ORDER BY \`uri-id\`, \`uid\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_post_origin_deleted_q} item(s) deleted until ${tmp_post_origin_deleted_current_uri_id} in ${final_i}s"
+	echo "${tmp_post_origin_deleted_q} item(s) deleted until ${tmp_post_origin_deleted_current_uri_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_post_user_deleted"
+echo "tmp_post_user_deleted" #&> /dev/null
 tmp_post_user_deleted_q="${limit}"
 tmp_post_user_deleted_current_uri_id=0
 until [[ "${tmp_post_user_deleted_q}" -lt "${limit}" ]]; do
@@ -69,11 +69,11 @@ until [[ "${tmp_post_user_deleted_q}" -lt "${limit}" ]]; do
 		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL ${interval} DAY) \
 			AND \`uri-id\` > ${tmp_post_user_deleted_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_post_user_deleted_q} item(s) deleted until ${tmp_post_user_deleted_current_uri_id} in ${final_i}s"
+	echo "${tmp_post_user_deleted_q} item(s) deleted until ${tmp_post_user_deleted_current_uri_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_post_uri_id_not_in_post_user"
+echo "tmp_post_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_uri_id_not_in_post_user_q="${limit}"
 tmp_post_uri_id_not_in_post_user_current_uri_id=0
 until [[ "${tmp_post_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
@@ -93,11 +93,11 @@ until [[ "${tmp_post_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
 		"SELECT \`uri-id\` FROM \`post\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 			AND \`uri-id\` > ${tmp_post_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_post_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_uri_id_not_in_post_user_current_uri_id} in ${final_i}s"
+	echo "${tmp_post_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_post_content_uri_id_not_in_post_user"
+echo "tmp_post_content_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_content_uri_id_not_in_post_user_q="${limit}"
 tmp_post_content_uri_id_not_in_post_user_current_uri_id=0
 until [[ "${tmp_post_content_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
@@ -117,11 +117,11 @@ until [[ "${tmp_post_content_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
 		"SELECT \`uri-id\` FROM \`post-content\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 			AND \`uri-id\` > ${tmp_post_content_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_post_content_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_content_uri_id_not_in_post_user_current_uri_id} in ${final_i}s"
+	echo "${tmp_post_content_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_content_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_post_thread_uri_id_not_in_post_user"
+echo "tmp_post_thread_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_thread_uri_id_not_in_post_user_q="${limit}"
 tmp_post_thread_uri_id_not_in_post_user_current_uri_id=0
 until [[ "${tmp_post_thread_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
@@ -141,11 +141,11 @@ until [[ "${tmp_post_thread_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
 		"SELECT \`uri-id\` FROM \`post-thread\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 			AND \`uri-id\` > ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_post_thread_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} in ${final_i}s"
+	echo "${tmp_post_thread_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_post_user_uri_id_not_in_post"
+echo "tmp_post_user_uri_id_not_in_post" #&> /dev/null
 tmp_post_user_uri_id_not_in_post_q="${limit}"
 tmp_post_user_uri_id_not_in_post_current_uri_id=0
 until [[ "${tmp_post_user_uri_id_not_in_post_q}" -lt "${limit}" ]]; do
@@ -165,11 +165,11 @@ until [[ "${tmp_post_user_uri_id_not_in_post_q}" -lt "${limit}" ]]; do
 		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post\`) \
 			AND \`uri-id\` > ${tmp_post_user_uri_id_not_in_post_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_post_user_uri_id_not_in_post_q} item(s) deleted until ${tmp_post_user_uri_id_not_in_post_current_uri_id} in ${final_i}s"
+	echo "${tmp_post_user_uri_id_not_in_post_q} item(s) deleted until ${tmp_post_user_uri_id_not_in_post_current_uri_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_item_uri_not_in_valid_post_thread"
+echo "tmp_item_uri_not_in_valid_post_thread" #&> /dev/null
 tmp_item_uri_not_in_valid_post_thread_q="${limit}"
 tmp_item_uri_not_in_valid_post_thread_current_id=0
 until [[ "${tmp_item_uri_not_in_valid_post_thread_q}" -lt "${limit}" ]]; do
@@ -199,11 +199,11 @@ until [[ "${tmp_item_uri_not_in_valid_post_thread_q}" -lt "${limit}" ]]; do
 			AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-content\` WHERE \`resource-id\` != 0 AND \`uri-id\` = \`post-thread\`.\`uri-id\`) \
 			AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_thread_current_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_item_uri_not_in_valid_post_thread_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_thread_current_id} in ${final_i}s"
+	echo "${tmp_item_uri_not_in_valid_post_thread_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_thread_current_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_item_uri_not_in_valid_post_user"
+echo "tmp_item_uri_not_in_valid_post_user" #&> /dev/null
 tmp_item_uri_not_in_valid_post_user_q="${limit}"
 tmp_item_uri_not_in_valid_post_user_current_id=0
 until [[ "${tmp_item_uri_not_in_valid_post_user_q}" -lt "${limit}" ]]; do
@@ -226,11 +226,11 @@ until [[ "${tmp_item_uri_not_in_valid_post_user_q}" -lt "${limit}" ]]; do
 		AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` AND \`i\`.\`received\` > (CURDATE() - INTERVAL ${interval} DAY) ) \
 		AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_user_current_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_item_uri_not_in_valid_post_user_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_user_current_id} in ${final_i}s"
+	echo "${tmp_item_uri_not_in_valid_post_user_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_user_current_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_attach_not_in_post_media"
+echo "tmp_attach_not_in_post_media" #&> /dev/null
 tmp_attach_not_in_post_media_q="${limit}"
 tmp_attach_not_in_post_media_current_id=0
 until [[ "${tmp_attach_not_in_post_media_q}" -lt "${limit}" ]]; do
@@ -251,11 +251,11 @@ until [[ "${tmp_attach_not_in_post_media_q}" -lt "${limit}" ]]; do
 		AND \`id\` > ${tmp_attach_not_in_post_media_current_id} ORDER BY \`id\` LIMIT ${limit}")
 	"${dbengine}" "${db}" -N -B -q -e "ALTER TABLE \`attach\` AUTO_INCREMENT = 1"
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_attach_not_in_post_media_q} item(s) deleted until ${tmp_attach_not_in_post_media_current_id} in ${final_i}s"
+	echo "${tmp_attach_not_in_post_media_q} item(s) deleted until ${tmp_attach_not_in_post_media_current_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
-echo "tmp_item_uri_not_valid"
+echo "tmp_item_uri_not_valid" #&> /dev/null
 tmp_item_uri_not_valid_q="${limit}"
 tmp_item_uri_not_valid_current_id=0
 tmp_item_uri_not_valid_last_id=$("${dbengine}" "${db}" -N -B -q -e \
@@ -296,12 +296,12 @@ until [[ "${tmp_item_uri_not_valid_q}" -lt "${limit}" ]]; do
 		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`mail\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
 		ORDER BY \`id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
-	echo "${tmp_item_uri_not_valid_q} item(s) deleted until ${tmp_item_uri_not_valid_current_id} in ${final_i}s"
+	echo "${tmp_item_uri_not_valid_q} item(s) deleted until ${tmp_item_uri_not_valid_current_id} in ${final_i}s" #&> /dev/null
 done
 wait
 
 if [[ "${intense_optimizations}" -gt 0 ]]; then
-	echo "tmp_item_uri_duplicate"
+	echo "tmp_item_uri_duplicate" #&> /dev/null
 	tmp_item_uri_duplicate_q="${limit}"
 	tmp_item_uri_duplicate_current_id=0
 	until [[ "${tmp_item_uri_duplicate_q}" -lt "${limit}" ]]; do
@@ -321,7 +321,7 @@ if [[ "${intense_optimizations}" -gt 0 ]]; then
 			"SELECT t1.\`id\` FROM \`item-uri\` t1 INNER JOIN \`item-uri\` t2 WHERE t1.\`id\` > ${tmp_item_uri_duplicate_current_id} \
 			AND t1.\`id\` < t2.\`id\` AND t1.\`uri\` = t2.\`uri\` LIMIT ${limit}")
 		final_i=$(($(date +%s) - initial_i))
-		echo "${tmp_item_uri_duplicate_q} item(s) deleted until ${tmp_item_uri_duplicate_current_id} in ${final_i}s"
+		echo "${tmp_item_uri_duplicate_q} item(s) deleted until ${tmp_item_uri_duplicate_current_id} in ${final_i}s" #&> /dev/null
 	done
 	wait
 
