@@ -18,8 +18,7 @@ input_id=${1:-""}
 if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	#Check if there was an input id; if not, skip
 	if [[ "${input_id}" != "" ]]; then
-		date
-		while read -r id nick baseurl lastitem; do
+		while read -r id nick baseurl; do
 			baseurltrimmed=$(echo "${baseurl}" | sed -e "s/http[s]*:\/\///g")
 			#Find the pictures in the avatar folders and delete them
 			picturecount=0
@@ -46,7 +45,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			contactcount=$("${dbengine}" "${db}" -N -B -q -e "delete from \`contact\` where \`id\` = ${id}; select row_count();" || echo 0)
 			apcontactcount=$("${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${id}; select row_count();" || echo 0)
 			diasporacontactcount=$("${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${id}; select row_count();" || echo 0)
-			response_left=$(printf "%s %s %s@%s " "${id}" "${lastitem::-9}" "${nick}" "${baseurltrimmed}")
+			response_left=$(printf "%s %s@%s " "${id}" "${nick}" "${baseurltrimmed}")
 			response=$(printf "%spicture:%s " "${response}" "${picturecount}")
 			response=$(printf "%spost-thread:%s " "${response}" "${postthreadcount}")
 			response=$(printf "%spost-thread-user:%s " "${response}" "${postthreadusercount}")
@@ -82,9 +81,8 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			done
 			response=$(printf "%s%s%s" "${response_left}" "${blank_string}" "${response}")
 			printf "%s\r" "${response}"
-		done < <("${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`nick\`, \`baseurl\`, \`last-item\` from contact where \`id\` = ${input_id}")
+		done < <("${dbengine}" "${db}" -NBqe "select \`id\`, \`nick\`, \`baseurl\` from contact where \`id\` = \"${input_id}\"")
 		printf "\n\r"
-		date
 	else
 		echo "${input_id}"
 	fi
