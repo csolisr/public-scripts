@@ -21,7 +21,9 @@ elif [[ -n $(type mysqloptimize) ]]; then
 fi
 intense_optimizations=${1:-"0"}
 
-bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
+if [[ "${intense_optimizations}" -gt 0 ]]; then
+	bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
+fi
 
 echo "tmp_post_origin_deleted" #&> /dev/null
 tmp_post_origin_deleted_q="${limit}"
@@ -378,4 +380,6 @@ if [[ "${intense_optimizations}" -gt 0 ]]; then
 
 	"${dboptimizer}" "${db}" #&> /dev/null
 fi
-bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 0" #&> /dev/null
+if [[ "${intense_optimizations}" -gt 0 ]]; then
+	bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 0" #&> /dev/null
+fi
