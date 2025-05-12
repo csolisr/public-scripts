@@ -276,27 +276,68 @@ until [[ "${tmp_item_uri_not_valid_q}" -lt "${limit}" ]]; do
 			tmp_item_uri_not_valid_current_id="${id}"
 		fi
 	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT \`id\` FROM \`item-uri\` WHERE ( \`id\` < ${tmp_item_uri_not_valid_last_id} ) \
-		AND (\`id\` > ${tmp_item_uri_not_valid_current_id} ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-user\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`parent-uri-id\` FROM \`post-user\` WHERE \`parent-uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`post-user\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`external-id\` FROM \`post-user\` WHERE \`external-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`replies-id\` FROM \`post-user\` WHERE \`replies-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`context-id\` FROM \`post-thread\` WHERE \`context-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`conversation-id\` FROM \`post-thread\` WHERE \`conversation-id\`= \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`mail\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`event\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`user-contact\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`contact\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`apcontact\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`diaspora-contact\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`inbox-status\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-delivery\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-delivery\` WHERE \`inbox-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`parent-uri-id\` FROM \`mail\` WHERE \`parent-uri-id\` = \`item-uri\`.\`id\` ) \
-		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`mail\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
-		ORDER BY \`id\` LIMIT ${limit}")
+		"SELECT i.id FROM \`item-uri\` i \
+			LEFT JOIN \`post-user\` pu1 ON i.id = pu1.\`uri-id\` \
+			LEFT JOIN \`post-user\` pu2 ON i.id = pu2.\`parent-uri-id\` \
+			LEFT JOIN \`post-user\` pu3 ON i.id = pu3.\`thr-parent-id\` \
+			LEFT JOIN \`post-user\` pu4 ON i.id = pu4.\`external-id\` \
+			LEFT JOIN \`post-user\` pu5 ON i.id = pu5.\`replies-id\` \
+			LEFT JOIN \`post-thread\` pt1 ON i.id = pt1.\`context-id\` \
+			LEFT JOIN \`post-thread\` pt2 ON i.id = pt2.\`conversation-id\` \
+			LEFT JOIN \`mail\` m1 ON i.id = m1.\`uri-id\` \
+			LEFT JOIN \`event\` e ON i.id = e.\`uri-id\` \
+			LEFT JOIN \`user-contact\` uc ON i.id = uc.\`uri-id\` \
+			LEFT JOIN \`contact\` c ON i.id = c.\`uri-id\` \
+			LEFT JOIN \`apcontact\` ac ON i.id = ac.\`uri-id\` \
+			LEFT JOIN \`diaspora-contact\` dc ON i.id = dc.\`uri-id\` \
+			LEFT JOIN \`inbox-status\` ins ON i.id = ins.\`uri-id\` \
+			LEFT JOIN \`post-delivery\` pd1 ON i.id = pd1.\`uri-id\` \
+			LEFT JOIN \`post-delivery\` pd2 ON i.id = pd2.\`inbox-id\` \
+			LEFT JOIN \`mail\` m2 ON i.id = m2.\`parent-uri-id\` \
+			LEFT JOIN \`mail\` m3 ON i.id = m3.\`thr-parent-id\` \
+			WHERE \
+			  i.id < ${tmp_item_uri_not_valid_last_id} AND \
+			  i.id > ${tmp_item_uri_not_valid_current_id} AND \
+			  pu1.\`uri-id\` IS NULL AND \
+			  pu2.\`parent-uri-id\` IS NULL AND \
+			  pu3.\`thr-parent-id\` IS NULL AND \
+			  pu4.\`external-id\` IS NULL AND \
+			  pu5.\`replies-id\` IS NULL AND \
+			  pt1.\`context-id\` IS NULL AND \
+			  pt2.\`conversation-id\` IS NULL AND \
+			  m1.\`uri-id\` IS NULL AND \
+			  e.\`uri-id\` IS NULL AND \
+			  uc.\`uri-id\` IS NULL AND \
+			  c.\`uri-id\` IS NULL AND \
+			  ac.\`uri-id\` IS NULL AND \
+			  dc.\`uri-id\` IS NULL AND \
+			  ins.\`uri-id\` IS NULL AND \
+			  pd1.\`uri-id\` IS NULL AND \
+			  pd2.\`inbox-id\` IS NULL AND \
+			  m2.\`parent-uri-id\` IS NULL AND \
+			  m3.\`thr-parent-id\` IS NULL \
+			ORDER BY \`id\` LIMIT ${limit}")
+#		"SELECT \`id\` FROM \`item-uri\` WHERE ( \`id\` < ${tmp_item_uri_not_valid_last_id} ) \
+#		AND (\`id\` > ${tmp_item_uri_not_valid_current_id} ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-user\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`parent-uri-id\` FROM \`post-user\` WHERE \`parent-uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`post-user\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`external-id\` FROM \`post-user\` WHERE \`external-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`replies-id\` FROM \`post-user\` WHERE \`replies-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`context-id\` FROM \`post-thread\` WHERE \`context-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`conversation-id\` FROM \`post-thread\` WHERE \`conversation-id\`= \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`mail\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`event\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`user-contact\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`contact\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`apcontact\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`diaspora-contact\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`inbox-status\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-delivery\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-delivery\` WHERE \`inbox-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`parent-uri-id\` FROM \`mail\` WHERE \`parent-uri-id\` = \`item-uri\`.\`id\` ) \
+#		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`mail\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
+#		ORDER BY \`id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_item_uri_not_valid_q} item(s) deleted until ${tmp_item_uri_not_valid_current_id} in ${final_i}s" #&> /dev/null
 done
