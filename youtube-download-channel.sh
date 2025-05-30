@@ -54,8 +54,11 @@ else
 		--sleep-requests "${sleeptime}"
 fi
 rm -rf "${csv}"
-ls -t | grep -e ".info.json" | while read -r x; do
-	echo youtube $(jq -c '.id' "${x}" | sed -e "s/\"//g") | tee -a "${archive}" &
+#ls -t | grep -e ".info.json" | while read -r x; do
+find . -type f -iname "*.info.json" -exec ls -t {} + | while read -r xp; do
+	x="${xp##./}"
+	#echo youtube $(jq -c '.id' "${x}" | sed -e "s/\"//g") | tee -a "${archive}" &
+	echo "youtube $(jq -cr '.id' "${x}")" | tee -a "${archive}" &
 	jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${subfolder}/${x}" | while read -r i; do
 		echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" | tee -a "${csv}" &
 	done
@@ -69,15 +72,16 @@ done
 wait
 sort "${sortcsv}" | uniq >"/tmp/${channel}-sort-ordered.csv"
 echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos to watch later\",\"videos\":[" >"/tmp/${channel}.db"
-cat "/tmp/${channel}-sort-ordered.csv" | while read -r line; do
+#cat "/tmp/${channel}-sort-ordered.csv" | while read -r line; do
+while read -r line; do
 	file=$(echo "${line}" | cut -d ',' -f3-)
 	echo "${file}"
 	jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": .epoch, \"timeAdded\": $(date +%s), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": \"video\"}" "${subfolder}/${file}" | tee -a "/tmp/${channel}.db"
 	echo "," >>"/tmp/${channel}.db"
-done
+done <"/tmp/${channel}-sort-ordered.csv"
 echo "],\"_id\":\"${channel}\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"/tmp/${channel}.db"
 rm "${json}"
-cat "/tmp/${channel}.db" | grep -v -e ":[ ]*null" | tr '\n' '\r' | sed -e "s/,\r\]/\]/g" | tr '\r' '\n' | jq -c "." >"${json}" && rm "/tmp/${channel}.db"
+grep -v -e ":[ ]*null" "/tmp/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "/tmp/${channel}.db"
 rm "/tmp/${channel}-sort-ordered.csv" "${sortcsv}"
 sort "${csv}" | uniq >"/tmp/${channel}-without-header.csv"
 echo '"Upload Date", "Timestamp", "Uploader", "Title", "Webpage URL"' >"/tmp/${channel}.csv"

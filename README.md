@@ -2,6 +2,10 @@
 
 Public scripts for assorted web maintenance tasks used in my server.
 
+# This is a mirrored repository
+
+If you're browsing this repository from [GitHub](https://github.com/csolisr/public-scripts), you should know that the main home for these files is on [my personal server over Forgejo](https://code.azkware.net/csolisr/public-scripts).
+
 # Description
 
 As you can see, the vast majority of my scripts are used to handle my [Friendica](https://friendi.ca) server, especially where the default PHP would take too long or not cover my usage case.
