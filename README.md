@@ -19,6 +19,7 @@ As you can see, the vast majority of my scripts are used to handle my [Friendica
 * friendica-find-largest-accounts.sh: Finds which are the contacts that have the most posts assigned to them.
 * friendica-delete-specific-contact.sh: Uses the same code as the previous scripts to delete all data from a specific user, particularly useful for unfollowed contacts with too many posts.
 * media-optimize-local.sh: For a given folder, it finds any image files within and compresses them. Requires `gifsicle`, `oxipng`, `jpegoptim`, and `cwebp` installed.
+* youtube-download-channel.sh: A wrapper to ease downloading metadata from subscriptions or channels, in order to export it as a CSV, and as a playlist DB file compatible with FreeTube. Requires `yt-dlp`, and optionally a cookie to download your subscriptions.
 
 # License
 
