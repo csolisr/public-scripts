@@ -9,6 +9,7 @@ sleeptime=${3:-"1.0"}
 #Internal variables:
 #Via https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
 folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+echo "${folder}"
 #Required to download your own subscriptions.
 #Obtain this file through the procedure listed at
 # https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
@@ -18,7 +19,7 @@ subfolder="${folder}/${channel}"
 archive="${subfolder}/${channel}.txt"
 sortcsv="${subfolder}/${channel}-sort.csv"
 csv="${subfolder}/${channel}.csv"
-json="${subfolder}/${channel}.json"
+json="${subfolder}/${channel}.db"
 python="python"
 if [[ -f "/opt/venv/bin/python" ]]; then
 	python="/opt/venv/bin/python"
@@ -27,17 +28,20 @@ ytdl="/usr/bin/yt-dlp"
 if [[ -f "/opt/venv/bin/yt-dlp" ]]; then
 	ytdl="/opt/venv/bin/yt-dlp"
 fi
-if [[ -z "${subfolder}" ]]; then
-	mkdir "${subfolder}"
+if [[ ! -d "${subfolder}" ]]; then
+	mkdir -v "${subfolder}"
 fi
 cd "${subfolder}" || exit
+if [[ -f "${channel}.tar.zst" ]]; then
+	tar -xvp -I zstd -f "${channel}.tar.zst"
+fi
 #If available, you can use the cookies from your browser directly:
 #    --cookies-from-browser "firefox"
 url="https://www.youtube.com/@${channel}"
 if [[ "${channel}" = "subscriptions" ]]; then
 	url="https://www.youtube.com/feed/subscriptions"
 fi
-if [[ -z "${cookies}" ]]; then
+if [[ -z "${cookies}" && ${channel} = "subscriptions" ]]; then
 	"${python}" "${ytdl}" "${url}" \
 		--skip-download --download-archive "${archive}" \
 		--dateafter "${breaktime}" \
@@ -76,7 +80,9 @@ echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Vid
 while read -r line; do
 	file=$(echo "${line}" | cut -d ',' -f3-)
 	echo "${file}"
-	jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": .epoch, \"timeAdded\": $(date +%s), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": \"video\"}" "${subfolder}/${file}" | tee -a "/tmp/${channel}.db"
+	jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \
+\"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ) , \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \
+\"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": \"video\"}" "${subfolder}/${file}" | tee -a "/tmp/${channel}.db"
 	echo "," >>"/tmp/${channel}.db"
 done <"/tmp/${channel}-sort-ordered.csv"
 echo "],\"_id\":\"${channel}\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"/tmp/${channel}.db"
@@ -90,3 +96,4 @@ mv "/tmp/${channel}.csv" "${csv}"
 rm "/tmp/${channel}-without-header.csv"
 sort "${archive}" | uniq >"/tmp/${channel}.txt"
 mv "/tmp/${channel}.txt" "${archive}"
+tar -cvp -I zstd -f "${channel}.tar.zst" ./*.info.json && rm ./*.info.json
