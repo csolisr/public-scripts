@@ -1,4 +1,7 @@
 #!/bin/bash
+#Via https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
+folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+cd "${folder}" || exit
 for i in ./*.sh; do
 	shfmt -w "${i}"
 	shellcheck -o all -e SC2312 -f diff "${i}" | patch -p1
