@@ -75,7 +75,7 @@ fi
 find . -type f -iname "*.info.json" -exec ls -t {} + | while read -r xp; do
 	x="${xp##./}"
 	df=$(jq -rc '.timestamp' "${subfolder}/${x}")
-	touch "${subfolder}/${x}" -d "@${df}"
+	touch "${subfolder}/${x}" -d "${df}"
 	#TODO: Read the date directly
 	#df=$(jq -rc '.timestamp' "${subfolder}/${x}")
 	#if [[ "${breaktime}" =~ ^[0-9]+$ ]]; then
@@ -119,6 +119,10 @@ if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
 				echo "Video ${file} uploaded on ${uploaddate}, removing..."
 				rm "${file}"
 			fi
+		fi
+		if [[ "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${file}") != "@${channel}" ]]; then
+			echo "Video ${file} not uploaded from ${channel}, removing..."
+			rm "${file}"
 		fi
 		if [[ ${enabledb} = "1" ]]; then
 			if [[ -f "${file}" ]]; then
