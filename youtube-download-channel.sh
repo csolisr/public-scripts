@@ -75,7 +75,7 @@ fi
 find . -type f -iname "*.info.json" -exec ls -t {} + | while read -r xp; do
 	x="${xp##./}"
 	df=$(jq -rc '.timestamp' "${subfolder}/${x}")
-	touch "${subfolder}/${x}" -d "${df}"
+	touch "${subfolder}/${x}" -d "@${df}"
 	#TODO: Read the date directly
 	#df=$(jq -rc '.timestamp' "${subfolder}/${x}")
 	#if [[ "${breaktime}" =~ ^[0-9]+$ ]]; then
