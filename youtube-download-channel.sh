@@ -18,7 +18,8 @@ folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 # https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
 #and place it next to your script.
 cookies="${folder}/yt-cookies.txt"
-subfolder="${folder}/${channel}"
+#subfolder="${folder}/${channel}"
+subfolder="${folder}/subscriptions"
 archive="${subfolder}/${channel}.txt"
 sortcsv="${subfolder}/${channel}-sort.csv"
 csv="${subfolder}/${channel}.csv"
@@ -39,7 +40,11 @@ if [[ ! -f "${archive}" ]]; then
 	touch "${archive}"
 fi
 if [[ -f "${channel}.tar.zst" ]]; then
-	tar -xvp -I zstd -f "${channel}.tar.zst"
+	if [[ "${channel}" = "subscriptions" ]]; then
+		find . -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}.tar.zst"; done
+	else
+		tar -xvp -I zstd -f "${channel}.tar.zst"
+	fi
 fi
 #If available, you can use the cookies from your browser directly:
 #    --cookies-from-browser "firefox"
@@ -69,6 +74,18 @@ if [[ ! -f "${sortcsv}" ]]; then
 fi
 find . -type f -iname "*.info.json" -exec ls -t {} + | while read -r xp; do
 	x="${xp##./}"
+	df=$(jq -rc '.timestamp' "${subfolder}/${x}")
+	touch "${subfolder}/${x}" -d "${df}"
+	#TODO: Read the date directly
+	#df=$(jq -rc '.timestamp' "${subfolder}/${x}")
+	#if [[ "${breaktime}" =~ ^[0-9]+$ ]]; then
+	#	db=$(date -d"$breaktime" +"%s")
+	#	touch "${subfolder}/${x}" -d "${df}"
+	#	if [[ "${db}" -ge "${df}" ]]; then
+	#		echo "Video ${file} uploaded on ${uploaddate}, removing..."
+	#		rm "${x}"
+	#	fi
+	#fi
 	echo "youtube $(jq -cr '.id' "${x}")" | tee -a "${archive}" &
 	if [[ ${enablecsv} = "1" ]]; then
 		jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${subfolder}/${x}" | while read -r i; do
@@ -112,7 +129,7 @@ if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
 	done <"/tmp/${channel}-sort-ordered.csv"
 fi
 if [[ ${enabledb} = "1" ]]; then
-	echo "],\"_id\":\"${channel}\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"/tmp/${channel}.db"
+	echo "],\"_id\":\"${channel}$(date +%s)\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"/tmp/${channel}.db"
 	rm "${json}"
 	grep -v -e ":[ ]*null" "/tmp/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" -e "s/\[\r,/\[/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "/tmp/${channel}.db"
 fi
