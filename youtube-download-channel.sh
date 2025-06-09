@@ -41,7 +41,7 @@ if [[ ! -f "${archive}" ]]; then
 fi
 if [[ -f "${channel}.tar.zst" ]]; then
 	if [[ "${channel}" = "subscriptions" ]]; then
-		find . -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}.tar.zst"; done
+		find . -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}"; done
 	else
 		tar -xvp -I zstd -f "${channel}.tar.zst"
 	fi
@@ -52,7 +52,7 @@ url="https://www.youtube.com/@${channel}"
 if [[ "${channel}" = "subscriptions" ]]; then
 	url="https://www.youtube.com/feed/subscriptions"
 fi
-if [[ -z "${cookies}" && "${channel}" = "subscriptions" ]]; then
+if [[ -f "${cookies}" && "${channel}" = "subscriptions" ]]; then
 	"${python}" "${ytdl}" "${url}" \
 		--skip-download --download-archive "${archive}" \
 		--dateafter "${breaktime}" \
@@ -68,37 +68,41 @@ else
 		--break-on-reject --lazy-playlist --write-info-json \
 		--sleep-requests "${sleeptime}"
 fi
-rm -rf "${csv}"
+if [[ -f "${csv}" ]]; then
+	rm -rf "${csv}"
+fi
 if [[ ! -f "${sortcsv}" ]]; then
 	touch "${sortcsv}"
 fi
+db=$(date -d"${breaktime}" +"%s")
 find . -type f -iname "*.info.json" -exec ls -t {} + | while read -r xp; do
 	x="${xp##./}"
-	df=$(jq -rc '.timestamp' "${subfolder}/${x}")
-	touch "${subfolder}/${x}" -d "@${df}"
-	#TODO: Read the date directly
-	#df=$(jq -rc '.timestamp' "${subfolder}/${x}")
-	#if [[ "${breaktime}" =~ ^[0-9]+$ ]]; then
-	#	db=$(date -d"$breaktime" +"%s")
-	#	touch "${subfolder}/${x}" -d "${df}"
-	#	if [[ "${db}" -ge "${df}" ]]; then
-	#		echo "Video ${file} uploaded on ${uploaddate}, removing..."
-	#		rm "${x}"
-	#	fi
-	#fi
-	echo "youtube $(jq -cr '.id' "${x}")" | tee -a "${archive}" &
-	if [[ ${enablecsv} = "1" ]]; then
-		jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${subfolder}/${x}" | while read -r i; do
-			echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" | tee -a "${csv}" &
-		done
+	if [[ "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${subfolder}/${x}") != "@${channel}" ]]; then
+		echo "Video ${x} not uploaded from ${channel}, removing..." && rm "${subfolder}/${x}" &
 	fi
-	if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
-		jq -c '[.upload_date, .timestamp]' "${subfolder}/${x}" | while read -r i; do
-			echo "${i},${x}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e "s/\\\\\"/＂/g" | tee -a "${sortcsv}" &
-		done
+	if [[ -f "${subfolder}/${x}" && "${breaktime}" =~ ^[0-9]+$ ]]; then
+		df=$(jq -rc '.timestamp' "${subfolder}/${x}")
+		if [[ "${db}" -ge "${df}" ]]; then
+			echo "Video ${x} uploaded before ${breaktime}, removing..." && rm "${subfolder}/${x}" &
+		else
+			touch "${subfolder}/${x}" -d "@${df}" &
+		fi
 	fi
-	if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 3 * 2)) ]]; then
-		wait -n
+	if [[ -f "${subfolder}/${x}" ]]; then
+		echo "youtube $(jq -cr '.id' "${subfolder}/${x}")" | tee -a "${archive}" &
+		if [[ ${enablecsv} = "1" ]]; then
+			jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${subfolder}/${x}" | while read -r i; do
+				echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" | tee -a "${csv}" &
+			done
+		fi
+		if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
+			jq -c '[.upload_date, .timestamp]' "${subfolder}/${x}" | while read -r i; do
+				echo "${i},${x}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e "s/\\\\\"/＂/g" | tee -a "${sortcsv}" &
+			done
+		fi
+		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 3 * 2)) ]]; then
+			wait -n
+		fi
 	fi
 done
 wait
@@ -107,23 +111,18 @@ if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
 fi
 if [[ ${enabledb} = "1" ]]; then
 	rm "/tmp/${channel}.db"
-	echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos to watch later\",\"videos\":[" >"/tmp/${channel}.db"
+	echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos from ${channel} to watch later\",\"videos\":[" >"/tmp/${channel}.db"
 fi
 if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
 	while read -r line; do
 		file=$(echo "${line}" | cut -d ',' -f3-)
-		echo "${file}"
-		if [[ "${breaktime}" =~ ^[0-9]+$ ]]; then
-			uploaddate=$(echo "${line}" | cut -d ',' -f1 | sed -e "s/\"//g")
-			if [[ "${uploaddate}" -lt "${breaktime}" ]]; then
-				echo "Video ${file} uploaded on ${uploaddate}, removing..."
-				rm "${file}"
-			fi
-		fi
-		if [[ "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${file}") != "@${channel}" ]]; then
-			echo "Video ${file} not uploaded from ${channel}, removing..."
-			rm "${file}"
-		fi
+		#if [[ "${breaktime}" =~ ^[0-9]+$ ]]; then
+		#	uploaddate=$(echo "${line}" | cut -d ',' -f1 | sed -e "s/\"//g")
+		#	if [[ "${uploaddate}" -lt "${breaktime}" ]]; then
+		#		echo "Video ${file} uploaded on ${uploaddate}, removing..."
+		#		rm "${file}"
+		#	fi
+		#fi
 		if [[ ${enabledb} = "1" ]]; then
 			if [[ -f "${file}" ]]; then
 				jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": \"video\"}" "${subfolder}/${file}" | tee -a "/tmp/${channel}.db"
@@ -149,4 +148,4 @@ if [[ ${enablecsv} = "1" ]]; then
 fi
 sort "${archive}" | uniq >"/tmp/${channel}.txt"
 mv "/tmp/${channel}.txt" "${archive}"
-tar -cvp -I zstd -f "${channel}.tar.zst" ./*.info.json && rm ./*.info.json
+tar -cvp -I zstd -f "${channel}.tar.zst" -- *.info.json && rm -- *.info.json
