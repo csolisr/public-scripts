@@ -76,41 +76,46 @@ if [[ ! -f "${sortcsv}" ]]; then
 fi
 db=$(date -d"${breaktime}" +"%s")
 find . -type f -iname "*.info.json" -exec ls -t {} + | while read -r xp; do
-	x="${xp##./}"
-	if [[ "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${subfolder}/${x}") != "@${channel}" ]]; then
-		echo "Video ${x} not uploaded from ${channel}, removing..." && rm "${subfolder}/${x}" &
+	(
+		x="${xp##./}"
+		if [[ -f "${subfolder}/${x}" && "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${subfolder}/${x}") != "@${channel}" ]]; then
+			echo "Video ${x} not uploaded from ${channel}, removing..." && rm "${subfolder}/${x}" #&
+		fi
+		if [[ -f "${subfolder}/${x}" && "${breaktime}" =~ ^[0-9]+$ && "${db}" -ge "${df}" ]]; then
+			echo "Video ${x} uploaded before ${breaktime}, removing..." && rm "${subfolder}/${x}" #&
+		fi
+		if [[ -f "${subfolder}/${x}" ]]; then
+			df=$(jq -rc '.timestamp' "${subfolder}/${x}")
+			touch "${subfolder}/${x}" -d "@${df}" #&
+		fi
+		if [[ -f "${subfolder}/${x}" ]]; then
+			echo "youtube $(jq -cr '.id' "${subfolder}/${x}")" | tee -a "${archive}" &
+			if [[ ${enablecsv} = "1" ]]; then
+				jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${subfolder}/${x}" | while read -r i; do
+					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" | tee -a "${csv}" #&
+				done
+			fi
+			if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
+				jq -c '[.upload_date, .timestamp]' "${subfolder}/${x}" | while read -r i; do
+					echo "${i},${x}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e "s/\\\\\"/＂/g" | tee -a "${sortcsv}" #&
+				done
+			fi
+		fi
+	) &
+	#if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 3 * 2)) ]]; then
+	if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
+		wait -n
 	fi
-	if [[ -f "${subfolder}/${x}" && "${breaktime}" =~ ^[0-9]+$ ]]; then
-		df=$(jq -rc '.timestamp' "${subfolder}/${x}")
-		if [[ "${db}" -ge "${df}" ]]; then
-			echo "Video ${x} uploaded before ${breaktime}, removing..." && rm "${subfolder}/${x}" &
-		else
-			touch "${subfolder}/${x}" -d "@${df}" &
-		fi
-	fi
-	if [[ -f "${subfolder}/${x}" ]]; then
-		echo "youtube $(jq -cr '.id' "${subfolder}/${x}")" | tee -a "${archive}" &
-		if [[ ${enablecsv} = "1" ]]; then
-			jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${subfolder}/${x}" | while read -r i; do
-				echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" | tee -a "${csv}" &
-			done
-		fi
-		if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
-			jq -c '[.upload_date, .timestamp]' "${subfolder}/${x}" | while read -r i; do
-				echo "${i},${x}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e "s/\\\\\"/＂/g" | tee -a "${sortcsv}" &
-			done
-		fi
-		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 3 * 2)) ]]; then
-			wait -n
-		fi
-	fi
+
 done
 wait
 if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
 	sort "${sortcsv}" | uniq >"/tmp/${channel}-sort-ordered.csv"
 fi
 if [[ ${enabledb} = "1" ]]; then
-	rm "/tmp/${channel}.db"
+	if [[ -f "/tmp/${channel}.db" ]]; then
+		rm "/tmp/${channel}.db"
+	fi
 	echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos from ${channel} to watch later\",\"videos\":[" >"/tmp/${channel}.db"
 fi
 if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
