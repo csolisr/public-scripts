@@ -18,7 +18,6 @@ folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 # https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
 #and place it next to your script.
 cookies="${folder}/yt-cookies.txt"
-#subfolder="${folder}/${channel}"
 subfolder="${folder}/subscriptions"
 archive="${subfolder}/${channel}.txt"
 sortcsv="${subfolder}/${channel}-sort.csv"
@@ -46,25 +45,34 @@ if [[ -f "${channel}.tar.zst" ]]; then
 		tar -xvp -I zstd -f "${channel}.tar.zst"
 	fi
 fi
-#If available, you can use the cookies from your browser directly:
-#    --cookies-from-browser "firefox"
 url="https://www.youtube.com/@${channel}"
 if [[ "${channel}" = "subscriptions" ]]; then
 	url="https://www.youtube.com/feed/subscriptions"
 fi
 if [[ -f "${cookies}" && "${channel}" = "subscriptions" ]]; then
 	"${python}" "${ytdl}" "${url}" \
+		--extractor-args "youtubetab:approximate_date" \
 		--skip-download --download-archive "${archive}" \
 		--dateafter "${breaktime}" \
-		--extractor-args youtubetab:approximate_date \
 		--break-on-reject --lazy-playlist --write-info-json \
 		--sleep-requests "${sleeptime}"
 else
+	#If available, you can use the cookies from your browser directly. Substitute
+	#	--cookies "${cookies}"
+	#for the below, substituting for your browser of choice:
+	#	--cookies-from-browser "firefox"
+	#In case this still fails, you can resort to a PO Token. Follow the instructions at
+	# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
+	#and add a new variable with the contents of the PO Token in the form
+	#	potoken="INSERTYOURPOTOKENHERE"
+	#then substitute the "--extractor-args" line below with
+	#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
+	#including the backslash so the multiline command keeps working.
 	"${python}" "${ytdl}" "${url}" \
 		--cookies "${cookies}" \
+		--extractor-args "youtubetab:approximate_date" \
 		--skip-download --download-archive "${archive}" \
 		--dateafter "${breaktime}" \
-		--extractor-args youtubetab:approximate_date \
 		--break-on-reject --lazy-playlist --write-info-json \
 		--sleep-requests "${sleeptime}"
 fi
@@ -74,35 +82,37 @@ fi
 if [[ ! -f "${sortcsv}" ]]; then
 	touch "${sortcsv}"
 fi
-db=$(date -d"${breaktime}" +"%s")
+breaktime_timestamp=$(date -d"${breaktime}" +"%s")
 find . -type f -iname "*.info.json" -exec ls -t {} + | while read -r xp; do
 	(
 		x="${xp##./}"
 		if [[ -f "${subfolder}/${x}" && "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${subfolder}/${x}") != "@${channel}" ]]; then
-			echo "Video ${x} not uploaded from ${channel}, removing..." && rm "${subfolder}/${x}" #&
+			echo "Video ${x} not uploaded from ${channel}, removing..." && rm "${subfolder}/${x}"
 		fi
-		if [[ -f "${subfolder}/${x}" && "${breaktime}" =~ ^[0-9]+$ && "${db}" -ge "${df}" ]]; then
-			echo "Video ${x} uploaded before ${breaktime}, removing..." && rm "${subfolder}/${x}" #&
+		if [[ -f "${subfolder}/${x}" && "${breaktime}" =~ ^[0-9]+$ ]]; then
+			file_timestamp=$(jq -rc '.timestamp' "${subfolder}/${x}")
+			if [[ "${breaktime_timestamp}" -ge "${file_timestamp}" ]]; then
+				echo "Video ${x} uploaded before ${breaktime}, removing..." && rm "${subfolder}/${x}"
+			fi
 		fi
 		if [[ -f "${subfolder}/${x}" ]]; then
-			df=$(jq -rc '.timestamp' "${subfolder}/${x}")
-			touch "${subfolder}/${x}" -d "@${df}" #&
+			file_timestamp=$(jq -rc '.timestamp' "${subfolder}/${x}")
+			touch "${subfolder}/${x}" -d "@${file_timestamp}"
 		fi
 		if [[ -f "${subfolder}/${x}" ]]; then
 			echo "youtube $(jq -cr '.id' "${subfolder}/${x}")" | tee -a "${archive}" &
 			if [[ ${enablecsv} = "1" ]]; then
 				jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${subfolder}/${x}" | while read -r i; do
-					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" | tee -a "${csv}" #&
+					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" | tee -a "${csv}"
 				done
 			fi
 			if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
 				jq -c '[.upload_date, .timestamp]' "${subfolder}/${x}" | while read -r i; do
-					echo "${i},${x}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e "s/\\\\\"/＂/g" | tee -a "${sortcsv}" #&
+					echo "${i},${x}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e "s/\\\\\"/＂/g" | tee -a "${sortcsv}"
 				done
 			fi
 		fi
 	) &
-	#if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 3 * 2)) ]]; then
 	if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
 		wait -n
 	fi
