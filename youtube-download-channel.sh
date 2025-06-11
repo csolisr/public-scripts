@@ -111,7 +111,6 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 			fi
 		fi
 		if [[ -f "${x}" ]]; then
-			echo "youtube $(jq -cr '.id' "${x}")" >>"${archive}"
 			if [[ ${enablecsv} = "1" ]]; then
 				jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${x}" | while read -r i; do
 					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${csv}"
@@ -161,7 +160,12 @@ if [[ ${enablecsv} = "1" ]]; then
 	mv "/tmp/${channel}.csv" "${csv}"
 	rm "/tmp/${channel}-without-header.csv"
 fi
-sort "${archive}" | uniq >"/tmp/${channel}.txt"
-mv "/tmp/${channel}.txt" "${archive}"
 cd "${temporary}" || exit
-tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json && rm -- *.info.json && rm -rf "${temporary}"
+tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
+find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
+	if [[ -f "${x}" ]]; then
+		echo "youtube $(jq -cr '.id' "${x}")" >>"${archive}"
+	fi
+done
+sort "${archive}" | uniq >"/tmp/${channel}.txt" && mv "/tmp/${channel}.txt" "${archive}"
+rm -rf "${temporary}"
