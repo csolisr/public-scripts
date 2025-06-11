@@ -83,14 +83,18 @@ else
 		--break-on-reject --lazy-playlist --write-info-json \
 		--sleep-requests "${sleeptime}"
 fi
-if [[ -f "${csv}" ]]; then
-	rm -rf "${csv}"
+if [[ ${enablecsv} = 1 ]]; then
+	if [[ -f "${csv}" ]]; then
+		rm -rf "${csv}"
+	fi
+	touch "${csv}"
 fi
-touch "${csv}"
-if [[ -f "${sortcsv}" ]]; then
-	rm -rf "${sortcsv}"
+if [[ ${enabledb} = 1 ]]; then
+	if [[ -f "${sortcsv}" ]]; then
+		rm -rf "${sortcsv}"
+	fi
+	touch "${sortcsv}"
 fi
-touch "${sortcsv}"
 breaktime_timestamp=$(date -d"${breaktime}" +"%s")
 count=0
 total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
@@ -113,7 +117,7 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${csv}"
 				done
 			fi
-			if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
+			if [[ ${enabledb} = "1" ]]; then
 				jq -c '[.upload_date, .timestamp]' "${x}" | while read -r i; do
 					echo "${i},${x##*/}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e "s/\\\\\"/＂/g" >>"${sortcsv}"
 				done
@@ -127,10 +131,9 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 
 done
 wait
-if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
-	sort "${sortcsv}" | uniq >"/tmp/${channel}-sort-ordered.csv"
-fi
+sleep 1
 if [[ ${enabledb} = "1" ]]; then
+	sort "${sortcsv}" | uniq >"/tmp/${channel}-sort-ordered.csv"
 	if [[ -f "/tmp/${channel}.db" ]]; then
 		rm "/tmp/${channel}.db"
 	fi
@@ -146,13 +149,9 @@ if [[ ${enabledb} = "1" ]]; then
 			echo "${count}/${total} ${file}"
 		fi
 	done <"/tmp/${channel}-sort-ordered.csv"
-fi
-if [[ ${enabledb} = "1" ]]; then
 	echo "],\"_id\":\"${channel}$(date +%s)\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"/tmp/${channel}.db"
 	rm "${json}"
 	grep -v -e ":[ ]*null" "/tmp/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" -e "s/\[\r,/\[/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "/tmp/${channel}.db"
-fi
-if [[ ${enablecsv} = "1" || ${enabledb} = "1" ]]; then
 	rm "/tmp/${channel}-sort-ordered.csv" "${sortcsv}"
 fi
 if [[ ${enablecsv} = "1" ]]; then
