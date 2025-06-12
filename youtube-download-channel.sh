@@ -56,33 +56,36 @@ url="https://www.youtube.com/@${channel}"
 if [[ "${channel}" = "subscriptions" ]]; then
 	url="https://www.youtube.com/feed/subscriptions"
 fi
-if [[ -f "${cookies}" && "${channel}" = "subscriptions" ]]; then
-	#If available, you can use the cookies from your browser directly. Substitute
-	#	--cookies "${cookies}"
-	#for the below, substituting for your browser of choice:
-	#	--cookies-from-browser "firefox"
-	#In case this still fails, you can resort to a PO Token. Follow the instructions at
-	# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
-	#and add a new variable with the contents of the PO Token in the form
-	#	potoken="INSERTYOURPOTOKENHERE"
-	#then substitute the "--extractor-args" line below with
-	#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
-	#including the backslash so the multiline command keeps working.
-	"${python}" "${ytdl}" "${url}" \
-		--cookies "${cookies}" \
-		--extractor-args "youtubetab:approximate_date" \
-		--skip-download --download-archive "${archive}" \
-		--dateafter "${breaktime}" \
-		--break-on-reject --lazy-playlist --write-info-json \
-		--sleep-requests "${sleeptime}"
-else
-	"${python}" "${ytdl}" "${url}" \
-		--extractor-args "youtubetab:approximate_date" \
-		--skip-download --download-archive "${archive}" \
-		--dateafter "${breaktime}" \
-		--break-on-reject --lazy-playlist --write-info-json \
-		--sleep-requests "${sleeptime}"
-fi
+for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
+	echo "${full_url}"
+	if [[ -f "${cookies}" && "${channel}" = "subscriptions" ]]; then
+		#If available, you can use the cookies from your browser directly. Substitute
+		#	--cookies "${cookies}"
+		#for the below, substituting for your browser of choice:
+		#	--cookies-from-browser "firefox"
+		#In case this still fails, you can resort to a PO Token. Follow the instructions at
+		# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
+		#and add a new variable with the contents of the PO Token in the form
+		#	potoken="INSERTYOURPOTOKENHERE"
+		#then substitute the "--extractor-args" line below with
+		#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
+		#including the backslash so the multiline command keeps working.
+		"${python}" "${ytdl}" "${full_url}" \
+			--cookies "${cookies}" \
+			--extractor-args "youtubetab:approximate_date" \
+			--skip-download --download-archive "${archive}" \
+			--dateafter "${breaktime}" \
+			--break-on-reject --lazy-playlist --write-info-json \
+			--sleep-requests "${sleeptime}"
+	else
+		"${python}" "${ytdl}" "${full_url}" \
+			--extractor-args "youtubetab:approximate_date" \
+			--skip-download --download-archive "${archive}" \
+			--dateafter "${breaktime}" \
+			--break-on-reject --lazy-playlist --write-info-json \
+			--sleep-requests "${sleeptime}"
+	fi
+done
 if [[ ${enablecsv} = 1 ]]; then
 	if [[ -f "${csv}" ]]; then
 		rm -rf "${csv}"
@@ -162,9 +165,13 @@ if [[ ${enablecsv} = "1" ]]; then
 fi
 cd "${temporary}" || exit
 tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
+count=0
+total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
+	count=$((count + 1))
 	if [[ -f "${x}" ]]; then
 		echo "youtube $(jq -cr '.id' "${x}")" >>"${archive}"
+		echo "${count}/${total} ${x}"
 	fi
 done
 sort "${archive}" | uniq >"/tmp/${channel}.txt" && mv "/tmp/${channel}.txt" "${archive}"
