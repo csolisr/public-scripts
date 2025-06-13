@@ -19,9 +19,9 @@ folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 #and place it next to your script.
 cookies="${folder}/yt-cookies.txt"
 subfolder="${folder}/subscriptions"
-temporary="/tmp/subscriptions/${channel}"
+temporary="/tmp/subscriptions-${channel}"
 archive="${subfolder}/${channel}.txt"
-sortcsv="${subfolder}/${channel}-sort.csv"
+sortcsv="${temporary}/${channel}-sort.csv"
 csv="${subfolder}/${channel}.csv"
 json="${subfolder}/${channel}.db"
 python="python"
@@ -35,12 +35,10 @@ fi
 if [[ ! -d "${subfolder}" ]]; then
 	mkdir -v "${subfolder}"
 fi
-if [[ ! -d "/tmp/subscriptions" ]]; then
-	mkdir -v "/tmp/subscriptions"
-fi
 if [[ ! -d "${temporary}" ]]; then
 	mkdir -v "${temporary}"
 fi
+#TODO: mount $temporary on RAM, if possible
 cd "${temporary}" || exit
 if [[ ! -f "${archive}" ]]; then
 	touch "${archive}"
@@ -58,7 +56,7 @@ if [[ "${channel}" = "subscriptions" ]]; then
 fi
 for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 	echo "${full_url}"
-	if [[ -f "${cookies}" && "${channel}" = "subscriptions" ]]; then
+	if [[ -f "${cookies}" || "${channel}" = "subscriptions" ]]; then
 		#If available, you can use the cookies from your browser directly. Substitute
 		#	--cookies "${cookies}"
 		#for the below, substituting for your browser of choice:
@@ -114,6 +112,7 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 			fi
 		fi
 		if [[ -f "${x}" ]]; then
+			echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
 			if [[ ${enablecsv} = "1" ]]; then
 				jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${x}" | while read -r i; do
 					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${csv}"
@@ -135,44 +134,37 @@ done
 wait
 sleep 1
 if [[ ${enabledb} = "1" ]]; then
-	sort "${sortcsv}" | uniq >"/tmp/${channel}-sort-ordered.csv"
-	if [[ -f "/tmp/${channel}.db" ]]; then
-		rm "/tmp/${channel}.db"
+	sort "${sortcsv}" | uniq >"${temporary}/${channel}-sort-ordered.csv"
+	if [[ -f "${temporary}/${channel}.db" ]]; then
+		rm "${temporary}/${channel}.db"
 	fi
-	echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos from ${channel} to watch later\",\"videos\":[" >"/tmp/${channel}.db"
+	echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos from ${channel} to watch later\",\"videos\":[" >"${temporary}/${channel}.db"
 	count=0
-	total=$(wc -l <"/tmp/${channel}-sort-ordered.csv")
+	total=$(wc -l <"${temporary}/${channel}-sort-ordered.csv")
 	while read -r line; do
 		count=$((count + 1))
 		file=$(echo "${line}" | cut -d ',' -f3-)
 		if [[ -f "${file}" ]]; then
-			jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": \"video\"}" "${temporary}/${file}" >>"/tmp/${channel}.db"
-			echo "," >>"/tmp/${channel}.db"
+			jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": \"video\"}" "${temporary}/${file}" >>"${temporary}/${channel}.db"
+			echo "," >>"${temporary}/${channel}.db"
 			echo "${count}/${total} ${file}"
 		fi
-	done <"/tmp/${channel}-sort-ordered.csv"
-	echo "],\"_id\":\"${channel}$(date +%s)\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"/tmp/${channel}.db"
+	done <"${temporary}/${channel}-sort-ordered.csv"
+	echo "],\"_id\":\"${channel}$(date +%s)\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"${temporary}/${channel}.db"
 	rm "${json}"
-	grep -v -e ":[ ]*null" "/tmp/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" -e "s/\[\r,/\[/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "/tmp/${channel}.db"
-	rm "/tmp/${channel}-sort-ordered.csv" "${sortcsv}"
+	grep -v -e ":[ ]*null" "${temporary}/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" -e "s/\[\r,/\[/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "${temporary}/${channel}.db"
+	rm "${temporary}/${channel}-sort-ordered.csv" "${sortcsv}"
 fi
 if [[ ${enablecsv} = "1" ]]; then
-	sort "${csv}" | uniq >"/tmp/${channel}-without-header.csv"
-	echo '"Upload Date", "Timestamp", "Uploader", "Title", "Webpage URL"' >"/tmp/${channel}.csv"
-	cat "/tmp/${channel}-without-header.csv" >>"/tmp/${channel}.csv"
-	mv "/tmp/${channel}.csv" "${csv}"
-	rm "/tmp/${channel}-without-header.csv"
+	sort "${csv}" | uniq >"${temporary}/${channel}-without-header.csv"
+	echo '"Upload Date", "Timestamp", "Uploader", "Title", "Webpage URL"' >"${temporary}/${channel}.csv"
+	cat "${temporary}/${channel}-without-header.csv" >>"${temporary}/${channel}.csv"
+	mv "${temporary}/${channel}.csv" "${csv}"
+	rm "${temporary}/${channel}-without-header.csv"
 fi
 cd "${temporary}" || exit
 tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
 count=0
 total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
-find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
-	count=$((count + 1))
-	if [[ -f "${x}" ]]; then
-		echo "youtube $(jq -cr '.id' "${x}")" >>"${archive}"
-		echo "${count}/${total} ${x}"
-	fi
-done
-sort "${archive}" | uniq >"/tmp/${channel}.txt" && mv "/tmp/${channel}.txt" "${archive}"
+sort "${temporary}/${channel}.txt" | uniq >"${archive}"
 rm -rf "${temporary}"
