@@ -20,6 +20,9 @@ folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 cookies="${folder}/yt-cookies.txt"
 subfolder="${folder}/subscriptions"
 temporary="/tmp/subscriptions-${channel}"
+if [[ ! -w "/tmp" ]]; then
+	temporary="${subfolder}/subscriptions-${channel}"
+fi
 archive="${subfolder}/${channel}.txt"
 sortcsv="${temporary}/${channel}-sort.csv"
 csv="${subfolder}/${channel}.csv"
@@ -28,9 +31,15 @@ python="python"
 if [[ -f "/opt/venv/bin/python" ]]; then
 	python="/opt/venv/bin/python"
 fi
-ytdl="/usr/bin/yt-dlp"
+ytdl="yt-dlp"
+if [[ -f "/usr/bin/yt-dlp" ]]; then
+	ytdl="/usr/bin/yt-dlp"
+fi
 if [[ -f "/opt/venv/bin/yt-dlp" ]]; then
 	ytdl="/opt/venv/bin/yt-dlp"
+fi
+if [[ -f "/data/data/com.termux/files/usr/bin/yt-dlp" ]]; then
+	ytdl="/data/data/com.termux/files/usr/bin/yt-dlp"
 fi
 if [[ ! -d "${subfolder}" ]]; then
 	mkdir -v "${subfolder}"
@@ -38,7 +47,6 @@ fi
 if [[ ! -d "${temporary}" ]]; then
 	mkdir -v "${temporary}"
 fi
-#TODO: mount $temporary on RAM, if possible
 cd "${temporary}" || exit
 if [[ ! -f "${archive}" ]]; then
 	touch "${archive}"
@@ -74,14 +82,24 @@ for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 			--skip-download --download-archive "${archive}" \
 			--dateafter "${breaktime}" \
 			--break-on-reject --lazy-playlist --write-info-json \
-			--sleep-requests "${sleeptime}"
+			--sleep-requests "${sleeptime}" \
+			--parse-metadata "video::(?P<formats>)" \
+			--parse-metadata "video::(?P<thumbnails>)" \
+			--parse-metadata "video::(?P<automatic_captions>)" \
+			--parse-metadata "video::(?P<tags>)" \
+			--parse-metadata "video::(?P<categories>)"
 	else
 		"${python}" "${ytdl}" "${full_url}" \
 			--extractor-args "youtubetab:approximate_date" \
 			--skip-download --download-archive "${archive}" \
 			--dateafter "${breaktime}" \
 			--break-on-reject --lazy-playlist --write-info-json \
-			--sleep-requests "${sleeptime}"
+			--sleep-requests "${sleeptime}" \
+			--parse-metadata "video::(?P<formats>)" \
+			--parse-metadata "video::(?P<thumbnails>)" \
+			--parse-metadata "video::(?P<automatic_captions>)" \
+			--parse-metadata "video::(?P<tags>)" \
+			--parse-metadata "video::(?P<categories>)"
 	fi
 done
 if [[ ${enablecsv} = 1 ]]; then
@@ -102,6 +120,7 @@ total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 	count=$((count + 1))
 	(
+		jq '.formats="" | .automatic_captions="" | .thumbnails="" | .tags=""' "${x}" >"${temporary}/${x}.tmp" && mv "${temporary}/${x}.tmp" "${x}"
 		if [[ -f "${x}" && "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
 			echo "Video ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 		fi
@@ -145,7 +164,7 @@ if [[ ${enabledb} = "1" ]]; then
 		count=$((count + 1))
 		file=$(echo "${line}" | cut -d ',' -f3-)
 		if [[ -f "${file}" ]]; then
-			jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": \"video\"}" "${temporary}/${file}" >>"${temporary}/${channel}.db"
+			jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": .media_type}" "${temporary}/${file}" >>"${temporary}/${channel}.db"
 			echo "," >>"${temporary}/${channel}.db"
 			echo "${count}/${total} ${file}"
 		fi
