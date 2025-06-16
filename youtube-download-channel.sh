@@ -87,6 +87,8 @@ for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 			--parse-metadata "video::(?P<thumbnails>)" \
 			--parse-metadata "video::(?P<subtitles>)" \
 			--parse-metadata "video::(?P<automatic_captions>)" \
+			--parse-metadata "video::(?P<chapters>)" \
+			--parse-metadata "video::(?P<heatmap>)" \
 			--parse-metadata "video::(?P<tags>)" \
 			--parse-metadata "video::(?P<categories>)"
 	else
@@ -100,6 +102,8 @@ for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 			--parse-metadata "video::(?P<thumbnails>)" \
 			--parse-metadata "video::(?P<subtitles>)" \
 			--parse-metadata "video::(?P<automatic_captions>)" \
+			--parse-metadata "video::(?P<chapters>)" \
+			--parse-metadata "video::(?P<heatmap>)" \
 			--parse-metadata "video::(?P<tags>)" \
 			--parse-metadata "video::(?P<categories>)"
 	fi
@@ -133,7 +137,7 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 		fi
 		if [[ -f "${x}" ]]; then
 			if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
-				jq '.formats="" | .automatic_captions="" | .subtitles="" | .thumbnails="" | .tags=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
+				jq '.formats="" | .automatic_captions="" | .subtitles="" | .thumbnails="" | .tags="" | .chapters="" | .heatmap="" | .categories=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
 			fi
 			echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
 			if [[ ${enablecsv} = "1" ]]; then
