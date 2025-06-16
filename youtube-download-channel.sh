@@ -120,7 +120,7 @@ total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 	count=$((count + 1))
 	(
-		touch "${temporary}/${x}.tmp" && jq '.formats="" | .automatic_captions="" | .thumbnails="" | .tags=""' "${x}" >"${temporary}/${x}.tmp" && mv "${temporary}/${x}.tmp" "${x}"
+		jq '.formats="" | .automatic_captions="" | .thumbnails="" | .tags=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
 		if [[ -f "${x}" && "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
 			echo "Video ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 		fi
