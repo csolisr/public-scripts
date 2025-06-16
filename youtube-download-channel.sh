@@ -85,6 +85,7 @@ for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 			--sleep-requests "${sleeptime}" \
 			--parse-metadata "video::(?P<formats>)" \
 			--parse-metadata "video::(?P<thumbnails>)" \
+			--parse-metadata "video::(?P<subtitles>)" \
 			--parse-metadata "video::(?P<automatic_captions>)" \
 			--parse-metadata "video::(?P<tags>)" \
 			--parse-metadata "video::(?P<categories>)"
@@ -97,6 +98,7 @@ for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 			--sleep-requests "${sleeptime}" \
 			--parse-metadata "video::(?P<formats>)" \
 			--parse-metadata "video::(?P<thumbnails>)" \
+			--parse-metadata "video::(?P<subtitles>)" \
 			--parse-metadata "video::(?P<automatic_captions>)" \
 			--parse-metadata "video::(?P<tags>)" \
 			--parse-metadata "video::(?P<categories>)"
@@ -120,17 +122,19 @@ total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 	count=$((count + 1))
 	(
-		jq '.formats="" | .automatic_captions="" | .thumbnails="" | .tags=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
 		if [[ -f "${x}" && "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
-			echo "Video ${x} not uploaded from ${channel}, removing..." && rm "${x}"
+			echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 		fi
 		if [[ -f "${x}" && "${breaktime}" =~ ^[0-9]+$ ]]; then
 			file_timestamp=$(jq -rc '.timestamp' "${x}")
 			if [[ "${breaktime_timestamp}" -ge "${file_timestamp}" ]]; then
-				echo "Video ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
+				echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
 			fi
 		fi
 		if [[ -f "${x}" ]]; then
+			if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
+				jq '.formats="" | .automatic_captions="" | .subtitles="" | .thumbnails="" | .tags=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
+			fi
 			echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
 			if [[ ${enablecsv} = "1" ]]; then
 				jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${x}" | while read -r i; do
