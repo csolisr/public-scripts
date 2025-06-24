@@ -54,7 +54,7 @@ while read -r x; do
 		while read -r y; do
 			m=$((m + 1))
 			loop "${x}" "${m}" "${n}" "${d}" "${y}" #&
-		done < <(find "${x}" -type f \( -iname "*-48*" -or -iname "*-80*" -or -iname "*-320*" \) )
+		done < <(find "${x}" -type f \( -iname "*-48*" -or -iname "*-80*" -or -iname "*-320*" \))
 	fi
 	if [[ "${intense_optimizations}" -eq 1 ]]; then
 		printf "\rFolder %d\tDone     " "${n}"
