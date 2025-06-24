@@ -27,7 +27,7 @@ archive="${subfolder}/${channel}.txt"
 sortcsv="${temporary}/${channel}-sort.csv"
 csv="${subfolder}/${channel}.csv"
 json="${subfolder}/${channel}.db"
-python="python"
+python="python3"
 if [[ -f "/opt/venv/bin/python" ]]; then
 	python="/opt/venv/bin/python"
 fi
@@ -141,7 +141,7 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 			fi
 			echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
 			if [[ ${enablecsv} = "1" ]]; then
-				jq -c '[.upload_date, .timestamp, .uploader , .title, .webpage_url]' "${x}" | while read -r i; do
+				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url]' "${x}" | while read -r i; do
 					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${csv}"
 				done
 			fi
@@ -184,7 +184,7 @@ if [[ ${enabledb} = "1" ]]; then
 fi
 if [[ ${enablecsv} = "1" ]]; then
 	sort "${csv}" | uniq >"${temporary}/${channel}-without-header.csv"
-	echo '"Upload Date", "Timestamp", "Uploader", "Title", "Webpage URL"' >"${temporary}/${channel}.csv"
+	echo '"Upload Date", "Timestamp", "Duration", "Uploader", "Title", "Webpage URL"' >"${temporary}/${channel}.csv"
 	cat "${temporary}/${channel}-without-header.csv" >>"${temporary}/${channel}.csv"
 	mv "${temporary}/${channel}.csv" "${csv}"
 	rm "${temporary}/${channel}-without-header.csv"
