@@ -112,12 +112,19 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	echo "0 0 0 0 0 0 0 0 0 0 0 0" >"${tmpfile}"
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
 		"${dbengine}" "${db}" -v -e "\
-			alter table \`contact\` add index if not exists \`tmp_contact_baseurl\` (baseurl); \
+			alter table \`contact\` add index if not exists \`tmp_contact_baseurl_addr\` (baseurl, addr); \
 			alter table \`post-thread\` add index if not exists \`tmp_post_thread_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
 			alter table \`post-thread-user\` add index if not exists \`tmp_post_thread_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
 			alter table \`post-user\` add index if not exists \`tmp_post_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
 			alter table \`post\` add index if not exists \`tmp_post_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
 			alter table \`photo\` add index if not exists \`tmp_photo_id\` (\`contact-id\`); \
+			select count(\`id\`) from contact c where \
+			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`cid\` from \`user-contact\`)) and \
+			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`uid\` from \`user\`)) and \
+			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`)) and \
+			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \
+			c.\`nick\` not in ('threads.sys', 'relay', 'friendica', 'sharkey', 'bot', 'catodon', \
+			'flipboard', 'lemmy', 'mitra', 'mstdn_bot', 'peertube', 'piefed', 'admin');
 		"
 	fi
 	counter=0
@@ -133,9 +140,9 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			fi
 		done < <("${dbengine}" "${db}" -N -B -q -e \
 			"select \`id\`, \`nick\`, \`baseurl\`, \`last-item\` from contact c where \
-			c.\`id\` not in (select \`cid\` from \`user-contact\`) and \
-			c.\`id\` not in (select \`uid\` from \`user\`) and \
-			c.\`id\` not in ( select \`contact-id\` from \`group_member\`) and \
+			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`cid\` from \`user-contact\`)) and \
+			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`uid\` from \`user\`)) and \
+			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`)) and \
 			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \
 			c.\`nick\` not in ('threads.sys', 'relay', 'friendica', 'sharkey', 'bot', 'catodon', \
 			'flipboard', 'lemmy', 'mitra', 'mstdn_bot', 'peertube', 'piefed', 'admin') \
@@ -156,7 +163,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			alter table \`post\` auto_increment = 1; \
 			alter table \`photo\` auto_increment = 1; \
 			alter table \`contact\` auto_increment = 1; \
-			alter table \`contact\` drop index \`tmp_contact_baseurl\`; \
+			alter table \`contact\` drop index \`tmp_contact_baseurl_addr\`; \
 			alter table \`post-thread\` drop index \`tmp_post_thread_id\`; \
 			alter table \`post-thread-user\` drop index \`tmp_post_thread_user_id\`; \
 			alter table \`post-user\` drop index \`tmp_post_user_id\`; \
