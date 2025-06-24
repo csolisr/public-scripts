@@ -26,6 +26,7 @@ fi
 archive="${subfolder}/${channel}.txt"
 sortcsv="${temporary}/${channel}-sort.csv"
 csv="${subfolder}/${channel}.csv"
+tmpcsv="${temporary}/${channel}.csv"
 json="${subfolder}/${channel}.db"
 python="python3"
 if [[ -f "/opt/venv/bin/python" ]]; then
@@ -109,10 +110,10 @@ for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 	fi
 done
 if [[ ${enablecsv} = 1 ]]; then
-	if [[ -f "${csv}" ]]; then
-		rm -rf "${csv}"
+	if [[ -f "${tmpcsv}" ]]; then
+		rm -rf "${tmpcsv}"
 	fi
-	touch "${csv}"
+	touch "${tmpcsv}"
 fi
 if [[ ${enabledb} = 1 ]]; then
 	if [[ -f "${sortcsv}" ]]; then
@@ -142,7 +143,7 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 			echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
 			if [[ ${enablecsv} = "1" ]]; then
 				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url]' "${x}" | while read -r i; do
-					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${csv}"
+					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${tmpcsv}"
 				done
 			fi
 			if [[ ${enabledb} = "1" ]]; then
@@ -183,11 +184,12 @@ if [[ ${enabledb} = "1" ]]; then
 	rm "${temporary}/${channel}-sort-ordered.csv" "${sortcsv}"
 fi
 if [[ ${enablecsv} = "1" ]]; then
-	sort "${csv}" | uniq >"${temporary}/${channel}-without-header.csv"
-	echo '"Upload Date", "Timestamp", "Duration", "Uploader", "Title", "Webpage URL"' >"${temporary}/${channel}.csv"
-	cat "${temporary}/${channel}-without-header.csv" >>"${temporary}/${channel}.csv"
-	mv "${temporary}/${channel}.csv" "${csv}"
+	sort "${tmpcsv}" | uniq >"${temporary}/${channel}-without-header.csv"
+	echo '"Upload Date", "Timestamp", "Duration", "Uploader", "Title", "Webpage URL"' >"${temporary}/${channel}-tmp.csv"
+	cat "${temporary}/${channel}-without-header.csv" >>"${temporary}/${channel}-tmp.csv"
+	mv "${temporary}/${channel}-tmp.csv" "${csv}"
 	rm "${temporary}/${channel}-without-header.csv"
+	rm "${tmpcsv}"
 fi
 cd "${temporary}" || exit
 tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
