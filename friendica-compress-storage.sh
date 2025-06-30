@@ -18,18 +18,19 @@ loop_1() {
 		done
 	elif [[ "${t}" =~ PNG ]]; then
 		nice -n 10 oxipng -o max "${p}" #&> /dev/null
-	elif [[ "${p}" =~ Web/P ]]; then
+	elif [[ "${t}" =~ Web/P ]]; then
 		#If file is not animated
 		if [[ -f "${p}" ]]; then
-			if grep -v -q -e "ANIM" -e "ANMF" "${p}"; then
-				nice -n 10 cwebp -mt -af -quiet "${p}" -o /tmp/temp.webp #&> /dev/null
-				if [[ -f /tmp/temp.webp ]]; then
-					size_new=$(stat -c%s "/tmp/temp.webp" || 0)
-					size_original=$(stat -c%s "${p}")
+			if grep -q -a -l -e "ANIM" -e "ANMF" "${p}"; then
+				tmppic="/tmp/temp_$(date +%s).webp"
+				nice -n 10 cwebp -mt -af -quiet "${p}" -o "${tmppic}" #&> /dev/null
+				if [[ -f "${tmppic}" ]]; then
+					size_new=$(stat -c%s "${tmppic}" 2>/dev/null || echo 0)
+					size_original=$(stat -c%s "${p}" 2>/dev/null || echo 0)
 					if [[ "${size_original}" -gt "${size_new}" ]]; then
-						mv /tmp/temp.webp "${p}" #&> /dev/null
+						mv "${tmppic}" "${p}" #&> /dev/null
 					else
-						rm /tmp/temp.webp #&> /dev/null
+						rm "${tmppic}" #&> /dev/null
 					fi
 				fi
 			fi
@@ -37,7 +38,7 @@ loop_1() {
 	fi
 }
 
-find "${folder}/${storagefolder}" -depth -mindepth 2 -type f -size +50k -not -iname "index.html" | (
+find "${folder}/${storagefolder}" -depth -mindepth 2 -type f -size +50k -atime -8 -not -iname "index.html" | (
 	while read -r p; do
 		loop_1 "${p}" &
 		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; do

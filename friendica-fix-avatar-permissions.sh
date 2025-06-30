@@ -27,7 +27,7 @@ loop_1() {
 	elif [[ "${p}" =~ .webp ]]; then
 		#If file is not animated
 		if [[ -f "${p}" ]]; then
-			if grep -q -v -e "ANIM" -e "ANMF" "${p}"; then
+			if grep -q -a -l -e "ANIM" -e "ANMF" "${p}"; then
 				tmppic="/tmp/temp_$(date +%s).webp"
 				nice -n 10 cwebp -mt -af -quiet "${p}" -o "${tmppic}" #&> /dev/null
 				if [[ -f "${tmppic}" ]]; then
