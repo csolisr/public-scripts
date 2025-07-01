@@ -63,52 +63,55 @@ url="https://www.youtube.com/@${channel}"
 if [[ "${channel}" = "subscriptions" ]]; then
 	url="https://www.youtube.com/feed/subscriptions"
 fi
-for full_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
-	echo "${full_url}"
-	if [[ -f "${cookies}" || "${channel}" = "subscriptions" ]]; then
-		#If available, you can use the cookies from your browser directly. Substitute
-		#	--cookies "${cookies}"
-		#for the below, substituting for your browser of choice:
-		#	--cookies-from-browser "firefox"
-		#In case this still fails, you can resort to a PO Token. Follow the instructions at
-		# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
-		#and add a new variable with the contents of the PO Token in the form
-		#	potoken="INSERTYOURPOTOKENHERE"
-		#then substitute the "--extractor-args" line below with
-		#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
-		#including the backslash so the multiline command keeps working.
-		"${python}" "${ytdl}" "${full_url}" \
-			--cookies "${cookies}" \
-			--extractor-args "youtubetab:approximate_date" \
-			--skip-download --download-archive "${archive}" \
-			--dateafter "${breaktime}" \
-			--break-on-reject --lazy-playlist --write-info-json \
-			--sleep-requests "${sleeptime}" \
-			--parse-metadata "video::(?P<formats>)" \
-			--parse-metadata "video::(?P<thumbnails>)" \
-			--parse-metadata "video::(?P<subtitles>)" \
-			--parse-metadata "video::(?P<automatic_captions>)" \
-			--parse-metadata "video::(?P<chapters>)" \
-			--parse-metadata "video::(?P<heatmap>)" \
-			--parse-metadata "video::(?P<tags>)" \
-			--parse-metadata "video::(?P<categories>)"
-	else
-		"${python}" "${ytdl}" "${full_url}" \
-			--extractor-args "youtubetab:approximate_date" \
-			--skip-download --download-archive "${archive}" \
-			--dateafter "${breaktime}" \
-			--break-on-reject --lazy-playlist --write-info-json \
-			--sleep-requests "${sleeptime}" \
-			--parse-metadata "video::(?P<formats>)" \
-			--parse-metadata "video::(?P<thumbnails>)" \
-			--parse-metadata "video::(?P<subtitles>)" \
-			--parse-metadata "video::(?P<automatic_captions>)" \
-			--parse-metadata "video::(?P<chapters>)" \
-			--parse-metadata "video::(?P<heatmap>)" \
-			--parse-metadata "video::(?P<tags>)" \
-			--parse-metadata "video::(?P<categories>)"
-	fi
-done
+#for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
+#Via https://github.com/yt-dlp/yt-dlp/issues/13573#issuecomment-3020152141
+full_url=$(yt-dlp -I0 --print "playlist:https://www.youtube.com/playlist?list=UU%(channel_id.2:)s" "${url}")
+#full_url=$(curl "${url}" | tr -d "\n\r" | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl")
+echo "${url} = ${full_url}"
+if [[ -f "${cookies}" || "${channel}" = "subscriptions" ]]; then
+	#If available, you can use the cookies from your browser directly. Substitute
+	#	--cookies "${cookies}"
+	#for the below, substituting for your browser of choice:
+	#	--cookies-from-browser "firefox"
+	#In case this still fails, you can resort to a PO Token. Follow the instructions at
+	# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
+	#and add a new variable with the contents of the PO Token in the form
+	#	potoken="INSERTYOURPOTOKENHERE"
+	#then substitute the "--extractor-args" line below with
+	#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
+	#including the backslash so the multiline command keeps working.
+	"${python}" "${ytdl}" "${full_url}" \
+		--cookies "${cookies}" \
+		--skip-download --download-archive "${archive}" \
+		--dateafter "${breaktime}" \
+		--extractor-args "youtubetab:approximate_date,youtubetab:skip=webpage" \
+		--break-on-reject --lazy-playlist --write-info-json \
+		--sleep-requests "${sleeptime}" \
+		--parse-metadata "video::(?P<formats>)" \
+		--parse-metadata "video::(?P<thumbnails>)" \
+		--parse-metadata "video::(?P<subtitles>)" \
+		--parse-metadata "video::(?P<automatic_captions>)" \
+		--parse-metadata "video::(?P<chapters>)" \
+		--parse-metadata "video::(?P<heatmap>)" \
+		--parse-metadata "video::(?P<tags>)" \
+		--parse-metadata "video::(?P<categories>)"
+else
+	"${python}" "${ytdl}" "${full_url}" \
+		--skip-download --download-archive "${archive}" \
+		--dateafter "${breaktime}" \
+		--extractor-args "youtubetab:approximate_date,youtubetab:skip=webpage" \
+		--break-on-reject --lazy-playlist --write-info-json \
+		--sleep-requests "${sleeptime}" \
+		--parse-metadata "video::(?P<formats>)" \
+		--parse-metadata "video::(?P<thumbnails>)" \
+		--parse-metadata "video::(?P<subtitles>)" \
+		--parse-metadata "video::(?P<automatic_captions>)" \
+		--parse-metadata "video::(?P<chapters>)" \
+		--parse-metadata "video::(?P<heatmap>)" \
+		--parse-metadata "video::(?P<tags>)" \
+		--parse-metadata "video::(?P<categories>)"
+fi
+#done
 if [[ ${enablecsv} = 1 ]]; then
 	if [[ -f "${tmpcsv}" ]]; then
 		rm -rf "${tmpcsv}"
