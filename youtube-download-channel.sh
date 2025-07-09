@@ -60,15 +60,19 @@ if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
 	fi
 fi
 url="https://www.youtube.com/@${channel}"
+#Via https://github.com/yt-dlp/yt-dlp/issues/13573#issuecomment-3020152141
+full_url=$("${ytdl}" -I0 --print "playlist:https://www.youtube.com/playlist?list=UU%(channel_id.2:)s" "${url}")
 if [[ "${channel}" = "subscriptions" ]]; then
 	url="https://www.youtube.com/feed/subscriptions"
+	full_url="${url}"
+elif [[ "${channel}" = "WL" ]]; then
+	url="https://www.youtube.com/playlist?list=WL"
+	full_url="${url}"
 fi
 #for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
-#Via https://github.com/yt-dlp/yt-dlp/issues/13573#issuecomment-3020152141
-full_url=$(yt-dlp -I0 --print "playlist:https://www.youtube.com/playlist?list=UU%(channel_id.2:)s" "${url}")
 #full_url=$(curl "${url}" | tr -d "\n\r" | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl")
 echo "${url} = ${full_url}"
-if [[ -f "${cookies}" || "${channel}" = "subscriptions" ]]; then
+if [[ -f "${cookies}" || "${channel}" = "subscriptions" || "${channel}" = "WL" ]]; then
 	#If available, you can use the cookies from your browser directly. Substitute
 	#	--cookies "${cookies}"
 	#for the below, substituting for your browser of choice:
@@ -130,7 +134,7 @@ total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 	count=$((count + 1))
 	(
-		if [[ -f "${x}" && "${channel}" != "subscriptions" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
+		if [[ -f "${x}" && "${channel}" != "subscriptions" && "${channel}" != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
 			echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 		fi
 		if [[ -f "${x}" && "${breaktime}" =~ ^[0-9]+$ ]]; then
@@ -145,7 +149,7 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 			fi
 			echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
 			if [[ ${enablecsv} = "1" ]]; then
-				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url]' "${x}" | while read -r i; do
+				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
 					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${tmpcsv}"
 				done
 			fi
@@ -188,7 +192,7 @@ if [[ ${enabledb} = "1" ]]; then
 fi
 if [[ ${enablecsv} = "1" ]]; then
 	sort "${tmpcsv}" | uniq >"${temporary}/${channel}-without-header.csv"
-	echo '"Upload Date", "Timestamp", "Duration", "Uploader", "Title", "Webpage URL"' >"${temporary}/${channel}-tmp.csv"
+	echo '"Upload Date", "Timestamp", "Duration", "Uploader", "Title", "Webpage URL", "Livestream"' >"${temporary}/${channel}-tmp.csv"
 	cat "${temporary}/${channel}-without-header.csv" >>"${temporary}/${channel}-tmp.csv"
 	mv "${temporary}/${channel}-tmp.csv" "${csv}"
 	rm "${temporary}/${channel}-without-header.csv"
