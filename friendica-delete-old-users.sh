@@ -17,8 +17,7 @@ starterid=${3:-"0"}
 db="friendica"
 period="${period_amount} MONTH"
 tmpfile=/tmp/friendica-delete-old-users.csv
-tmpreadlock=/tmp/friendica-delete-old-users.read.tmp
-tmpwritelock=/tmp/friendica-delete-old-users.write.tmp
+tmplock=/tmp/friendica-delete-old-users.tmp
 
 loop() {
 	baseurltrimmed=$(echo "${baseurl}" | sed -e "s/http[s]*:\/\///g")
@@ -33,7 +32,7 @@ loop() {
 	if [[ -n $(type flock) ]]; then
 		isreadlocked=0
 		while [[ "${isreadlocked}" -eq 0 ]]; do
-			exec 9>"${tmpreadlock}"
+			exec 9>"${tmplock}"
 			if flock -n -e 9; then
 				isreadlocked=1
 				if [[ -f "${tmpfile}" ]]; then
@@ -66,11 +65,11 @@ loop() {
 					flock -u 9
 					iswritelocked=0
 					while [[ "${iswritelocked}" -eq 0 ]]; do
-						exec 8>"${tmpwritelock}"
-						if flock -n -e 8; then
+						exec 9>"${tmplock}"
+						if flock -n -e 9; then
 							iswritelocked=1
 							echo "${counter} ${lastitemid} ${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount} ${photocount}" >"${tmpfile}"
-							flock -u 8
+							flock -u 9
 						fi
 					done
 				fi
@@ -149,23 +148,18 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	if [[ -f "${tmpfile}" ]]; then
 		rm -rf "${tmpfile}"
 	fi
-	if [[ -f "${tmpreadlock}" ]]; then
-		rm -rf "${tmpreadlock}"
-	fi
-	if [[ -f "${tmpwritelock}" ]]; then
-		rm -rf "${tmpwritelock}"
+	if [[ -f "${tmplock}" ]]; then
+		rm -rf "${tmplock}"
 	fi
 	touch "${tmpfile}"
 	echo "0 0 0 0 0 0 0 0 0" >"${tmpfile}"
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
-		"${dbengine}" "${db}" -v -e "\
-			alter table \`contact\` add index if not exists \`tmp_contact_baseurl_addr\` (baseurl, addr); \
-			alter table \`post-thread\` add index if not exists \`tmp_post_thread_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
-			alter table \`post-thread-user\` add index if not exists \`tmp_post_thread_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
-			alter table \`post-user\` add index if not exists \`tmp_post_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
-			alter table \`post\` add index if not exists \`tmp_post_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
-			alter table \`photo\` add index if not exists \`tmp_photo_id\` (\`contact-id\`); \
-		"
+		"${dbengine}" "${db}" -v -e "alter table \`contact\` add index if not exists \`tmp_contact_baseurl_addr\` (baseurl, addr)"
+		"${dbengine}" "${db}" -v -e "alter table \`post-thread\` add index if not exists \`tmp_post_thread_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
+		"${dbengine}" "${db}" -v -e "alter table \`post-thread-user\` add index if not exists \`tmp_post_thread_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
+		"${dbengine}" "${db}" -v -e "alter table \`post-user\` add index if not exists \`tmp_post_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
+		"${dbengine}" "${db}" -v -e "alter table \`post\` add index if not exists \`tmp_post_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
+		"${dbengine}" "${db}" -v -e "alter table \`photo\` add index if not exists \`tmp_photo_id\` (\`contact-id\`)"
 	fi
 	counter=0
 	was_empty=0
@@ -189,7 +183,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`cid\` from \`user-contact\`)) and \
 			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`uid\` from \`user\`)) and \
 			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`)) and \
-			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \
+			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \`last-item\` > '0001-01-01' and \
 			c.\`nick\` not in ('threads.sys', 'relay', 'friendica', 'sharkey', 'bot', 'catodon', \
 			'flipboard', 'lemmy', 'mitra', 'mstdn_bot', 'peertube', 'piefed', 'admin') and \
 			c.\`id\` > ${currentid} limit 1000")
@@ -209,27 +203,21 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		"
 		"${dboptimizeengine}" "${db}"
 	fi
-	"${dbengine}" "${db}" -v -e "\
-		alter table \`contact\` drop index \`tmp_contact_baseurl_addr\`; \
-		alter table \`post-thread\` drop index  \`tmp_post_thread_id\`; \
-		alter table \`post-thread-user\` drop index \`tmp_post_thread_user_id\`; \
-		alter table \`post-user\` drop index \`tmp_post_user_id\`; \
-		alter table \`post\` drop index \`tmp_post_id\`; \
-		alter table \`photo\` drop index \`tmp_photo_id\`; \
-	"
+	"${dbengine}" "${db}" -v -e "alter table \`contact\` drop index \`tmp_contact_baseurl_addr\`"
+	"${dbengine}" "${db}" -v -e "alter table \`post-thread\` drop index  \`tmp_post_thread_id\`"
+	"${dbengine}" "${db}" -v -e "alter table \`post-thread-user\` drop index \`tmp_post_thread_user_id\`"
+	"${dbengine}" "${db}" -v -e "alter table \`post-user\` drop index \`tmp_post_user_id\`"
+	"${dbengine}" "${db}" -v -e "alter table \`post\` drop index \`tmp_post_id\`"
+	"${dbengine}" "${db}" -v -e "alter table \`photo\` drop index \`tmp_photo_id\`"
 	"${dboptimizeengine}" "${db}"
 	if [[ -n $(type flock) ]]; then
-		flock -u 9
-		flock -u 8
+		flock -u 9 2>/dev/null
 	fi
 	if [[ -f "${tmpfile}" ]]; then
 		rm -rf "${tmpfile}"
 	fi
-	if [[ -f "${tmpreadlock}" ]]; then
-		rm -rf "${tmpreadlock}"
-	fi
-	if [[ -f "${tmpwritelock}" ]]; then
-		rm -rf "${tmpwritelock}"
+	if [[ -f "${tmplock}" ]]; then
+		rm -rf "${tmplock}"
 	fi
 	date
 fi
