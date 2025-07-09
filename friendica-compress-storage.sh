@@ -55,7 +55,7 @@ loop_1() {
 echo "Generating photo index..."                                                                    #&> /dev/null
 sudo mariadb "${db}" -e "alter table photo add index if not exists backend_index (\`backend-ref\`)" #&> /dev/null
 echo "Generating list of files..."                                                                  #&> /dev/null
-find "${storagefolder}" -depth -mindepth 2 -type f -size +50k -mtime -8 -not -iname "index.html" | (
+find "${storagefolder}" -depth -mindepth 2 -type f -size +100k -mtime -8 -not -iname "index.html" | (
 	while read -r p; do
 		loop_1 "${p}" &
 		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; do
