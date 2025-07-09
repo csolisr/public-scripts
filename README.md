@@ -4,7 +4,7 @@ Public scripts for assorted web maintenance tasks used in my server.
 
 # This is a mirrored repository
 
-If you're browsing this repository from [GitHub](https://github.com/csolisr/public-scripts), you should know that the main home for these files is on [my personal server over Forgejo](https://code.azkware.net/csolisr/public-scripts).
+If you're browsing this repository from [Codeberg](https://codeberg.org/csolisr/public-scripts) or [GitHub](https://github.com/csolisr/public-scripts), you should know that the main home for these files is on [my personal server over Forgejo](https://code.azkware.net/csolisr/public-scripts).
 
 # Description
 
@@ -23,7 +23,7 @@ As you can see, the vast majority of my scripts are used to handle my [Friendica
 * friendica-find-largest-accounts.sh: Finds which are the contacts that have the most posts assigned to them.
 * friendica-delete-specific-contact.sh: Uses the same code as the previous scripts to delete all data from a specific user, particularly useful for unfollowed contacts with too many posts.
 * media-optimize-local.sh: For a given folder, it finds any image files within and compresses them. Requires `gifsicle`, `oxipng`, `jpegoptim`, and `cwebp` installed.
-* youtube-download-channel.sh: A wrapper to ease downloading metadata from subscriptions or channels, in order to export it as a CSV, and as a playlist DB file compatible with FreeTube. Requires `yt-dlp`, `jq`, and optionally a cookie to download your subscriptions.
+* youtube-download-channel.sh: A wrapper to ease downloading metadata from subscriptions or channels, in order to export it as a CSV, and as a playlist DB file compatible with FreeTube. Requires `yt-dlp`, `jq`, `zstd`, and optionally a cookie to download your subscriptions.
 
 # License
 
