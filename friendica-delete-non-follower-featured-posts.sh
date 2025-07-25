@@ -66,9 +66,19 @@ printf "\rProcessQueue\t\t%s\n\r" "${cfmax}"
 cg=${limit}
 cgmax=0
 until [[ ${cg} -lt ${limit} ]]; do
-	cg=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` and w1.command = \"UpdateContact\" and w1.\`pid\` = 0 and w1.\`done\` = 0) limit ${cg}; select row_count();")
+	cg=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`parameter\` not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"OnePoll\" and \`done\` = 0 limit ${cg}; select row_count();")
 	cgmax=$((cgmax + cg))
-	printf "\rWorkerQueue\t\t%s\r" "${cgmax}"
+	printf "\rOnePoll\t\t\t%s\r" "${cgmax}"
 done
-printf "\rWorkerQueue\t\t%s\n\r" "${cgmax}"
-#echo "WorkerQueue       $cgmax"
+printf "\rOnePoll\t\t\t%s\n\r" "${cgmax}"
+#echo "OnePoll           $cgmax"
+
+ch=${limit}
+chmax=0
+until [[ ${ch} -lt ${limit} ]]; do
+	ch=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` and w1.command = \"UpdateContact\" and w1.\`pid\` = 0 and w1.\`done\` = 0) limit ${ch}; select row_count();")
+	chmax=$((chmax + ch))
+	printf "\rWorkerQueue\t\t%s\r" "${chmax}"
+done
+printf "\rWorkerQueue\t\t%s\n\r" "${chmax}"
+#echo "WorkerQueue       $chmax"
