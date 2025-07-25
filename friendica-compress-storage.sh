@@ -52,9 +52,10 @@ loop_1() {
 }
 
 #Generate an index to make searches faster
-echo "Generating photo index..."                                                                    #&> /dev/null
-sudo mariadb "${db}" -e "alter table photo add index if not exists backend_index (\`backend-ref\`)" #&> /dev/null
-echo "Generating list of files..."                                                                  #&> /dev/null
+echo "Generating photo index..."                                                                          #&> /dev/null
+sudo mariadb "${db}" -e "alter table photo add index if not exists backend_index (\`backend-ref\`)"       #&> /dev/null
+echo "Generating list of files..."                                                                        #&> /dev/null
+find "${storagefolder}" -depth -mindepth 2 -type f -size +100k -mtime -8 -not -iname "index.html" | wc -l #&> /dev/null
 find "${storagefolder}" -depth -mindepth 2 -type f -size +100k -mtime -8 -not -iname "index.html" | (
 	while read -r p; do
 		loop_1 "${p}" &
