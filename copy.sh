@@ -3,6 +3,7 @@
 folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 cd "${folder}" || exit
 for i in ./*.sh; do
+	tr "${i}" -d'\r'
 	shfmt -w "${i}"
 	shellcheck -o all -e SC2312 -f diff "${i}" | patch -p1
 	shellcheck -o all -e SC2312 "${i}"
