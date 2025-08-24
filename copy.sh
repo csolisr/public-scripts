@@ -3,7 +3,7 @@
 folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 cd "${folder}" || exit
 for i in ./*.sh; do
-	tr "${i}" -d'\r'
+	tr -d '\r' <"${i}" >"/tmp/${i}" && mv "/tmp/${i}" "${i}"
 	shfmt -w "${i}"
 	shellcheck -o all -e SC2312 -f diff "${i}" | patch -p1
 	shellcheck -o all -e SC2312 "${i}"
@@ -20,6 +20,6 @@ for i in ./*.sh; do
 	find ../../Scripts -iname "${i_tmp}" | while read -r k; do
 		echo "${k}"
 		diff <(sed -e "s/friendica.example.net/hub.azkware.net/g" "${i}") "${k}"
-		sed -e "s/friendica.example.net/hub.azkware.net/g" "${i}" | sudo tee "${k}" &>/dev/null
+		sed -e "s/friendica.example.net/hub.azkware.net/g" "${i}" | tee "${k}" &>/dev/null
 	done
 done
