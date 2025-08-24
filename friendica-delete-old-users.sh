@@ -183,10 +183,11 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`cid\` from \`user-contact\`)) and \
 			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`uid\` from \`user\`)) and \
 			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`)) and \
+			(c.\`id\` in (select \`owner-id\` from \`post\`)  or c.\`id\` in (select \`author-id\` from \`post\`) or c.\`id\` in (select \`causer-id\` from \`post\`)) and \
 			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \`last-item\` > '0001-01-01' and \
 			c.\`nick\` not in ('threads.sys', 'relay', 'friendica', 'sharkey', 'bot', 'catodon', \
 			'flipboard', 'lemmy', 'mitra', 'mstdn_bot', 'peertube', 'piefed', 'admin') and \
-			c.\`id\` > ${currentid} limit 1000")
+			c.\`id\` > ${currentid} limit 10000")
 		wait
 		if [[ "${current_counter}" -eq 0 ]]; then
 			was_empty=1
