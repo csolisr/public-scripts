@@ -61,6 +61,9 @@ loop() {
 						if [[ "${id}" -gt "${lastitemid}" ]]; then
 							lastitemid="${id}"
 						fi
+						if [[ -n "${tmp_picturecount}" ]]; then
+							picturecount=$((picturecount + tmp_picturecount))
+						fi
 						if [[ -n "${tmp_postthreadcount}" ]]; then
 							postthreadcount=$((postthreadcount + tmp_postthreadcount))
 						fi
@@ -82,6 +85,15 @@ loop() {
 						if [[ -n "${tmp_photocount}" ]]; then
 							photocount=$((photocount + tmp_photocount))
 						fi
+						if [[ -n "${tmp_contactcount}" ]]; then
+							contactcount=$((contactcount + tmp_contactcount))
+						fi
+						if [[ -n "${tmp_apcontactcount}" ]]; then
+							apcontactcount=$((apcontactcount + tmp_apcontactcount))
+						fi
+						if [[ -n "${tmp_diasporacontactcount}" ]]; then
+							diasporacontactcount=$((diasporacontactcount + tmp_diasporacontactcount))
+						fi
 					done <"${tmpfile}"
 					flock -u 9
 					iswritelocked=0
@@ -101,6 +113,9 @@ loop() {
 			while read -r tmp_counter tmp_lastitemid tmp_picturecount tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcount tmp_photocount tmp_contactcount tmp_apcontactcount tmp_diasporacontactcount; do
 				if [[ "${id}" -gt "${lastitemid}" ]]; then
 					lastitemid="${id}"
+				fi
+				if [[ -n "${tmp_picturecount}" ]]; then
+					picturecount=$((picturecount + tmp_picturecount))
 				fi
 				if [[ -n "${tmp_postthreadcount}" ]]; then
 					postthreadcount=$((postthreadcount + tmp_postthreadcount))
@@ -123,28 +138,18 @@ loop() {
 				if [[ -n "${tmp_photocount}" ]]; then
 					photocount=$((photocount + tmp_photocount))
 				fi
+				if [[ -n "${tmp_contactcount}" ]]; then
+					contactcount=$((contactcount + tmp_contactcount))
+				fi
+				if [[ -n "${tmp_apcontactcount}" ]]; then
+					apcontactcount=$((apcontactcount + tmp_apcontactcount))
+				fi
+				if [[ -n "${tmp_diasporacontactcount}" ]]; then
+					diasporacontactcount=$((diasporacontactcount + tmp_diasporacontactcount))
+				fi
 			done <"${tmpfile}"
 			echo "${counter}" "${lastitemid}" "${picturecount}" "${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount} ${photocount} ${contactcount} ${apcontactcount} ${diasporacontactcount}" >"${tmpfile}"
 		fi
-	fi
-
-	while read -r tmp_counter tmp_picturecount tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcount tmp_photocount tmp_contactcount tmp_apcontactcount tmp_diasporacontactcount; do
-		if [[ -n "${tmp_counter}" && -n "${tmp_picturecount}" && -n "${tmp_postthreadcount}" && -n "${tmp_postthreadusercount}" && -n "${tmp_postusercount}" && -n "${tmp_posttagcount}" && -n "${tmp_postcontentcount}" && -n "${tmp_postcount}" && -n "${tmp_photocount}" && -n "${tmp_contactcount}" && -n "${tmp_apcontactcount}" && -n "${tmp_diasporacontactcount}" ]]; then
-			picturecount=$((picturecount + tmp_picturecount))
-			postthreadcount=$((postthreadcount + tmp_postthreadcount))
-			postthreadusercount=$((postthreadusercount + tmp_postthreadusercount))
-			postusercount=$((postusercount + tmp_postusercount))
-			posttagcount=$((posttagcount + tmp_posttagcount))
-			postcontentcount=$((postcontentcount + tmp_postcontentcount))
-			postcount=$((postcount + tmp_postcount))
-			photocount=$((photocount + tmp_photocount))
-			contactcount=$((contactcount + tmp_contactcount))
-			apcontactcount=$((apcontactcount + tmp_apcontactcount))
-			diasporacontactcount=$((diasporacontactcount + tmp_diasporacontactcount))
-		fi
-	done <"${tmpfile}"
-	if [[ -n "${counter}" && -n "${lastitemid}" && -n "${picturecount}" && -n "${postthreadcount}" && -n "${postthreadusercount}" && -n "${postusercount}" && -n "${posttagcount}" && -n "${postcontentcount}" && -n "${postcount}" && -n "${photocount}" && -n "${contactcount}" && -n "${apcontactcount}" && -n "${diasporacontactcount}" ]]; then
-		echo "${counter}" "${lastitemid}" "${picturecount}" "${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount} ${photocount} ${contactcount} ${apcontactcount} ${diasporacontactcount}" >"${tmpfile}"
 	fi
 	if [[ -n "${lastitem}" && "${#lastitem}" -gt 9 ]]; then
 		response_left=$(printf "%s %s %s %s@%s " "${counter}" "${id}" "${lastitem::-9}" "${nick}" "${baseurltrimmed}")
