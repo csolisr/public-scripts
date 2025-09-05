@@ -10,6 +10,8 @@ sleeptime=${3:-"1.0"}
 enabledb=${4:-"1"}
 #5th parameter: Whether to enable exporting to a CSV file (1=on by default, 0=off)
 enablecsv=${5:-"1"}
+#6th parameter: Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required.
+personal_folder=${6:-"/cygdrive/d/Nextcloud/Multimedia/Document/Playnite"}
 #Internal variables:
 #Via https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
 folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
@@ -28,10 +30,6 @@ sortcsv="${temporary}/${channel}-sort.csv"
 csv="${subfolder}/${channel}.csv"
 tmpcsv="${temporary}/${channel}.csv"
 json="${subfolder}/${channel}.db"
-python="python3"
-if [[ -f "/opt/venv/bin/python" ]]; then
-	python="/opt/venv/bin/python"
-fi
 ytdl="yt-dlp"
 if [[ -f "/usr/bin/yt-dlp" ]]; then
 	ytdl="/usr/bin/yt-dlp"
@@ -41,6 +39,9 @@ if [[ -f "/opt/venv/bin/yt-dlp" ]]; then
 fi
 if [[ -f "/data/data/com.termux/files/usr/bin/yt-dlp" ]]; then
 	ytdl="/data/data/com.termux/files/usr/bin/yt-dlp"
+fi
+if [[ -f "${personal_folder}/yt-dlp.exe" ]]; then
+	ytdl="${personal_folder}/yt-dlp.exe"
 fi
 if [[ ! -d "${subfolder}" ]]; then
 	mkdir -v "${subfolder}"
@@ -84,7 +85,7 @@ if [[ -f "${cookies}" || "${channel}" = "subscriptions" || "${channel}" = "WL" ]
 	#then substitute the "--extractor-args" line below with
 	#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
 	#including the backslash so the multiline command keeps working.
-	"${python}" "${ytdl}" "${full_url}" \
+	"${ytdl}" "${full_url}" \
 		--cookies "${cookies}" \
 		--skip-download --download-archive "${archive}" \
 		--dateafter "${breaktime}" \
@@ -100,7 +101,7 @@ if [[ -f "${cookies}" || "${channel}" = "subscriptions" || "${channel}" = "WL" ]
 		--parse-metadata "video::(?P<tags>)" \
 		--parse-metadata "video::(?P<categories>)"
 else
-	"${python}" "${ytdl}" "${full_url}" \
+	"${ytdl}" "${full_url}" \
 		--skip-download --download-archive "${archive}" \
 		--dateafter "${breaktime}" \
 		--extractor-args "youtubetab:approximate_date,youtubetab:skip=webpage" \
@@ -180,7 +181,7 @@ if [[ ${enabledb} = "1" ]]; then
 		count=$((count + 1))
 		file=$(echo "${line}" | cut -d ',' -f3-)
 		if [[ -f "${file}" ]]; then
-			jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid)\", \"type\": .media_type}" "${temporary}/${file}" >>"${temporary}/${channel}.db"
+			jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(uuidgen)\", \"type\": .media_type}" "${temporary}/${file}" >>"${temporary}/${channel}.db"
 			echo "," >>"${temporary}/${channel}.db"
 			echo "${count}/${total} ${file}"
 		fi
