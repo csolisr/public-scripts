@@ -23,9 +23,9 @@ cookies="${folder}/yt-cookies.txt"
 subfolder="${folder}/subscriptions"
 subscriptions_old="${subfolder}/subscriptions-old.csv"
 subscriptions_new="${subfolder}/subscriptions-new.csv"
-diff_file="${subfolder}/subscriptions-diff.csv"
+diff_file="/tmp/subscriptions-diff.csv"
 if [[ -f "${subscriptions_old}" && -f "${subscriptions_new}" ]]; then
-	diff <(sort "${subscriptions_old}" | sed -e "s/.*,http/http/g" -e "s/,.*//g") <(sort "${subscriptions_new}" | sed -e "s/.*,http/http/g" -e "s/,.*//g") | grep "< " | sed -e "s/< //g" -e "s/http:\/\/www.youtube.com\/channel\///g" | sort | uniq >"${diff_file}"
+	diff <(sort "${subscriptions_old}" | cut -d ',' -f2) <(sort "${subscriptions_new}" | cut -d ',' -f2) | grep "< " | sed -e "s/< //g" -e "s/http:\/\/www.youtube.com\/channel\///g" | sort | uniq >"${diff_file}"
 fi
 temporary="/tmp/subscriptions-${channel}"
 if [[ ! -w "/tmp" ]]; then
@@ -141,13 +141,6 @@ total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 	count=$((count + 1))
 	(
-		if [[ -f "${x}" && -f "${diff_file}" ]]; then
-			while read -r line; do
-				if [[ ("${channel}" = "subscriptions" || "${channel}" = "WL") && "${line}" = $(jq -rc ".uploader_id" "${x}") ]]; then
-					echo "${count}/${total} ${x} is from unsubscribed channel, removing..." && rm "${x}"
-				fi
-			done <"${diff_file}"
-		fi
 		if [[ -f "${x}" && "${channel}" != "subscriptions" && "${channel}" != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
 			echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 		fi
@@ -156,6 +149,20 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 			if [[ "${breaktime_timestamp}" -ge "${file_timestamp}" ]]; then
 				echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
 			fi
+		fi
+		if [[ -f "${x}" && -f "${diff_file}" && ("${channel}" = "subscriptions" || "${channel}" = "WL") ]]; then
+			channel_id=$(jq -rc ".channel_id" "${x}")
+			while read -r line; do
+				if [[ -f "${x}" && "${line}" = "${channel_id}" && -f "${subscriptions_old}" ]]; then
+					unsubscribed_channel=$(grep "${line}" "${subscriptions_old}" | cut -d ',' -f3-)
+					echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
+					touch "${subfolder}/${channel}-remove.csv"
+					jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
+						echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${subfolder}/${channel}-remove.csv"
+					done
+					rm "${x}"
+				fi
+			done <"${diff_file}"
 		fi
 		if [[ -f "${x}" ]]; then
 			if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
@@ -211,6 +218,7 @@ if [[ ${enablecsv} = "1" ]]; then
 	mv "${temporary}/${channel}-tmp.csv" "${csv}"
 	rm "${temporary}/${channel}-without-header.csv"
 	rm "${tmpcsv}"
+	rm "${diff_file}"
 fi
 cd "${temporary}" || exit
 tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
