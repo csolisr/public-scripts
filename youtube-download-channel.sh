@@ -21,6 +21,12 @@ folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 #and place it next to your script.
 cookies="${folder}/yt-cookies.txt"
 subfolder="${folder}/subscriptions"
+subscriptions_old="${subfolder}/subscriptions-old.csv"
+subscriptions_new="${subfolder}/subscriptions-new.csv"
+diff_file="${subfolder}/subscriptions-diff.csv"
+if [[ -f "${subscriptions_old}" && -f "${subscriptions_new}" ]]; then
+	diff <(sort "${subscriptions_old}" | sed -e "s/.*,http/http/g" -e "s/,.*//g") <(sort "${subscriptions_new}" | sed -e "s/.*,http/http/g" -e "s/,.*//g") | grep "< " | sed -e "s/< //g" -e "s/http:\/\/www.youtube.com\/channel\///g" | sort | uniq >"${diff_file}"
+fi
 temporary="/tmp/subscriptions-${channel}"
 if [[ ! -w "/tmp" ]]; then
 	temporary="${subfolder}/subscriptions-${channel}"
@@ -135,6 +141,13 @@ total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 	count=$((count + 1))
 	(
+		if [[ -f "${x}" && -f "${diff_file}" ]]; then
+			while read -r line; do
+				if [[ ("${channel}" = "subscriptions" || "${channel}" = "WL") && "${line}" = $(jq -rc ".uploader_id" "${x}") ]]; then
+					echo "${count}/${total} ${x} is from unsubscribed channel, removing..." && rm "${x}"
+				fi
+			done <"${diff_file}"
+		fi
 		if [[ -f "${x}" && "${channel}" != "subscriptions" && "${channel}" != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
 			echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 		fi
