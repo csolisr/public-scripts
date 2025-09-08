@@ -224,8 +224,8 @@ if [[ ${enablecsv} = "1" ]]; then
 fi
 cd "${temporary}" || exit
 #Fix permissions before compression, in case the script was run as root
-find "${temporary}" -iname "*.info.json" -exec chmod -v 664 {} \;
-find "${temporary}" -iname "*.info.json" -exec chown -v "${folder_user}:${folder_group}" {} \;
+find "${temporary}" -iname "*.info.json" -exec chmod 664 {} \;
+find "${temporary}" -iname "*.info.json" -exec chown "${folder_user}:${folder_group}" {} \;
 tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
 total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 sort "${temporary}/${channel}.txt" | uniq >"${archive}"
