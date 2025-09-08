@@ -49,21 +49,24 @@ loop_1() {
 			fi
 		fi
 	fi
+	printf "\r%s/%s %s\n\r" "${count}" "${total}" "${p}" #&> /dev/null
 }
 
 #Generate an index to make searches faster
-echo "Generating photo index..."                                                                          #&> /dev/null
-sudo mariadb "${db}" -e "alter table photo add index if not exists backend_index (\`backend-ref\`)"       #&> /dev/null
-echo "Generating list of files..."                                                                        #&> /dev/null
-find "${storagefolder}" -depth -mindepth 2 -type f -size +100k -mtime -8 -not -iname "index.html" | wc -l #&> /dev/null
-find "${storagefolder}" -depth -mindepth 2 -type f -size +100k -mtime -8 -not -iname "index.html" | (
-	while read -r p; do
-		loop_1 "${p}" &
-		until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; do
-			wait -n
-		done
+echo "Generating photo index..."                                                                    #&> /dev/null
+sudo mariadb "${db}" -e "alter table photo add index if not exists backend_index (\`backend-ref\`)" #&> /dev/null
+echo "Generating list of files..."                                                                  #&> /dev/null
+total=$(find "${storagefolder}" -depth -mindepth 2 -type f -not -iname "index.html" | wc -l)
+count=0
+while read -r p; do
+	count=$((count + 1))
+	loop_1 "${p}" "${count}" "${total}" &
+	until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; do
+		wait -n
 	done
-)
+done < <(find "${storagefolder}" -depth -mindepth 2 -type f -not -iname "index.html")
+#done < <(find "${storagefolder}" -depth -mindepth 2 -type f -size +100k -mtime -8 -not -iname "index.html")
 wait
+printf "\r\n"
 #Drop the index in the end to save storage
 sudo mariadb "${db}" -e "alter table photo drop index backend_index" #&> /dev/null
