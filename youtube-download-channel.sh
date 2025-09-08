@@ -52,22 +52,28 @@ fi
 folder_user=$(stat -c "%U" "${folder}")
 folder_group=$(stat -c "%G" "${folder}")
 if [[ ! -d "${subfolder}" ]]; then
-	mkdir -v "${subfolder}"
+	mkdir -v "${subfolder}" && chmod 775 "${subfolder}" && chown "${folder_user}:${folder_group}" "${subfolder}"
 fi
 if [[ ! -d "${temporary}" ]]; then
-	mkdir -v "${temporary}"
+	mkdir -v "${temporary}" && chmod 775 "${temporary}" && chown "${folder_user}:${folder_group}" "${temporary}"
 fi
 cd "${temporary}" || exit
 if [[ ! -f "${archive}" ]]; then
-	touch "${archive}"
+	touch "${archive}" && chmod 664 "${archive}" && chown "${folder_user}:${folder_group}" "${archive}"
 fi
+#if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
+#	if [[ "${channel}" = "subscriptions" ]]; then
+#		find "${subfolder}" -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}"; done
+#	else
+#		tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
+#	fi
+#fi
 if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
-	if [[ "${channel}" = "subscriptions" ]]; then
-		find "${subfolder}" -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}"; done
-	else
-		tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
-	fi
+	tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
 fi
+#Fix permissions after extraction, in case the script was run as root
+find "${temporary}" -type f -exec chmod 664 {} \;
+find "${temporary}" -type f -exec chown "${folder_user}:${folder_group}" {} \;
 url="https://www.youtube.com/@${channel}"
 #Via https://github.com/yt-dlp/yt-dlp/issues/13573#issuecomment-3020152141
 full_url=$("${ytdl}" -I0 --print "playlist:https://www.youtube.com/playlist?list=UU%(channel_id.2:)s" "${url}")
@@ -97,7 +103,7 @@ if [[ -f "${cookies}" || "${channel}" = "subscriptions" || "${channel}" = "WL" ]
 		--cookies "${cookies}" \
 		--skip-download --download-archive "${archive}" \
 		--dateafter "${breaktime}" \
-		--extractor-args "youtubetab:approximate_date,youtubetab:skip=webpage" \
+		--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
 		--break-on-reject --lazy-playlist --write-info-json \
 		--sleep-requests "${sleeptime}" \
 		--parse-metadata "video::(?P<formats>)" \
@@ -112,7 +118,7 @@ else
 	"${ytdl}" "${full_url}" \
 		--skip-download --download-archive "${archive}" \
 		--dateafter "${breaktime}" \
-		--extractor-args "youtubetab:approximate_date,youtubetab:skip=webpage" \
+		--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
 		--break-on-reject --lazy-playlist --write-info-json \
 		--sleep-requests "${sleeptime}" \
 		--parse-metadata "video::(?P<formats>)" \
@@ -152,7 +158,8 @@ find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 				echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
 			fi
 		fi
-		if [[ -f "${x}" && -f "${diff_file}" && ("${channel}" = "subscriptions" || "${channel}" = "WL") ]]; then
+		#if [[ -f "${x}" && -f "${diff_file}" && ("${channel}" = "subscriptions" || "${channel}" = "WL") ]]; then
+		if [[ -f "${x}" && -f "${diff_file}" && "${channel}" = "subscriptions" ]]; then
 			channel_id=$(jq -rc ".channel_id" "${x}")
 			while read -r line; do
 				if [[ -f "${x}" && "${line}" = "${channel_id}" && -f "${subscriptions_old}" ]]; then
@@ -224,8 +231,8 @@ if [[ ${enablecsv} = "1" ]]; then
 fi
 cd "${temporary}" || exit
 #Fix permissions before compression, in case the script was run as root
-find "${temporary}" -iname "*.info.json" -exec chmod 664 {} \;
-find "${temporary}" -iname "*.info.json" -exec chown "${folder_user}:${folder_group}" {} \;
+find "${temporary}" -type f -exec chmod 664 {} \;
+find "${temporary}" -type f -exec chown "${folder_user}:${folder_group}" {} \;
 tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
 total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 sort "${temporary}/${channel}.txt" | uniq >"${archive}"
