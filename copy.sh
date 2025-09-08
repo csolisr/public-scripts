@@ -5,7 +5,7 @@ cd "${folder}" || exit
 folder_user=$(stat -c "%U" "${folder}")
 folder_group=$(stat -c "%G" "${folder}")
 for i in ./*.sh; do
-	tr -d '\r' <"${i}" >"/tmp/${i}" && mv "/tmp/${i}" "${i}" && chown "${folder_user}:${folder_group}" "${i}"
+	tr -d '\r' <"${i}" >"/tmp/${i}" && mv "/tmp/${i}" "${i}" && chmod 755 "${i}" && chown "${folder_user}:${folder_group}" "${i}"
 	shfmt -w "${i}"
 	shellcheck -o all -e SC2312 -f diff "${i}" | patch -p1
 	shellcheck -o all -e SC2312 "${i}"
