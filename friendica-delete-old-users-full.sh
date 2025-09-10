@@ -21,7 +21,7 @@ tmplock=/tmp/friendica-delete-old-users-full.tmp
 url=friendica.example.net
 avatarfolder=/var/www/friendica/avatar
 avatarfolderescaped=${avatarfolder////\\/}
-loopsize=1000
+loopsize=3000
 
 loop() {
 	baseurltrimmed=$(echo "${baseurl}" | sed -e "s/http[s]*:\/\///g")

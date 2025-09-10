@@ -18,7 +18,7 @@ db="friendica"
 period="${period_amount} MONTH"
 tmpfile=/tmp/friendica-delete-old-users.csv
 tmplock=/tmp/friendica-delete-old-users.tmp
-loopsize=1000
+loopsize=3000
 
 loop() {
 	baseurltrimmed=$(echo "${baseurl}" | sed -e "s/http[s]*:\/\///g")
@@ -168,6 +168,15 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		"${dbengine}" "${db}" -v -e "alter table \`post-thread-user\` add index if not exists \`tmp_post_thread_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
 		"${dbengine}" "${db}" -v -e "alter table \`post-user\` add index if not exists \`tmp_post_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
 		"${dbengine}" "${db}" -v -e "alter table \`post\` add index if not exists \`tmp_post_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
+		"${dbengine}" "${db}" -v -e \
+			"select count(\`id\`) as \"Count\" from contact c where c.\`addr\` not in (\
+				select \`addr\` from \`contact\` where \
+				\`id\` in (select \`cid\` from \`user-contact\`) or \
+				\`id\` in (select \`uid\` from \`user\`) or \
+				\`id\` in (select \`contact-id\` from \`group_member\`) \
+			) and \
+			(c.\`id\` in (select \`owner-id\` from \`post\`)  or c.\`id\` in (select \`author-id\` from \`post\`) or c.\`id\` in (select \`causer-id\` from \`post\`)) and \
+			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \`last-item\` > '0001-01-01'"
 	fi
 	counter=0
 	was_empty=0
