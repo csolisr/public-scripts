@@ -18,7 +18,7 @@ db="friendica"
 period="${period_amount} MONTH"
 tmpfile=/tmp/friendica-delete-old-users.csv
 tmplock=/tmp/friendica-delete-old-users.tmp
-loopsize=10000
+loopsize=1000
 
 loop() {
 	baseurltrimmed=$(echo "${baseurl}" | sed -e "s/http[s]*:\/\///g")
