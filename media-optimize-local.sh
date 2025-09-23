@@ -9,10 +9,21 @@ p_jpeg_loop() {
 	if [[ ! -s "${quality}" ]]; then
 		quality="76"
 	fi
-	until grep -q -e "[OK]" -e ", skipped." <<<"${j}" || [[ -z "${j}" ]]; do
-		j=$(nice -n 15 jpegoptim -m "${quality}" "${p}")
-		echo "${j}" #&>/dev/null
-	done
+	if [[ -n "${quality}" ]]; then
+		keep_compressing_picture=1
+		while [[ "${keep_compressing_picture}" -gt 0 ]]; do
+			j=$(nice -n 15 jpegoptim -m "${quality}" "${p}")
+			echo "${j}"
+			jr=$(echo "${j}" | grep -e "[OK]" | grep -e ", optimized.")
+			if [[ -z "${jr}" ]]; then
+				keep_compressing_picture=0
+			fi
+		done
+	fi
+	#until grep -q -e "[OK]" -e ", skipped." <<<"${j}" || [[ -z "${j}" ]]; do
+	#j=$(nice -n 15 jpegoptim -m "${quality}" "${p}")
+	#echo "${j}" #&>/dev/null
+	#done
 }
 while read -r p; do
 	p_jpeg_loop "${p}" & #&>/dev/null &
