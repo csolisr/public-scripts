@@ -12,10 +12,10 @@ else
 	exit
 fi
 intense_optimizations=${1:-"0"}
-period_amount=${2:-"12"}
+period_amount=${2:-"365"}
 starterid=${3:-"0"}
 db="friendica"
-period="${period_amount} MONTH"
+period="${period_amount} DAY"
 tmpfile=/tmp/friendica-delete-old-users.csv
 tmplock=/tmp/friendica-delete-old-users.tmp
 loopsize=3000
