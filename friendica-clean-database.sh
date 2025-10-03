@@ -25,6 +25,45 @@ if [[ "${intense_optimizations}" -gt 0 ]]; then
 	bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
 fi
 
+echo "tmp_item_uri_expired" #&> /dev/null
+tmp_item_uri_expired_q="${limit}"
+tmp_item_uri_expired_current_id=0
+tmp_item_uri_expired_limit_id=$("${dbengine}" "${db}" -N -B -q -e "SELECT \`uri-id\` FROM \`post-thread-user-view\` WHERE \`uid\` = 0 AND \`received\` < (CURDATE() - INTERVAL 1 DAY) ORDER BY \`received\` DESC LIMIT 1")
+until [[ "${tmp_item_uri_expired_q}" -lt "${limit}" ]]; do
+	initial_i=$(date +%s)
+	tmp_item_uri_expired_q=0
+	while read -r id; do
+		if [[ -s "${id}" ]]; then
+			"${dbengine}" "${db}" -N -B -q -e \
+				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
+				wait -n
+			fi
+			tmp_item_uri_expired_q=$((tmp_item_uri_expired_q + 1))
+			tmp_item_uri_expired_current_id="${id}"
+		fi
+	done < <("${dbengine}" "${db}" -N -B -q -e \
+		"SELECT i.id FROM \`item-uri\` i LEFT JOIN \`post-user\` pu1 ON i.id = pu1.\`uri-id\` \
+			LEFT JOIN \`post-user\` pu2 ON i.id = pu2.\`parent-uri-id\` LEFT JOIN \`post-user\` pu3 ON i.id = pu3.\`thr-parent-id\` \
+			LEFT JOIN \`post-user\` pu4 ON i.id = pu4.\`external-id\` LEFT JOIN \`post-user\` pu5 ON i.id = pu5.\`replies-id\` \
+			LEFT JOIN \`post-thread\` pt1 ON i.id = pt1.\`context-id\` LEFT JOIN \`post-thread\` pt2 ON i.id = pt2.\`conversation-id\` \
+			LEFT JOIN \`mail\` m1 ON i.id = m1.\`uri-id\` LEFT JOIN \`event\` e ON i.id = e.\`uri-id\` \
+			LEFT JOIN \`user-contact\` uc ON i.id = uc.\`uri-id\` LEFT JOIN \`contact\` c ON i.id = c.\`uri-id\` \
+			LEFT JOIN \`apcontact\` ac ON i.id = ac.\`uri-id\` LEFT JOIN \`diaspora-contact\` dc ON i.id = dc.\`uri-id\` \
+			LEFT JOIN \`inbox-status\` ins ON i.id = ins.\`uri-id\` LEFT JOIN \`post-delivery\` pd1 ON i.id = pd1.\`uri-id\` \
+			LEFT JOIN \`post-delivery\` pd2 ON i.id = pd2.\`inbox-id\` LEFT JOIN \`mail\` m2 ON i.id = m2.\`parent-uri-id\` \
+			LEFT JOIN \`mail\` m3 ON i.id = m3.\`thr-parent-id\` WHERE i.id < ${tmp_item_uri_expired_limit_id} \
+			AND pu1.\`uri-id\` IS NULL AND pu2.\`parent-uri-id\` IS NULL AND pu3.\`thr-parent-id\` IS NULL AND pu4.\`external-id\` IS NULL \
+			AND pu5.\`replies-id\` IS NULL AND pt1.\`context-id\` IS NULL AND pt2.\`conversation-id\` IS NULL AND m1.\`uri-id\` IS NULL \
+			AND e.\`uri-id\` IS NULL AND uc.\`uri-id\` IS NULL AND c.\`uri-id\` IS NULL AND ac.\`uri-id\` IS NULL AND dc.\`uri-id\` IS NULL \
+			AND ins.\`uri-id\` IS NULL AND pd1.\`uri-id\` IS NULL AND pd2.\`inbox-id\` IS NULL AND m2.\`parent-uri-id\` IS NULL \
+			AND m3.\`thr-parent-id\` IS NULL \
+			AND i.\`id\` > ${tmp_item_uri_expired_current_id} ORDER BY i.\`id\` LIMIT ${limit}")
+	final_i=$(($(date +%s) - initial_i))
+	echo "${tmp_item_uri_expired_q} item(s) deleted until ${tmp_item_uri_expired_current_id} in ${final_i}s" #&> /dev/null
+done
+wait
+
 echo "tmp_post_origin_deleted" #&> /dev/null
 tmp_post_origin_deleted_q="${limit}"
 tmp_post_origin_deleted_current_uri_id=0
