@@ -176,7 +176,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 				\`id\` in (select \`contact-id\` from \`group_member\`) \
 			) and \
 			(c.\`id\` in (select \`owner-id\` from \`post\`)  or c.\`id\` in (select \`author-id\` from \`post\`) or c.\`id\` in (select \`causer-id\` from \`post\`)) and \
-			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \`last-item\` > '0001-01-01'"
+			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period}"
 	fi
 	counter=0
 	was_empty=0
@@ -204,7 +204,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 				\`id\` in (select \`contact-id\` from \`group_member\`) \
 			) and \
 			(c.\`id\` in (select \`owner-id\` from \`post\`)  or c.\`id\` in (select \`author-id\` from \`post\`) or c.\`id\` in (select \`causer-id\` from \`post\`)) and \
-			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \`last-item\` > '0001-01-01' and \
+			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \
 			c.\`id\` > ${currentid} limit ${loopsize}")
 		wait
 		if [[ "${current_counter}" -eq 0 || "${current_counter}" -lt "${loopsize}" ]]; then
