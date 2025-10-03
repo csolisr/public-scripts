@@ -1,5 +1,4 @@
 #!/bin/bash
-interval=7
 limit=1000
 folder=/var/www/friendica
 user=friendica
@@ -19,7 +18,10 @@ if [[ -n $(type mariadb-optimize) ]]; then
 elif [[ -n $(type mysqloptimize) ]]; then
 	dbengine="mysqloptimize"
 fi
+#First parameter. Whether to use more intensive optimizations on the database. Defaults to 0 (off).
 intense_optimizations=${1:-"0"}
+#Second parameter. Amount of maximum age in days to keep on the database; anything older will be removed. Defaults to 7 days (one week).
+interval=${2:-"7"}
 
 if [[ "${intense_optimizations}" -gt 0 ]]; then
 	bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
