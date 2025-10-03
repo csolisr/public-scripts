@@ -12,6 +12,8 @@ intense_optimizations=${1:-"0"}
 db="friendica"
 tmpfile="/tmp/sitesdown.txt"
 idsdownfile="/tmp/idsdown.txt"
+folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+followedidsdownfile="${folder}/followedidsdown.csv"
 usrfile="/tmp/usersdown.txt"
 url=friendica.example.net
 avatarfolder=/var/www/friendica/avatar
@@ -33,15 +35,26 @@ loop_1() {
 	#This is mostly for RSS feeds, we only check whether the site itself is up
 	#Skip check if the message contains a reference to Cloudflare
 	if [[ "${protocol}" != "bsky" ]]; then
-		if ! grep -q -e "HTTP.*200" -e "cloudflare" <(curl -s -L -I -m 30 -X HEAD "https://${site}"); then
-			echo "${site}" >>"${tmpfile}"
-			echo "Added ${site}"
+		header=$(curl -s -L -I -m 30 -X HEAD "https://${site}")
+		error_code=$(grep -e "HTTP" < <(echo "${header}"))
+		if ! grep -q -e "HTTP.*200" -e "cloudflare" < <(echo "${header}"); then
+			if grep -q -e "HTTP.*404" -e "HTTP.*502" < <(echo "${header}") || [[ -z "${header}" ]]; then
+				echo "${site}" >>"${tmpfile}"
+				if [[ -z "${header}" || ! -s "${header}" ]]; then
+					header="(null)"
+				fi
+				echo "Added ${site}, error code: ${error_code}"
+			else
+				echo "Found ${site}, error code: ${error_code}"
+			fi
 		fi
 	fi
 }
 loop_2() {
-	echo "Finding users for ${b}"
+	echo "Finding users for ${b}"                                                                                                                                                                                                                                                                                                                                                                                 #&> /dev/null
 	"${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`nick\`, \`baseurl\` from contact c where c.\`id\` not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and (c.baseurl = \"http://${b}\" or c.baseurl = \"https://${b}\")" | sudo tee -a "${idsdownfile}" #&> /dev/null
+	echo "Finding followed users for ${b}"
+	"${dbengine}" "${db}" -N -B -q -e "select \`id\`, \`nick\`, \`baseurl\` from contact c where c.\`id\` in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and (c.baseurl = \"http://${b}\" or c.baseurl = \"https://${b}\")" | sudo tee -a "${followedidsdownfile}" #&> /dev/null
 }
 
 loop_3() {
@@ -130,11 +143,11 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` add index if not exists \`tmp_contact_baseurl\` (\`baseurl\`)"
 		"${dbengine}" "${db}" -N -B -q -e "alter table \`post-user\` add index if not exists \`tmp_post_user_id\` (\`author-id\`, \`causer-id\`, \`owner-id\`)"
 	fi
+	echo "Listing sites"
+	siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
+	siteslistamount=$(echo "${siteslist}" | wc -l)
+	echo "Amount of unique sites: ${siteslistamount}"
 	if [[ ! -f "${tmpfile}" ]]; then
-		echo "Listing sites"
-		siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
-		siteslistamount=$(echo "${siteslist}" | wc -l)
-		echo "Amount of unique sites: ${siteslistamount}"
 		while read -r sites protocol; do
 			loop_1 "${sites}" "${protocol}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
@@ -144,9 +157,11 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		wait
 	fi
 	sitesdown=()
-	while read -r line; do
-		sitesdown+=("${line}")
-	done <"${tmpfile}"
+	if [[ -f "${tmpfile}" ]]; then
+		while read -r line; do
+			sitesdown+=("${line}")
+		done <"${tmpfile}"
+	fi
 	t=$(sort -n "${tmpfile}" | uniq)
 	echo "${t}" >"${tmpfile}"
 	echo "Amount of sites down: ${#sitesdown[@]} / ${siteslistamount}"
@@ -164,12 +179,14 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	touch "${usrfile}"
 	echo "0 0 0 0 0 0 0 0 0 0 0" >"${usrfile}"
 	while read -r id nick baseurl; do
-		#The community no longer exists, delete
-		loop_3 "${id}" "${nick}" "${baseurl}" &
-		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
-			wait -n
+		#If ID only includes numbers and the row is not malformed
+		if [[ "${id}" =~ ^[0-9]+$ && -n "${nick}" && -n "${baseurl}" ]]; then
+			#The community no longer exists, delete
+			loop_3 "${id}" "${nick}" "${baseurl}" &
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
+				wait -n
+			fi
 		fi
-		wait
 	done <"${idsdownfile}"
 	printf "\n\r"
 	rm "${tmpfile}" 2>/dev/null
