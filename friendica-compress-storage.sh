@@ -67,6 +67,6 @@ while read -r p; do
 done < <(find "${storagefolder}" -depth -mindepth 2 -type f -not -iname "index.html")
 #done < <(find "${storagefolder}" -depth -mindepth 2 -type f -size +100k -mtime -8 -not -iname "index.html")
 wait
-printf "\r\n"
+printf "\r\n" #&> /dev/null
 #Drop the index in the end to save storage
 sudo mariadb "${db}" -e "alter table photo drop index backend_index" #&> /dev/null
