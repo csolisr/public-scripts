@@ -5,7 +5,7 @@ channel=${1:-"subscriptions"}
 #2nd parameter: Time limit for the download. Leave blank to save all videos from the last month.
 breaktime=${2:-"today-1month"}
 #3rd parameter: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low.
-sleeptime=${3:-"1.0"}
+sleeptime=${3:-"0.1"}
 #4th parameter: Whether to enable exporting to FreeTube playlist database (1=on by default, 0=off)
 enabledb=${4:-"1"}
 #5th parameter: Whether to enable exporting to a CSV file (1=on by default, 0=off)
@@ -261,7 +261,9 @@ if [[ -f "${loop_file}" && "${override_loop}" = "0" ]]; then
 	while read -r channel_entry cutdate; do
 		channel="${channel_entry}"
 		breaktime="${cutdate}"
-		core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
+		if [[ -n "${channel}" && -n "${cutdate}" ]]; then
+			core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
+		fi
 	done <"${loop_file}"
 else
 	core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
