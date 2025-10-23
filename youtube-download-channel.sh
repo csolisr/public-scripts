@@ -164,8 +164,8 @@ core_loop() {
 					echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
 				fi
 			fi
-			#if [[ -f "${x}" && -f "${diff_file}" && ("${channel}" = "subscriptions" || "${channel}" = "WL") ]]; then
-			if [[ -f "${x}" && -f "${diff_file}" && "${channel}" = "subscriptions" ]]; then
+			if [[ -f "${x}" && -f "${diff_file}" && ("${channel}" = "subscriptions" || "${channel}" = "WL") ]]; then
+				#if [[ -f "${x}" && -f "${diff_file}" && "${channel}" = "subscriptions" ]]; then
 				channel_id=$(jq -rc ".channel_id" "${x}")
 				while read -r line; do
 					if [[ -f "${x}" && "${line}" = "${channel_id}" && -f "${subscriptions_old}" ]]; then
@@ -256,6 +256,8 @@ core_loop() {
 	rm -rf "${temporary}"
 }
 
+#Start of the script proper
+starttime=$(date +'%s')
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
 if [[ -f "${loop_file}" && "${override_loop}" = "0" ]]; then
 	while read -r channel_entry cutdate; do
@@ -312,3 +314,8 @@ if [[ $(uname -n) == "azkware" ]]; then
 		echo "---"
 	done
 fi
+
+endtime=$(date +'%s')
+elapsedtime=$((endtime - starttime))
+elapsedtimehuman=$(date -d@"${elapsedtime}" -u +%Hh\ %Mm\ %Ss)
+echo "Time elapsed = ${elapsedtimehuman}"
