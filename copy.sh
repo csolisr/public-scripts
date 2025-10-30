@@ -61,7 +61,8 @@ while read -r i; do
 	credential=""
 	if [[ -f "${credentials_file}" ]]; then
 		while read -r credential_key credential_value; do
-			if [[ "${credential_key}" == "${i}" ]]; then
+			i_trimmed="${i##*/}"
+			if [[ "${credential_key}" == "${i_trimmed}" ]]; then
 				credential="${credential_value}"
 			fi
 		done <"${credentials_file}"
