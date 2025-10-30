@@ -40,7 +40,7 @@ if [[ -f "${settings_file}" ]]; then
 		esac
 	done <"${settings_file}"
 else
-	echo "You must first make a copy of the existing `settings_default.csv` file, edit it with your settings, then save it as `settings.csv` in this folder." && exit
+	echo "You must first make a copy of the existing \"settings_default.csv\" file, edit it with your settings, then save it as \"settings.csv\" in this folder." && exit
 fi
 #Check each of our shell scripts in the folder
 while read -r i; do
@@ -66,8 +66,8 @@ while read -r i; do
 			fi
 		done <"${credentials_file}"
 	else
-		echo "You must first make a copy of the existing `credentials_default.csv` file, edit it with your settings, then save it as `credentials.csv` in this folder." && \
-		echo "Each credential needs to be generated using something like GetAuth and the `read` permission ( https://getauth.thms.uk/?scopes=read )." && exit
+		echo "You must first make a copy of the existing \"credentials_default.csv\" file, edit it with your settings, then save it as \"credentials.csv\" in this folder." &&
+			echo "Each credential needs to be generated using something like GetAuth and the \"read\" permission ( https://getauth.thms.uk/?scopes=read )." && exit
 	fi
 	#These changes apply to the cron folder.
 	if [[ $(uname -n) == "${serveruname}" ]]; then
@@ -91,7 +91,7 @@ while read -r i; do
 		diff <(sed -e "s/friendica.example.net/${serverurl}/g" -e "s/\(token=\${.*:-\"\)*[0-9a-f]*\"/\1${credential}\"/g" "${i}") "${k}"
 		#Write the modified file to the target file, with the following modifications:
 		#- Replace the placeholder server URL
-		#- TODO: Replace the corresponding file credentials for the ones in the credentials file
+		#- Replace the corresponding file credentials for the ones in the credentials file
 		sed -e "s/friendica.example.net/${serverurl}/g" -e "s/\(token=\${.*:-\"\)*[0-9a-f]*\"/\1${credential}\"/g" "${i}" | tee "${k}" &>/dev/null
 	done < <(find "${scriptsfolder}" -iname "${i_tmp}")
 done < <(find . -iname "*.sh")
