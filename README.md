@@ -25,6 +25,8 @@ As you can see, the vast majority of my scripts are used to handle my [Friendica
 * friendica-delete-specific-contact.sh: Uses the same code as the previous scripts to delete all data from a specific user, particularly useful for unfollowed contacts with too many posts.
 * media-optimize-local.sh: For a given folder, it finds any image files within and compresses them. Requires `gifsicle`, `oxipng`, `jpegoptim`, and `cwebp` installed.
 * youtube-download-channel.sh: A wrapper to ease downloading metadata from subscriptions or channels, in order to export it as a CSV, and as a playlist DB file compatible with FreeTube. Requires `yt-dlp`, `jq`, `zstd`, and optionally a cookie to download your subscriptions.
+* friendica-local-backfill-lemmy.sh: Used to backfill the Friendica server with data from all the Lemmy / Piefed servers that are followed by the users of the server. It requires generating an application key with OAuth.
+* trending-hashtags.sh: Used to backfill the Friendica server with trending content from the most popular servers from the Fediverse. It requires generating an application key with OAuth.
 
 # License
 
