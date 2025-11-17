@@ -43,6 +43,7 @@ core_loop() {
 	tmpcsv="${temporary}/${channel}.csv"
 	json="${subfolder}/${channel}.db"
 	ytdl="yt-dlp"
+	deno="deno"
 	if [[ -f "/usr/bin/yt-dlp" ]]; then
 		ytdl="/usr/bin/yt-dlp"
 	fi
@@ -54,6 +55,9 @@ core_loop() {
 	fi
 	if [[ -f "${personal_folder}/yt-dlp.exe" ]]; then
 		ytdl="${personal_folder}/yt-dlp.exe"
+	fi
+	if [[ -f "/root/.deno/bin/deno" ]]; then
+		deno="/root/.deno/bin/deno"
 	fi
 	folder_user=$(stat -c "%U" "${folder}")
 	folder_group=$(stat -c "%G" "${folder}")
@@ -106,6 +110,7 @@ core_loop() {
 		#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
 		#including the backslash so the multiline command keeps working.
 		"${ytdl}" "${full_url}" \
+			--js-runtimes deno:"${deno}" \
 			--cookies "${cookies}" \
 			--skip-download --download-archive "${archive}" \
 			--dateafter "${breaktime}" \
@@ -122,6 +127,7 @@ core_loop() {
 			--parse-metadata "video::(?P<categories>)"
 	else
 		"${ytdl}" "${full_url}" \
+			--js-runtimes deno:"${deno}" \
 			--skip-download --download-archive "${archive}" \
 			--dateafter "${breaktime}" \
 			--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
@@ -197,7 +203,7 @@ core_loop() {
 				echo "${count}/${total} ${x}"
 			fi
 		) &
-		if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
+		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
 			wait -n
 		fi
 
