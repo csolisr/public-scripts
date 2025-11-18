@@ -38,7 +38,7 @@ fetch_sites() {
 			echo "Site: ${searchsite}" #&> /dev/null
 		fi
 		echo "${searchsite}" >>"${found_file}"
-	done < <(echo "${serversresponse}" | jq -r '.data[].domain')
+	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 }
 
 fetch_blocks() {
@@ -47,7 +47,7 @@ fetch_blocks() {
 		if [[ $(jobs -r -p | wc -l) -ge "${threads}" ]]; then
 			wait -n
 		fi
-	done < <(echo "${serversresponse}" | jq -r '.data[].domain')
+	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
 	#Deduplicate
 	if [[ -f "${block_file}" ]]; then
@@ -141,7 +141,7 @@ fetch_hashtags() {
 		#		"https://${searchsite}/api/v1/search/videos?sort=-trending&count=100&isLocal=false&search=*"
 		#			From here you will need to fetch pairs of '.data[].uuid' and '.data[].channel.host' to get the actual URL, in the form of
 		#			"https://${host}/videos/watch/${uuid}"
-	done < <(echo "${serversresponse}" | jq -r '.data[].domain')
+	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
 	#Deduplicate
 	if [[ -f "${tags_file}" ]]; then
@@ -163,7 +163,7 @@ fetch_hashtags() {
 					wait -n
 				fi
 			done <"${tags_file}"
-		done < <(echo "${serversresponse}" | jq -r '.data[].domain')
+		done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	fi
 }
 
@@ -223,7 +223,7 @@ fetch_trending_posts() {
 				fi
 			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" -H "Accept-Language: ${language}" "https://${searchsite}/api/v1/trends/statuses" 2>/dev/null | jq -r '.[].uri' 2>/dev/null)
 		done
-	done < <(echo "${serversresponse}" | jq -r '.data[].domain')
+	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
 }
 
