@@ -13,7 +13,7 @@ useragent="Friendica Local Backfill (https://${mysite})"
 sites=()
 while read -r line; do
 	sites+=("${line}")
-done < <(mariadb "${db}" -N -B -q -e "select c.url from \`contact\` c join \`user-contact\` u where c.url like \"https:\/\/%\/c\/%\" and c.id = u.cid" | sort -u | sed -e "s/\/c\/.*//g" -e "s/https:\/\///g" -e "s/\/.*//g" | uniq -i)
+done < <(mariadb "${db}" -N -B -q -e "select c.url from \`contact\` c join \`user-contact\` u where c.url like \"https:\/\/%\/c\/%\" and c.id = u.cid and (u.rel = 2 or u.rel=3)" | sort -u | sed -e "s/\/c\/.*//g" -e "s/https:\/\///g" -e "s/\/.*//g" | uniq -i)
 #Tweak this if your instance uses a non-standard API.
 searchurl="https://${mysite}/api/v2/search?resolve=true&limit=1&type=statuses&q="
 echo "${searchurl}" #&> /dev/null
@@ -175,7 +175,7 @@ outer_loop() {
 		i=()
 		while IFS="" read -r line; do
 			i+=("${line}")
-		done < <(mariadb "${db}" -N -B -q -e "select c.url from \`contact\` c join \`user-contact\` u where c.url like \"https:\/\/${a}%\/c\/%\" and c.id = u.cid")
+		done < <(mariadb "${db}" -N -B -q -e "select c.url from \`contact\` c join \`user-contact\` u where c.url like \"https:\/\/${a}%\/c\/%\" and c.id = u.cid and (u.rel = 2 or u.rel=3)")
 		for n in "${i[@]}"; do
 			if [[ "${n}" =~ ${a} ]]; then
 				#If any community is found, add it to our list
