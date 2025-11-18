@@ -40,20 +40,20 @@ loop() {
 				jid=$(echo "${j_result}" | jq -r '.statuses[0].id')
 				if [[ "${jid}" != "null" ]]; then
 					if [[ "${itemid}" != null ]]; then
-						echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${itemurl} (internal), ${j} (external) - ${itemid} = ${jid}" #&> /dev/null
+						echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal), ${j} (external) - ${itemid} = ${jid}" #&> /dev/null
 					else
 						echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${j} (external) - ${jid}" #&> /dev/null
 					fi
 				else
-					echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${itemurl} (internal) - Waiting for itemid" #&> /dev/null
+					echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal) - Waiting for itemid" #&> /dev/null
 				fi
 			#If there is no external canonical address to backfill, but there is an internal one:
 			else
 				#If our backend has returned an item ID:
 				if [[ -n "${itemid}" && "${itemid}" != "null" ]]; then
-					echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${itemurl} (internal) - ${itemid}" #&> /dev/null
+					echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal) - ${itemid}" #&> /dev/null
 				else
-					echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${itemurl} (internal) - Waiting for itemid" #&> /dev/null
+					echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal) - Waiting for itemid" #&> /dev/null
 				fi
 			fi
 		fi
@@ -66,6 +66,7 @@ comm_loop() {
 		keep_looping=1
 		m_page="1"
 		while [[ "${keep_looping}" -eq 1 ]]; do
+			#Lemmy backend
 			s="https://${a}/feeds/${comm}.xml"
 			echo "${commnumber}/${commtotal} Feed: ${s}" #&> /dev/null
 			#Find all GUIDs in the RSS feed of the community
@@ -73,6 +74,17 @@ comm_loop() {
 			while IFS="" read -r m_line; do
 				m+=("${m_line}")
 			done < <(curl -s -L -m 10 -H "User-Agent: ${useragent}" "${s}"?sort=New\&limit=50\&page="${m_page}" | xmlstarlet sel -t -m "//item" -v "concat(guid,'|',pubDate,'#')" -n 2>/dev/null | tr ' ' '_')
+			if [[ "${#m[@]}" -eq 0 ]]; then
+				#If no items are found, fall back to Piefed backend.
+				#Warning: this RSS feed does not seem to have a limit of items, so we will just assume no looping is allowed
+				comm_trimmed=$(echo "${comm}" | sed -e "s/c\///g")
+				s="https://${a}/community/${comm_trimmed}/feed"
+				echo "${commnumber}/${commtotal} Feed (PieFed backend): ${s}" #&> /dev/null
+				while IFS="" read -r m_line; do
+					m+=("${m_line}")
+				done < <(curl -s -L -m 10 -H "User-Agent: ${useragent}" "${s}" | xmlstarlet sel -t -m "//item" -v "concat(guid,'|',pubDate,'#')" -n 2>/dev/null | tr ' ' '_')
+				keep_looping=0
+			fi
 			#We use our own separators for guid and pubDate, in the format "guid|pubDate# "
 			dropped=0
 			#Deduplicate GUIDs
