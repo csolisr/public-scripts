@@ -28,10 +28,12 @@ loop() {
 		create temporary table tmp_post_thread_user (select \`uri-id\` from \`post-thread-user\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete r.* from \`post-thread-user\` r inner join \`tmp_post_thread_user\` t where r.\`uri-id\` = t.\`uri-id\`; select row_count(); \
 		create temporary table tmp_post_user (select \`id\` from \`post-user\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete u.* from \`post-user\` u inner join \`tmp_post_user\` t where u.\`id\` = t.\`id\`; select row_count(); \
 		delete from \`post-tag\` where cid = ${id}; select row_count(); \
-		create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count(); \
+		create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete p.* from \`post-counts\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count(); \
+		delete p.* from \`post-category\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count(); \
+		delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count(); \
 		delete p.* from \`post\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count(); \
-	" || echo "0 0 0 0 0 0")
-	read -r postthreadcount postthreadusercount postusercount posttagcount postcontentcount postcount < <(echo "${resultarray[*]}")
+	" || echo "0 0 0 0 0 0 0 0")
+	read -r postthreadcount postthreadusercount postusercount posttagcount postcontentcount postcountscount postcategorycount postcount < <(echo "${resultarray[*]}")
 	#postthreadcount=$("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_thread (select \`uri-id\` from \`post-thread\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete h.* from \`post-thread\` h inner join \`tmp_post_thread\` t where h.\`uri-id\` = t.\`uri-id\`; select row_count();" || echo 0)
 	#postthreadusercount=$("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_thread_user (select \`uri-id\` from \`post-thread-user\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete r.* from \`post-thread-user\` r inner join \`tmp_post_thread_user\` t where r.\`uri-id\` = t.\`uri-id\`; select row_count();" || echo 0)
 	#postusercount=$("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post_user (select \`id\` from \`post-user\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete u.* from \`post-user\` u inner join \`tmp_post_user\` t where u.\`id\` = t.\`id\`; select row_count();" || echo 0)
@@ -47,7 +49,7 @@ loop() {
 				if flock -n -e 9; then
 					isreadlocked=1
 					if [[ -f "${tmpfile}" ]]; then
-						while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcount; do
+						while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount; do
 							if [[ "${id}" -gt "${lastitemid}" ]]; then
 								lastitemid="${id}"
 							fi
@@ -66,6 +68,12 @@ loop() {
 							if [[ -n "${tmp_postcontentcount}" ]]; then
 								postcontentcount=$((postcontentcount + tmp_postcontentcount))
 							fi
+							if [[ -n "${tmp_postcountscount}" ]]; then
+								postcountscount=$((postcountscount + tmp_postcountscount))
+							fi
+							if [[ -n "${tmp_postcategorycount}" ]]; then
+								postcategorycount=$((postcategorycount + tmp_postcategorycount))
+							fi
 							if [[ -n "${tmp_postcount}" ]]; then
 								postcount=$((postcount + tmp_postcount))
 							fi
@@ -76,7 +84,7 @@ loop() {
 							exec 9>"${tmplock}"
 							if flock -n -e 9; then
 								iswritelocked=1
-								echo "${counter} ${lastitemid} ${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount}" >"${tmpfile}"
+								echo "${counter} ${lastitemid} ${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcountscount} ${postcategorycount} ${postcount}" >"${tmpfile}"
 								flock -u 9
 							fi
 						done
@@ -85,7 +93,7 @@ loop() {
 			done
 		else
 			if [[ -f "${tmpfile}" ]]; then
-				while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcount; do
+				while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount; do
 					if [[ "${id}" -gt "${lastitemid}" ]]; then
 						lastitemid="${id}"
 					fi
@@ -104,11 +112,17 @@ loop() {
 					if [[ -n "${tmp_postcontentcount}" ]]; then
 						postcontentcount=$((postcontentcount + tmp_postcontentcount))
 					fi
+					if [[ -n "${tmp_postcountscount}" ]]; then
+						postcountscount=$((postcountscount + tmp_postcountscount))
+					fi
+					if [[ -n "${tmp_postcategorycount}" ]]; then
+						postcategorycount=$((postcategorycount + tmp_postcategorycount))
+					fi
 					if [[ -n "${tmp_postcount}" ]]; then
 						postcount=$((postcount + tmp_postcount))
 					fi
 				done <"${tmpfile}"
-				echo "${counter} ${lastitemid} ${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcount}" >"${tmpfile}"
+				echo "${counter} ${lastitemid} ${postthreadcount} ${postthreadusercount} ${postusercount} ${posttagcount} ${postcontentcount} ${postcountscount} ${postcategorycount} ${postcount}" >"${tmpfile}"
 			fi
 		fi
 	fi
@@ -120,6 +134,8 @@ loop() {
 			response=$(printf "%spost-user:%s " "${response}" "${postusercount}")
 			response=$(printf "%spost-tag:%s " "${response}" "${posttagcount}")
 			response=$(printf "%spost-content:%s " "${response}" "${postcontentcount}")
+			response=$(printf "%spost-counts:%s " "${response}" "${postcountscount}")
+			response=$(printf "%spost-category:%s " "${response}" "${postcategorycount}")
 			response=$(printf "%spost:%s " "${response}" "${postcount}")
 		else
 			response=""
@@ -161,7 +177,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		rm -rf "${tmplock}"
 	fi
 	touch "${tmpfile}"
-	echo "0 0 0 0 0 0 0 0" >"${tmpfile}"
+	echo "0 0 0 0 0 0 0 0 0 0" >"${tmpfile}"
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
 		"${dbengine}" "${db}" -v -e "alter table \`contact\` add index if not exists \`tmp_contact_baseurl_addr\` (baseurl, addr)"
 		"${dbengine}" "${db}" -v -e "alter table \`post-thread\` add index if not exists \`tmp_post_thread_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
@@ -183,7 +199,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	while [[ "${was_empty}" -eq 0 ]]; do
 		current_counter=0
 		currentid="${starterid}"
-		while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcount; do
+		while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount; do
 			if [[ -n "${tmp_counter}" && -n "${tmp_lastitemid}" && "${currentid}" -lt "${tmp_lastitemid}" ]]; then
 				currentid="${tmp_lastitemid}"
 			fi
@@ -212,14 +228,14 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		fi
 	done
 	printf "\n\r"
+	"${dbengine}" "${db}" -v -e "\
+		alter table \`post-thread\` auto_increment = 1; \
+		alter table \`post-thread-user\` auto_increment = 1; \
+		alter table \`post-user\` auto_increment = 1; \
+		alter table \`post-tag\` auto_increment = 1; \
+		alter table \`post\` auto_increment = 1; \
+	"
 	if [[ "${intense_optimizations}" -gt 0 ]]; then
-		"${dbengine}" "${db}" -v -e "\
-			alter table \`post-thread\` auto_increment = 1; \
-			alter table \`post-thread-user\` auto_increment = 1; \
-			alter table \`post-user\` auto_increment = 1; \
-			alter table \`post-tag\` auto_increment = 1; \
-			alter table \`post\` auto_increment = 1; \
-		"
 		"${dbengine}" "${db}" -v -e "alter table \`contact\` drop index \`tmp_contact_baseurl_addr\`"
 		"${dbengine}" "${db}" -v -e "alter table \`post-thread\` drop index  \`tmp_post_thread_id\`"
 		"${dbengine}" "${db}" -v -e "alter table \`post-thread-user\` drop index \`tmp_post_thread_user_id\`"
