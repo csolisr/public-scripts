@@ -111,6 +111,7 @@ core_loop() {
 		#including the backslash so the multiline command keeps working.
 		"${ytdl}" "${full_url}" \
 			--js-runtimes deno:"${deno}" \
+			--remote-components ejs:npm \
 			--cookies "${cookies}" \
 			--skip-download --download-archive "${archive}" \
 			--dateafter "${breaktime}" \
@@ -128,6 +129,7 @@ core_loop() {
 	else
 		"${ytdl}" "${full_url}" \
 			--js-runtimes deno:"${deno}" \
+			--remote-components ejs:npm \
 			--skip-download --download-archive "${archive}" \
 			--dateafter "${breaktime}" \
 			--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
