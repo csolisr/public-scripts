@@ -54,13 +54,13 @@ until [[ "${tmp_item_uri_expired_q}" -lt "${limit}" ]]; do
 			LEFT JOIN \`apcontact\` ac ON i.id = ac.\`uri-id\` LEFT JOIN \`diaspora-contact\` dc ON i.id = dc.\`uri-id\` \
 			LEFT JOIN \`inbox-status\` ins ON i.id = ins.\`uri-id\` LEFT JOIN \`post-delivery\` pd1 ON i.id = pd1.\`uri-id\` \
 			LEFT JOIN \`post-delivery\` pd2 ON i.id = pd2.\`inbox-id\` LEFT JOIN \`mail\` m2 ON i.id = m2.\`parent-uri-id\` \
-			LEFT JOIN \`mail\` m3 ON i.id = m3.\`thr-parent-id\` WHERE i.id < ${tmp_item_uri_expired_limit_id} \
+			LEFT JOIN \`mail\` m3 ON i.id = m3.\`thr-parent-id\` WHERE i.\`id\` < ${tmp_item_uri_expired_limit_id} \
 			AND pu1.\`uri-id\` IS NULL AND pu2.\`parent-uri-id\` IS NULL AND pu3.\`thr-parent-id\` IS NULL AND pu4.\`external-id\` IS NULL \
 			AND pu5.\`replies-id\` IS NULL AND pt1.\`context-id\` IS NULL AND pt2.\`conversation-id\` IS NULL AND m1.\`uri-id\` IS NULL \
 			AND e.\`uri-id\` IS NULL AND uc.\`uri-id\` IS NULL AND c.\`uri-id\` IS NULL AND ac.\`uri-id\` IS NULL AND dc.\`uri-id\` IS NULL \
 			AND ins.\`uri-id\` IS NULL AND pd1.\`uri-id\` IS NULL AND pd2.\`inbox-id\` IS NULL AND m2.\`parent-uri-id\` IS NULL \
 			AND m3.\`thr-parent-id\` IS NULL \
-			AND i.\`id\` > ${tmp_item_uri_expired_current_id} ORDER BY i.\`id\` LIMIT ${limit}")
+			ORDER BY i.\`id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_item_uri_expired_q} item(s) deleted until ${tmp_item_uri_expired_current_id} in ${final_i}s" #&> /dev/null
 done
