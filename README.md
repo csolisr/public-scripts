@@ -28,6 +28,7 @@ As you can see, the vast majority of my scripts are used to handle my [Friendica
 * friendica-local-backfill-lemmy.sh: Used to backfill the Friendica server with data from all the Lemmy / Piefed servers that are followed by the users of the server. It requires generating an application key with OAuth.
 * trending-hashtags.sh: Used to backfill the Friendica server with trending content from the most popular servers from the Fediverse. It requires generating an application key with OAuth.
 * mariadb-delete-unallocated-items.sh: Allows deleting dangling items from tables with complex dependencies on MariaDB. Used here mainly to remove references to `item-uri` on Friendica. (Ensure you activate `enable-maximum-item` if you use this on a running Friendica instance)
+* nextcloud-bookmarks-cache-compression.sh: Allows compressing Nextcloud's cache for the Bookmarks application. Files are stored in a JSON, with the file contents encoded on Base64 - this script takes the contents, compresses them with the appropriate tools, and regenerates the JSON file. Requires `gifsicle`, `oxipng`, `jpegoptim`, `cwebp`, and `scour` installed.
 
 # License
 
