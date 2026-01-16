@@ -10,6 +10,8 @@ user=root
 storagefolder=/var/www/friendica/storage
 #The folder storage name, with slashes escaped to work through sed
 folderescaped=${storagefolder////\\/}
+target_size=${1:-100}
+target_time=${2:-8}
 
 loop_1() {
 	ks=$(echo "${p}" | sed -e "s/${folderescaped}//g" -e "s/\///g")
@@ -56,7 +58,7 @@ loop_1() {
 echo "Generating photo index..."                                                                    #&> /dev/null
 sudo mariadb "${db}" -e "alter table photo add index if not exists backend_index (\`backend-ref\`)" #&> /dev/null
 echo "Generating list of files..."                                                                  #&> /dev/null
-total=$(find "${storagefolder}" -depth -mindepth 2 -type f -not -iname "index.html" | wc -l)
+total=$(find "${storagefolder}" -depth -mindepth 2 -type f -size +"${target_size}"k -mtime -"${target_time}" -not -iname "index.html" | wc -l)
 count=0
 while read -r p; do
 	count=$((count + 1))
@@ -64,8 +66,8 @@ while read -r p; do
 	until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; do
 		wait -n
 	done
-done < <(find "${storagefolder}" -depth -mindepth 2 -type f -not -iname "index.html")
-#done < <(find "${storagefolder}" -depth -mindepth 2 -type f -size +100k -mtime -8 -not -iname "index.html")
+	#done < <(find "${storagefolder}" -depth -mindepth 2 -type f -not -iname "index.html")
+done < <(find "${storagefolder}" -depth -mindepth 2 -type f -size +"${target_size}"k -mtime -"${target_time}" -not -iname "index.html")
 wait
 printf "\r\n" #&> /dev/null
 #Drop the index in the end to save storage
