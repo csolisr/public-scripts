@@ -15,6 +15,7 @@ As you can see, the vast majority of my scripts are used to handle my [Friendica
 * friendica-compress-storage.sh: It searches for any image files in the storage folder, and compresses them accordingly. Requires `gifsicle`, `oxipng`, `jpegoptim`, and `cwebp` installed.
 * friendica-delete-old-users.sh: Complimentary to the included RemoveUnusedContacts, it deletes the posts from any users that have not posted anything in the last year (by default), and aren't in any user's contact list.
 * friendica-delete-old-users-full.sh: Same as above, but it fully deletes the users from the database instead of just deleting their posts.
+* friendica-delete-old-posts.sh: It searches for any posts, from any users not followed by this instance or its channels/groups, that are older than a given date, and deletes them.
 * friendica-find-missing-servers.sh: Complimentary to the included RemoveUnusedContacts, it finds any offline servers and deletes any users from them, that aren't in any user's contact list.
 * friendica-fix-avatar-permissions.sh: Used to properly transfer avatars from `storage` to `avatar` with the correct permissions, and also compresses the files accordingly. Requires `gifsicle`, `oxipng`, `jpegoptim`, and `cwebp` installed.
 * friendica-delete-non-followed-featured-posts.sh: If you accidentally configured Friendica to fetch featured posts from all interactors instead of known followers only, this script removes the related workers from the queue while leaving the known followers in place.
