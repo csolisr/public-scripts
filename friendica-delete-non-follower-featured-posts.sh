@@ -55,7 +55,8 @@ printf "\rFetchFeaturedPosts\t%s\n\r" "${cemax}"
 cf=${limit}
 cfmax=0
 until [[ ${cf} -lt ${limit} ]]; do
-	cf=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', ''), '\\\\\\\\', ''), '.*\"actor\"\:\"', ''), '\".*', '') not in (select \`url\` from \`tmp_url\`) and \`command\` = \"FetchMissingReplies\" and \`done\` = 0 limit ${cf}; select row_count();")
+	#cf=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', ''), '\\\\\\\\', ''), '.*\"actor\"\:\"', ''), '\".*', '') not in (select \`url\` from \`tmp_url\`) and \`command\` = \"FetchMissingReplies\" and \`done\` = 0 limit ${cf}; select row_count();")
+	cf=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where not (regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\\\\\\', ''), '.*\"actor\"\:\"', ''), '\".*', '') in (select \`url\` from \`tmp_url\`) or regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\\\\\\', ''), '.*\"audience\"\:\"', ''), '\".*', '') in (select \`url\` from \`tmp_url\`)) and \`command\` = \"FetchMissingReplies\" and \`done\` = 0 limit ${cf}; select row_count();")
 	cfmax=$((cfmax + cf))
 	printf "\rFetchMissingReplies\t%s\r" "${cfmax}"
 done
