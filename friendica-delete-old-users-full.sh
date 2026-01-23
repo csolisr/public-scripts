@@ -71,64 +71,64 @@ loop() {
 	#apcontactcount=$("${dbengine}" "${db}" -N -B -q -e "delete from \`apcontact\` where \`uri-id\` = ${id}; select row_count();" || echo 0)
 	#diasporacontactcount=$("${dbengine}" "${db}" -N -B -q -e "delete from \`diaspora-contact\` where \`uri-id\` = ${id}; select row_count();" || echo 0)
 	lastitemid="${id}"
-	if [[ "${intense_optimizations}" -eq 0 || "${intense_optimizations}" -eq 1 ]]; then
+	if [[ ${intense_optimizations} -eq 0 || ${intense_optimizations} -eq 1 ]]; then
 		if [[ -n $(type flock) ]]; then
 			isreadlocked=0
-			while [[ "${isreadlocked}" -eq 0 ]]; do
+			while [[ ${isreadlocked} -eq 0 ]]; do
 				exec 8>"${tmplock}"
 				if flock -n -e 8; then
 					isreadlocked=1
-					if [[ -f "${tmpfile}" ]]; then
+					if [[ -f ${tmpfile} ]]; then
 						while read -r tmp_counter tmp_lastitemid tmp_picturecount tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount tmp_photocount tmp_endpointcount tmp_contactcount tmp_apcontactcount tmp_diasporacontactcount; do
-							if [[ "${id}" -gt "${lastitemid}" ]]; then
+							if [[ ${id} -gt ${lastitemid} ]]; then
 								lastitemid="${id}"
 							fi
-							if [[ -n "${tmp_picturecount}" ]]; then
+							if [[ -n ${tmp_picturecount} ]]; then
 								picturecount=$((picturecount + tmp_picturecount))
 							fi
-							if [[ -n "${tmp_postthreadcount}" ]]; then
+							if [[ -n ${tmp_postthreadcount} ]]; then
 								postthreadcount=$((postthreadcount + tmp_postthreadcount))
 							fi
-							if [[ -n "${tmp_postthreadusercount}" ]]; then
+							if [[ -n ${tmp_postthreadusercount} ]]; then
 								postthreadusercount=$((postthreadusercount + tmp_postthreadusercount))
 							fi
-							if [[ -n "${tmp_postusercount}" ]]; then
+							if [[ -n ${tmp_postusercount} ]]; then
 								postusercount=$((postusercount + tmp_postusercount))
 							fi
-							if [[ -n "${tmp_posttagcount}" ]]; then
+							if [[ -n ${tmp_posttagcount} ]]; then
 								posttagcount=$((posttagcount + tmp_posttagcount))
 							fi
-							if [[ -n "${tmp_postcontentcount}" ]]; then
+							if [[ -n ${tmp_postcontentcount} ]]; then
 								postcontentcount=$((postcontentcount + tmp_postcontentcount))
 							fi
-							if [[ -n "${tmp_postcountscount}" ]]; then
+							if [[ -n ${tmp_postcountscount} ]]; then
 								postcountscount=$((postcountscount + tmp_postcountscount))
 							fi
-							if [[ -n "${tmp_postcategorycount}" ]]; then
+							if [[ -n ${tmp_postcategorycount} ]]; then
 								postcategorycount=$((postcategorycount + tmp_postcategorycount))
 							fi
-							if [[ -n "${tmp_postcount}" ]]; then
+							if [[ -n ${tmp_postcount} ]]; then
 								postcount=$((postcount + tmp_postcount))
 							fi
-							if [[ -n "${tmp_photocount}" ]]; then
+							if [[ -n ${tmp_photocount} ]]; then
 								photocount=$((photocount + tmp_photocount))
 							fi
-							if [[ -n "${tmp_endpointcount}" ]]; then
+							if [[ -n ${tmp_endpointcount} ]]; then
 								endpointcount=$((endpointcount + tmp_endpointcount))
 							fi
-							if [[ -n "${tmp_contactcount}" ]]; then
+							if [[ -n ${tmp_contactcount} ]]; then
 								contactcount=$((contactcount + tmp_contactcount))
 							fi
-							if [[ -n "${tmp_apcontactcount}" ]]; then
+							if [[ -n ${tmp_apcontactcount} ]]; then
 								apcontactcount=$((apcontactcount + tmp_apcontactcount))
 							fi
-							if [[ -n "${tmp_diasporacontactcount}" ]]; then
+							if [[ -n ${tmp_diasporacontactcount} ]]; then
 								diasporacontactcount=$((diasporacontactcount + tmp_diasporacontactcount))
 							fi
 						done <"${tmpfile}"
 						flock -u 8
 						iswritelocked=0
-						while [[ "${iswritelocked}" -eq 0 ]]; do
+						while [[ ${iswritelocked} -eq 0 ]]; do
 							exec 8>"${tmplock}"
 							if flock -n -e 8; then
 								iswritelocked=1
@@ -140,51 +140,51 @@ loop() {
 				fi
 			done
 		else
-			if [[ -f "${tmpfile}" ]]; then
+			if [[ -f ${tmpfile} ]]; then
 				while read -r tmp_counter tmp_lastitemid tmp_picturecount tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount tmp_photocount tmp_endpointcount tmp_contactcount tmp_apcontactcount tmp_diasporacontactcount; do
-					if [[ "${id}" -gt "${lastitemid}" ]]; then
+					if [[ ${id} -gt ${lastitemid} ]]; then
 						lastitemid="${id}"
 					fi
-					if [[ -n "${tmp_picturecount}" ]]; then
+					if [[ -n ${tmp_picturecount} ]]; then
 						picturecount=$((picturecount + tmp_picturecount))
 					fi
-					if [[ -n "${tmp_postthreadcount}" ]]; then
+					if [[ -n ${tmp_postthreadcount} ]]; then
 						postthreadcount=$((postthreadcount + tmp_postthreadcount))
 					fi
-					if [[ -n "${tmp_postthreadusercount}" ]]; then
+					if [[ -n ${tmp_postthreadusercount} ]]; then
 						postthreadusercount=$((postthreadusercount + tmp_postthreadusercount))
 					fi
-					if [[ -n "${tmp_postusercount}" ]]; then
+					if [[ -n ${tmp_postusercount} ]]; then
 						postusercount=$((postusercount + tmp_postusercount))
 					fi
-					if [[ -n "${tmp_posttagcount}" ]]; then
+					if [[ -n ${tmp_posttagcount} ]]; then
 						posttagcount=$((posttagcount + tmp_posttagcount))
 					fi
-					if [[ -n "${tmp_postcontentcount}" ]]; then
+					if [[ -n ${tmp_postcontentcount} ]]; then
 						postcontentcount=$((postcontentcount + tmp_postcontentcount))
 					fi
-					if [[ -n "${tmp_postcountscount}" ]]; then
+					if [[ -n ${tmp_postcountscount} ]]; then
 						postcountscount=$((postcountscount + tmp_postcountscount))
 					fi
-					if [[ -n "${tmp_postcategorycount}" ]]; then
+					if [[ -n ${tmp_postcategorycount} ]]; then
 						postcategorycount=$((postcategorycount + tmp_postcategorycount))
 					fi
-					if [[ -n "${tmp_postcount}" ]]; then
+					if [[ -n ${tmp_postcount} ]]; then
 						postcount=$((postcount + tmp_postcount))
 					fi
-					if [[ -n "${tmp_photocount}" ]]; then
+					if [[ -n ${tmp_photocount} ]]; then
 						photocount=$((photocount + tmp_photocount))
 					fi
-					if [[ -n "${tmp_endpointcount}" ]]; then
+					if [[ -n ${tmp_endpointcount} ]]; then
 						endpointcount=$((endpointcount + tmp_endpointcount))
 					fi
-					if [[ -n "${tmp_contactcount}" ]]; then
+					if [[ -n ${tmp_contactcount} ]]; then
 						contactcount=$((contactcount + tmp_contactcount))
 					fi
-					if [[ -n "${tmp_apcontactcount}" ]]; then
+					if [[ -n ${tmp_apcontactcount} ]]; then
 						apcontactcount=$((apcontactcount + tmp_apcontactcount))
 					fi
-					if [[ -n "${tmp_diasporacontactcount}" ]]; then
+					if [[ -n ${tmp_diasporacontactcount} ]]; then
 						diasporacontactcount=$((diasporacontactcount + tmp_diasporacontactcount))
 					fi
 				done <"${tmpfile}"
@@ -192,9 +192,9 @@ loop() {
 			fi
 		fi
 	fi
-	if [[ -n "${lastitem}" && "${#lastitem}" -gt 9 ]]; then
+	if [[ -n ${lastitem} && ${#lastitem} -gt 9 ]]; then
 		response_left=$(printf "%s %s %s %s@%s " "${counter}" "${id}" "${lastitem::-9}" "${nick}" "${baseurltrimmed}")
-		if [[ "${intense_optimizations}" -eq 0 || "${intense_optimizations}" -eq 1 ]]; then
+		if [[ ${intense_optimizations} -eq 0 || ${intense_optimizations} -eq 1 ]]; then
 			response=$(printf "%spicture:%s " "${response}" "${picturecount}")
 			response=$(printf "%spost-thread:%s " "${response}" "${postthreadcount}")
 			response=$(printf "%spost-thread-user:%s " "${response}" "${postthreadusercount}")
@@ -222,7 +222,7 @@ loop() {
 		blank_string=""
 		columns_length="${COLUMNS}"
 		#Account for the case where the string is more than a terminal line long
-		while [[ "${final_string_length}" -gt "${columns_length}" ]]; do
+		while [[ ${final_string_length} -gt ${columns_length} ]]; do
 			columns_length=$((columns_length + COLUMNS))
 		done
 		blank_string_length=$((columns_length - final_string_length))
@@ -240,11 +240,11 @@ loop() {
 }
 
 #Check if our dependencies are installed
-if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
+if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
 	touch "${tmpfile}"
 	echo "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" >"${tmpfile}"
-	if [[ "${intense_optimizations}" -gt 0 ]]; then
+	if [[ ${intense_optimizations} -gt 0 ]]; then
 		"${dbengine}" "${db}" -v -e "\
 			alter table \`contact\` add index if not exists \`tmp_contact_baseurl_addr\` (baseurl, addr); \
 			alter table \`post-thread\` add index if not exists \`tmp_post_thread_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
@@ -263,11 +263,11 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	fi
 	counter=0
 	was_empty=0
-	while [[ "${was_empty}" -eq 0 ]]; do
+	while [[ ${was_empty} -eq 0 ]]; do
 		current_counter=0
 		currentid="${starterid}"
 		while read -r tmp_counter tmp_lastitemid tmp_picturecount tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount tmp_photocount tmp_endpointcount tmp_contactcount tmp_apcontactcount tmp_diasporacontactcount; do
-			if [[ -n "${tmp_counter}" && -n "${tmp_lastitemid}" && "${currentid}" -lt "${tmp_lastitemid}" ]]; then
+			if [[ -n ${tmp_counter} && -n ${tmp_lastitemid} && ${currentid} -lt ${tmp_lastitemid} ]]; then
 				currentid="${tmp_lastitemid}"
 			fi
 		done <"${tmpfile}"
@@ -289,7 +289,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			limit ${loopsize}")
 		#not regexp_replace(c.\`nick\`, '[[:punct:]].*', '') like regexp_replace( replace(c.\`baseurl\`, 'https://', ''), '[[:punct:]].+', '')
 		wait
-		if [[ "${current_counter}" -eq 0 || "${current_counter}" -lt "${loopsize}" ]]; then
+		if [[ ${current_counter} -eq 0 || ${current_counter} -lt ${loopsize} ]]; then
 			was_empty=1
 		fi
 	done
@@ -303,7 +303,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		alter table \`photo\` auto_increment = 1; \
 		alter table \`contact\` auto_increment = 1; \
 	"
-	if [[ "${intense_optimizations}" -gt 0 ]]; then
+	if [[ ${intense_optimizations} -gt 0 ]]; then
 		"${dbengine}" "${db}" -v -e "\
 			alter table \`contact\` drop index \`tmp_contact_baseurl_addr\`; \
 			alter table \`post-thread\` drop index \`tmp_post_thread_id\`; \

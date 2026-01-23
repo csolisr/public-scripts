@@ -31,7 +31,7 @@ sudo "${dbengine}" "${db}" -vvve "\
 	);" # &> /dev/null
 
 #Show only in case we're not optimizing for speed.
-if [[ "${intense_optimizations}" -eq 0 ]]; then
+if [[ ${intense_optimizations} -eq 0 ]]; then
 	#For safety, find all the posts that would somehow match both criteria and thus be wrongly deleted. We want this to return no results.
 	#Then, show how many posts would be deleted this way, sorted by date.
 	sudo "${dbengine}" "${db}" -vvve "\
@@ -57,7 +57,7 @@ if [[ "${intense_optimizations}" -eq 0 ]]; then
 			order by \`created\` desc;" # &> /dev/null
 fi
 
-if [[ "${intense_optimizations}" -lt 2 ]]; then
+if [[ ${intense_optimizations} -lt 2 ]]; then
 	#Filter all the non-matching items (which we do want to delete) that are older than the given interval.
 	#Finally, proceed with the deletion.
 	sudo "${dbengine}" "${db}" -vvve "\
@@ -80,7 +80,7 @@ if [[ "${intense_optimizations}" -lt 2 ]]; then
 fi
 
 #Show only in case we're not optimizing for speed.
-if [[ "${intense_optimizations}" -eq 0 ]]; then
+if [[ ${intense_optimizations} -eq 0 ]]; then
 	#Find any posts created before the first user of the instance registered.
 	#For safety, search all the reserved matches, then find all the posts that would somehow match the criteria and thus be wrongly deleted. We want this to return no results.
 	#Then, show how many posts would be deleted this way, sorted by date.
@@ -122,7 +122,7 @@ if [[ "${intense_optimizations}" -eq 0 ]]; then
 fi
 
 #Execute only for the most intensive deletion.
-if [[ "${intense_optimizations}" -eq 2 ]]; then
+if [[ ${intense_optimizations} -eq 2 ]]; then
 	#First, search all reserved matches where the post if from a user of this instance, whether due to the "user" or "contact" IDs.
 	#Then, filter all the non-matching items (which we do want to delete) that are older than the given interval.
 	#For safety, find all the posts that would somehow match the standard criteria and thus be wrongly deleted. We want this to return no results.
@@ -171,9 +171,9 @@ if [[ "${intense_optimizations}" -eq 2 ]]; then
 	" # &> /dev/null
 fi
 
-if [[ "${intense_optimizations}" -ne 1 ]]; then
+if [[ ${intense_optimizations} -ne 1 ]]; then
 	#Show all the leftover posts, sorted by date.
-	sudo "${dbengine}" "${db}" -e "select count(*), \`created\` from \`post\` group by date_format(\`created\`, \"%y%m\") order by \`created\` desc" # &> /dev/null
+	sudo "${dbengine}" "${db}" -e 'select count(*), `created` from `post` group by date_format(`created`, "%y%m") order by `created` desc' # &> /dev/null
 fi
 
 #Fix the auto-increment for the affected tables. Clear temporary tables.

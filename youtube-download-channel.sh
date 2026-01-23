@@ -30,7 +30,7 @@ loop_file="${subfolder}/loop-file.csv"
 final="${folder}/../FreeTube/playlists.db"
 
 core_loop() {
-	if [[ -f "${subscriptions_old}" && -f "${subscriptions_new}" ]]; then
+	if [[ -f ${subscriptions_old} && -f ${subscriptions_new} ]]; then
 		diff <(sort "${subscriptions_old}" | cut -d ',' -f2) <(sort "${subscriptions_new}" | cut -d ',' -f2) | grep "< " | sed -e "s/< //g" -e "s/http:\/\/www.youtube.com\/channel\///g" | sort | uniq >"${diff_file}"
 	fi
 	temporary="/tmp/subscriptions-${channel}"
@@ -61,14 +61,14 @@ core_loop() {
 	fi
 	folder_user=$(stat -c "%U" "${folder}")
 	folder_group=$(stat -c "%G" "${folder}")
-	if [[ ! -d "${subfolder}" ]]; then
+	if [[ ! -d ${subfolder} ]]; then
 		mkdir -v "${subfolder}" && chmod 775 "${subfolder}" && chown "${folder_user}:${folder_group}" "${subfolder}"
 	fi
-	if [[ ! -d "${temporary}" ]]; then
+	if [[ ! -d ${temporary} ]]; then
 		mkdir -v "${temporary}" && chmod 775 "${temporary}" && chown "${folder_user}:${folder_group}" "${temporary}"
 	fi
 	cd "${temporary}" || exit
-	if [[ ! -f "${archive}" ]]; then
+	if [[ ! -f ${archive} ]]; then
 		touch "${archive}" && chmod 664 "${archive}" && chown "${folder_user}:${folder_group}" "${archive}"
 	fi
 	#if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
@@ -87,17 +87,17 @@ core_loop() {
 	url="https://www.youtube.com/@${channel}"
 	#Via https://github.com/yt-dlp/yt-dlp/issues/13573#issuecomment-3020152141
 	full_url=$("${ytdl}" -I0 --print "playlist:https://www.youtube.com/playlist?list=UU%(channel_id.2:)s" "${url}")
-	if [[ "${channel}" = "subscriptions" ]]; then
+	if [[ ${channel} == "subscriptions" ]]; then
 		url="https://www.youtube.com/feed/subscriptions"
 		full_url="${url}"
-	elif [[ "${channel}" = "WL" ]]; then
+	elif [[ ${channel} == "WL" ]]; then
 		url="https://www.youtube.com/playlist?list=WL"
 		full_url="${url}"
 	fi
 	#for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 	#full_url=$(curl "${url}" | tr -d "\n\r" | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl")
 	echo "${url} = ${full_url}"
-	if [[ -f "${cookies}" || "${channel}" = "subscriptions" || "${channel}" = "WL" ]]; then
+	if [[ -f ${cookies} || ${channel} == "subscriptions" || ${channel} == "WL" ]]; then
 		#If available, you can use the cookies from your browser directly. Substitute
 		#	--cookies "${cookies}"
 		#for the below, substituting for your browser of choice:
@@ -145,14 +145,14 @@ core_loop() {
 			--parse-metadata "video::(?P<categories>)"
 	fi
 	#done
-	if [[ ${enablecsv} = 1 ]]; then
-		if [[ -f "${tmpcsv}" ]]; then
+	if [[ ${enablecsv} == 1 ]]; then
+		if [[ -f ${tmpcsv} ]]; then
 			rm -rf "${tmpcsv}"
 		fi
 		touch "${tmpcsv}"
 	fi
-	if [[ ${enabledb} = 1 ]]; then
-		if [[ -f "${sortcsv}" ]]; then
+	if [[ ${enabledb} == 1 ]]; then
+		if [[ -f ${sortcsv} ]]; then
 			rm -rf "${sortcsv}"
 		fi
 		touch "${sortcsv}"
@@ -163,43 +163,43 @@ core_loop() {
 	find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 		count=$((count + 1))
 		(
-			if [[ -f "${x}" && "${channel}" != "subscriptions" && "${channel}" != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
+			if [[ -f ${x} && ${channel} != "subscriptions" && ${channel} != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
 				echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 			fi
-			if [[ -f "${x}" && "${breaktime}" =~ ^[0-9]+$ ]]; then
+			if [[ -f ${x} && ${breaktime} =~ ^[0-9]+$ ]]; then
 				file_timestamp=$(jq -rc '.timestamp' "${x}")
-				if [[ "${breaktime_timestamp}" -ge "${file_timestamp}" ]]; then
+				if [[ ${breaktime_timestamp} -ge ${file_timestamp} ]]; then
 					echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
 				fi
 			fi
-			if [[ -f "${x}" && -f "${diff_file}" && ("${channel}" = "subscriptions" || "${channel}" = "WL") ]]; then
+			if [[ -f ${x} && -f ${diff_file} && (${channel} == "subscriptions" || ${channel} == "WL") ]]; then
 				#if [[ -f "${x}" && -f "${diff_file}" && "${channel}" = "subscriptions" ]]; then
 				channel_id=$(jq -rc ".channel_id" "${x}")
 				while read -r line; do
-					if [[ -f "${x}" && "${line}" = "${channel_id}" && -f "${subscriptions_old}" ]]; then
+					if [[ -f ${x} && ${line} == "${channel_id}" && -f ${subscriptions_old} ]]; then
 						unsubscribed_channel=$(grep "${line}" "${subscriptions_old}" | cut -d ',' -f3-)
 						echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
 						touch "${subfolder}/${channel}-remove.csv"
 						jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${subfolder}/${channel}-remove.csv"
+							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${subfolder}/${channel}-remove.csv"
 						done
 						rm "${x}"
 					fi
 				done <"${diff_file}"
 			fi
-			if [[ -f "${x}" ]]; then
+			if [[ -f ${x} ]]; then
 				if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
 					jq '.formats="" | .automatic_captions="" | .subtitles="" | .thumbnails="" | .tags="" | .chapters="" | .heatmap="" | .categories=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
 				fi
 				echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
-				if [[ ${enablecsv} = "1" ]]; then
+				if [[ ${enablecsv} == "1" ]]; then
 					jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-						echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e "s/\\\\\"/＂/g" >>"${tmpcsv}"
+						echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${tmpcsv}"
 					done
 				fi
-				if [[ ${enabledb} = "1" ]]; then
+				if [[ ${enabledb} == "1" ]]; then
 					jq -c '[.upload_date, .timestamp]' "${x}" | while read -r i; do
-						echo "${i},${x##*/}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e "s/\\\\\"/＂/g" >>"${sortcsv}"
+						echo "${i},${x##*/}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e 's/\\"/＂/g' >>"${sortcsv}"
 					done
 				fi
 				echo "${count}/${total} ${x}"
@@ -212,14 +212,14 @@ core_loop() {
 	done
 	wait
 	sleep 1
-	if [[ ${enabledb} = "1" ]]; then
+	if [[ ${enabledb} == "1" ]]; then
 		sort "${sortcsv}" | uniq >"${temporary}/${channel}-sort-ordered.csv"
 		if [[ -f "${temporary}/${channel}.db" ]]; then
 			rm "${temporary}/${channel}.db"
 		fi
-		if [[ "${channel}" = "subscriptions" ]]; then
+		if [[ ${channel} == "subscriptions" ]]; then
 			echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos from subscriptions\",\"videos\":[" >"${temporary}/${channel}.db"
-		elif [[ "${channel}" = "WL" ]]; then
+		elif [[ ${channel} == "WL" ]]; then
 			echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos to watch later\",\"videos\":[" >"${temporary}/${channel}.db"
 		else
 			echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos from ${channel} to watch later\",\"videos\":[" >"${temporary}/${channel}.db"
@@ -229,7 +229,7 @@ core_loop() {
 		while read -r line; do
 			count=$((count + 1))
 			file=$(echo "${line}" | cut -d ',' -f3-)
-			if [[ -f "${file}" ]]; then
+			if [[ -f ${file} ]]; then
 				if [[ $(jq -r ".timestamp" "${temporary}/${file}") != "null" ]]; then
 					jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(uuidgen)\", \"type\": .media_type}" "${temporary}/${file}" >>"${temporary}/${channel}.db"
 					echo "," >>"${temporary}/${channel}.db"
@@ -245,7 +245,7 @@ core_loop() {
 		grep -v -e ":[ ]*null" "${temporary}/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" -e "s/\[\r,/\[/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "${temporary}/${channel}.db"
 		rm "${temporary}/${channel}-sort-ordered.csv" "${sortcsv}"
 	fi
-	if [[ ${enablecsv} = "1" ]]; then
+	if [[ ${enablecsv} == "1" ]]; then
 		sort "${tmpcsv}" | uniq >"${temporary}/${channel}-without-header.csv"
 		echo '"Upload Date", "Timestamp", "Duration", "Uploader", "Title", "Webpage URL", "Livestream"' >"${temporary}/${channel}-tmp.csv"
 		cat "${temporary}/${channel}-without-header.csv" >>"${temporary}/${channel}-tmp.csv"
@@ -267,11 +267,11 @@ core_loop() {
 #Start of the script proper
 starttime=$(date +'%s')
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
-if [[ -f "${loop_file}" && "${override_loop}" = "0" ]]; then
+if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 	while read -r channel_entry cutdate; do
 		channel="${channel_entry}"
 		breaktime="${cutdate}"
-		if [[ -n "${channel}" && -n "${cutdate}" ]]; then
+		if [[ -n ${channel} && -n ${cutdate} ]]; then
 			core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
 		fi
 	done <"${loop_file}"
@@ -279,14 +279,14 @@ else
 	core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
 fi
 
-if [[ -f "${loop_file}" && "${override_loop}" = "0" ]]; then
+if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
-	if [[ "${enabledb}" -eq "1" ]]; then
+	if [[ ${enabledb} -eq "1" ]]; then
 		cd ./subscriptions || exit
-		if [[ -f "${final}" ]]; then
+		if [[ -f ${final} ]]; then
 			rm -rf "${final}"
 		fi
-		if [[ ! -f "${final}" ]]; then
+		if [[ ! -f ${final} ]]; then
 			touch "${final}"
 		fi
 		#Concatenate all playlists
@@ -310,7 +310,7 @@ if [[ $(uname -n) == "azkware" ]]; then
 		newest_date=0
 		while read -r j; do
 			current_date=$(sudo stat -c%Y "${j}")
-			if [[ "${current_date}" -gt "${newest_date}" ]]; then
+			if [[ ${current_date} -gt ${newest_date} ]]; then
 				newest_name="${j}"
 				newest_date="${current_date}"
 			fi

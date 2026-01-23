@@ -41,46 +41,46 @@ loop() {
 	#postcontentcount=$("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count();" || echo 0)
 	#postcount=$("${dbengine}" "${db}" -N -B -q -e "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${id} or \`author-id\` = ${id} or \`causer-id\` = ${id}); delete p.* from \`post\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count();" || echo 0)
 	lastitemid="${id}"
-	if [[ "${intense_optimizations}" -eq 0 || "${intense_optimizations}" -eq 1 ]]; then
+	if [[ ${intense_optimizations} -eq 0 || ${intense_optimizations} -eq 1 ]]; then
 		if [[ -n $(type flock) ]]; then
 			isreadlocked=0
-			while [[ "${isreadlocked}" -eq 0 ]]; do
+			while [[ ${isreadlocked} -eq 0 ]]; do
 				exec 9>"${tmplock}"
 				if flock -n -e 9; then
 					isreadlocked=1
-					if [[ -f "${tmpfile}" ]]; then
+					if [[ -f ${tmpfile} ]]; then
 						while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount; do
-							if [[ "${id}" -gt "${lastitemid}" ]]; then
+							if [[ ${id} -gt ${lastitemid} ]]; then
 								lastitemid="${id}"
 							fi
-							if [[ -n "${tmp_postthreadcount}" ]]; then
+							if [[ -n ${tmp_postthreadcount} ]]; then
 								postthreadcount=$((postthreadcount + tmp_postthreadcount))
 							fi
-							if [[ -n "${tmp_postthreadusercount}" ]]; then
+							if [[ -n ${tmp_postthreadusercount} ]]; then
 								postthreadusercount=$((postthreadusercount + tmp_postthreadusercount))
 							fi
-							if [[ -n "${tmp_postusercount}" ]]; then
+							if [[ -n ${tmp_postusercount} ]]; then
 								postusercount=$((postusercount + tmp_postusercount))
 							fi
-							if [[ -n "${tmp_posttagcount}" ]]; then
+							if [[ -n ${tmp_posttagcount} ]]; then
 								posttagcount=$((posttagcount + tmp_posttagcount))
 							fi
-							if [[ -n "${tmp_postcontentcount}" ]]; then
+							if [[ -n ${tmp_postcontentcount} ]]; then
 								postcontentcount=$((postcontentcount + tmp_postcontentcount))
 							fi
-							if [[ -n "${tmp_postcountscount}" ]]; then
+							if [[ -n ${tmp_postcountscount} ]]; then
 								postcountscount=$((postcountscount + tmp_postcountscount))
 							fi
-							if [[ -n "${tmp_postcategorycount}" ]]; then
+							if [[ -n ${tmp_postcategorycount} ]]; then
 								postcategorycount=$((postcategorycount + tmp_postcategorycount))
 							fi
-							if [[ -n "${tmp_postcount}" ]]; then
+							if [[ -n ${tmp_postcount} ]]; then
 								postcount=$((postcount + tmp_postcount))
 							fi
 						done <"${tmpfile}"
 						flock -u 9
 						iswritelocked=0
-						while [[ "${iswritelocked}" -eq 0 ]]; do
+						while [[ ${iswritelocked} -eq 0 ]]; do
 							exec 9>"${tmplock}"
 							if flock -n -e 9; then
 								iswritelocked=1
@@ -92,33 +92,33 @@ loop() {
 				fi
 			done
 		else
-			if [[ -f "${tmpfile}" ]]; then
+			if [[ -f ${tmpfile} ]]; then
 				while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount; do
-					if [[ "${id}" -gt "${lastitemid}" ]]; then
+					if [[ ${id} -gt ${lastitemid} ]]; then
 						lastitemid="${id}"
 					fi
-					if [[ -n "${tmp_postthreadcount}" ]]; then
+					if [[ -n ${tmp_postthreadcount} ]]; then
 						postthreadcount=$((postthreadcount + tmp_postthreadcount))
 					fi
-					if [[ -n "${tmp_postthreadusercount}" ]]; then
+					if [[ -n ${tmp_postthreadusercount} ]]; then
 						postthreadusercount=$((postthreadusercount + tmp_postthreadusercount))
 					fi
-					if [[ -n "${tmp_postusercount}" ]]; then
+					if [[ -n ${tmp_postusercount} ]]; then
 						postusercount=$((postusercount + tmp_postusercount))
 					fi
-					if [[ -n "${tmp_posttagcount}" ]]; then
+					if [[ -n ${tmp_posttagcount} ]]; then
 						posttagcount=$((posttagcount + tmp_posttagcount))
 					fi
-					if [[ -n "${tmp_postcontentcount}" ]]; then
+					if [[ -n ${tmp_postcontentcount} ]]; then
 						postcontentcount=$((postcontentcount + tmp_postcontentcount))
 					fi
-					if [[ -n "${tmp_postcountscount}" ]]; then
+					if [[ -n ${tmp_postcountscount} ]]; then
 						postcountscount=$((postcountscount + tmp_postcountscount))
 					fi
-					if [[ -n "${tmp_postcategorycount}" ]]; then
+					if [[ -n ${tmp_postcategorycount} ]]; then
 						postcategorycount=$((postcategorycount + tmp_postcategorycount))
 					fi
-					if [[ -n "${tmp_postcount}" ]]; then
+					if [[ -n ${tmp_postcount} ]]; then
 						postcount=$((postcount + tmp_postcount))
 					fi
 				done <"${tmpfile}"
@@ -126,9 +126,9 @@ loop() {
 			fi
 		fi
 	fi
-	if [[ -n "${lastitem}" && "${#lastitem}" -gt 9 ]]; then
+	if [[ -n ${lastitem} && ${#lastitem} -gt 9 ]]; then
 		response_left=$(printf "%s %s %s %s@%s " "${counter}" "${id}" "${lastitem::-9}" "${nick}" "${baseurltrimmed}")
-		if [[ "${intense_optimizations}" -eq 0 || "${intense_optimizations}" -eq 1 ]]; then
+		if [[ ${intense_optimizations} -eq 0 || ${intense_optimizations} -eq 1 ]]; then
 			response=$(printf "%spost-thread:%s " "${response}" "${postthreadcount}")
 			response=$(printf "%spost-thread-user:%s " "${response}" "${postthreadusercount}")
 			response=$(printf "%spost-user:%s " "${response}" "${postusercount}")
@@ -150,7 +150,7 @@ loop() {
 		blank_string=""
 		columns_length="${COLUMNS}"
 		#Account for the case where the string is more than a terminal line long
-		while [[ "${final_string_length}" -gt "${columns_length}" ]]; do
+		while [[ ${final_string_length} -gt ${columns_length} ]]; do
 			columns_length=$((columns_length + COLUMNS))
 		done
 		blank_string_length=$((columns_length - final_string_length))
@@ -168,22 +168,22 @@ loop() {
 }
 
 #Check if our dependencies are installed
-if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
+if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
-	if [[ -f "${tmpfile}" ]]; then
+	if [[ -f ${tmpfile} ]]; then
 		rm -rf "${tmpfile}"
 	fi
-	if [[ -f "${tmplock}" ]]; then
+	if [[ -f ${tmplock} ]]; then
 		rm -rf "${tmplock}"
 	fi
 	touch "${tmpfile}"
 	echo "0 0 0 0 0 0 0 0 0 0" >"${tmpfile}"
-	if [[ "${intense_optimizations}" -gt 0 ]]; then
-		"${dbengine}" "${db}" -v -e "alter table \`contact\` add index if not exists \`tmp_contact_baseurl_addr\` (baseurl, addr)"
-		"${dbengine}" "${db}" -v -e "alter table \`post-thread\` add index if not exists \`tmp_post_thread_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
-		"${dbengine}" "${db}" -v -e "alter table \`post-thread-user\` add index if not exists \`tmp_post_thread_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
-		"${dbengine}" "${db}" -v -e "alter table \`post-user\` add index if not exists \`tmp_post_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
-		"${dbengine}" "${db}" -v -e "alter table \`post\` add index if not exists \`tmp_post_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`)"
+	if [[ ${intense_optimizations} -gt 0 ]]; then
+		"${dbengine}" "${db}" -v -e 'alter table `contact` add index if not exists `tmp_contact_baseurl_addr` (baseurl, addr)'
+		"${dbengine}" "${db}" -v -e 'alter table `post-thread` add index if not exists `tmp_post_thread_id` (`owner-id`, `author-id`, `causer-id`)'
+		"${dbengine}" "${db}" -v -e 'alter table `post-thread-user` add index if not exists `tmp_post_thread_user_id` (`owner-id`, `author-id`, `causer-id`)'
+		"${dbengine}" "${db}" -v -e 'alter table `post-user` add index if not exists `tmp_post_user_id` (`owner-id`, `author-id`, `causer-id`)'
+		"${dbengine}" "${db}" -v -e 'alter table `post` add index if not exists `tmp_post_id` (`owner-id`, `author-id`, `causer-id`)'
 		"${dbengine}" "${db}" -v -e \
 			"select count(\`id\`) as \"Count\" from contact c where c.\`addr\` not in (\
 				select \`addr\` from \`contact\` where \
@@ -196,11 +196,11 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	fi
 	counter=0
 	was_empty=0
-	while [[ "${was_empty}" -eq 0 ]]; do
+	while [[ ${was_empty} -eq 0 ]]; do
 		current_counter=0
 		currentid="${starterid}"
 		while read -r tmp_counter tmp_lastitemid tmp_postthreadcount tmp_postthreadusercount tmp_postusercount tmp_posttagcount tmp_postcontentcount tmp_postcountscount tmp_postcategorycount tmp_postcount; do
-			if [[ -n "${tmp_counter}" && -n "${tmp_lastitemid}" && "${currentid}" -lt "${tmp_lastitemid}" ]]; then
+			if [[ -n ${tmp_counter} && -n ${tmp_lastitemid} && ${currentid} -lt ${tmp_lastitemid} ]]; then
 				currentid="${tmp_lastitemid}"
 			fi
 		done <"${tmpfile}"
@@ -223,7 +223,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \
 			c.\`id\` > ${currentid} limit ${loopsize}")
 		wait
-		if [[ "${current_counter}" -eq 0 || "${current_counter}" -lt "${loopsize}" ]]; then
+		if [[ ${current_counter} -eq 0 || ${current_counter} -lt ${loopsize} ]]; then
 			was_empty=1
 		fi
 	done
@@ -235,21 +235,21 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		alter table \`post-tag\` auto_increment = 1; \
 		alter table \`post\` auto_increment = 1; \
 	"
-	if [[ "${intense_optimizations}" -gt 0 ]]; then
-		"${dbengine}" "${db}" -v -e "alter table \`contact\` drop index \`tmp_contact_baseurl_addr\`"
-		"${dbengine}" "${db}" -v -e "alter table \`post-thread\` drop index  \`tmp_post_thread_id\`"
-		"${dbengine}" "${db}" -v -e "alter table \`post-thread-user\` drop index \`tmp_post_thread_user_id\`"
-		"${dbengine}" "${db}" -v -e "alter table \`post-user\` drop index \`tmp_post_user_id\`"
-		"${dbengine}" "${db}" -v -e "alter table \`post\` drop index \`tmp_post_id\`"
+	if [[ ${intense_optimizations} -gt 0 ]]; then
+		"${dbengine}" "${db}" -v -e 'alter table `contact` drop index `tmp_contact_baseurl_addr`'
+		"${dbengine}" "${db}" -v -e 'alter table `post-thread` drop index  `tmp_post_thread_id`'
+		"${dbengine}" "${db}" -v -e 'alter table `post-thread-user` drop index `tmp_post_thread_user_id`'
+		"${dbengine}" "${db}" -v -e 'alter table `post-user` drop index `tmp_post_user_id`'
+		"${dbengine}" "${db}" -v -e 'alter table `post` drop index `tmp_post_id`'
 		"${dboptimizeengine}" "${db}"
 	fi
 	if [[ -n $(type flock) ]]; then
 		flock -u 9 2>/dev/null
 	fi
-	if [[ -f "${tmpfile}" ]]; then
+	if [[ -f ${tmpfile} ]]; then
 		rm -rf "${tmpfile}"
 	fi
-	if [[ -f "${tmplock}" ]]; then
+	if [[ -f ${tmplock} ]]; then
 		rm -rf "${tmplock}"
 	fi
 	date

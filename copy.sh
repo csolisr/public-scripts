@@ -17,7 +17,7 @@ serverurl="friendica.example.net"
 cronfolder="/etc/cron.*"
 #Target for the scripts folder.
 scriptsfolder="../../Scripts"
-if [[ -f "${settings_file}" ]]; then
+if [[ -f ${settings_file} ]]; then
 	while read -r key value; do
 		case "${key}" in
 		"serveruname")
@@ -40,7 +40,7 @@ if [[ -f "${settings_file}" ]]; then
 		esac
 	done <"${settings_file}"
 else
-	echo "You must first make a copy of the existing \"settings_default.csv\" file, edit it with your settings, then save it as \"settings.csv\" in this folder." && exit
+	echo 'You must first make a copy of the existing "settings_default.csv" file, edit it with your settings, then save it as "settings.csv" in this folder.' && exit
 fi
 #Check each of our shell scripts in the folder
 while read -r i; do
@@ -48,27 +48,28 @@ while read -r i; do
 	#Then, set the correct permissions on the files
 	tr -d '\r' <"${i}" >"/tmp/${i}" && mv "/tmp/${i}" "${i}" && chmod 755 "${i}" && chown "${folder_user}:${folder_group}" "${i}"
 	#`shfmt` is used to format the shell scripts
-	shfmt -w "${i}"
+	shfmt -s -w "${i}"
 	#`shellcheck` is used to find any issues with the shell scripts, and if possible, fix them (see first line)
 	#We're skipping optional check SC2312 as we use command substitutions heavily,
 	#and replacing some of the outputs for "true" or "false" in case of failure would break some logic.
-	shellcheck -o all -e SC2312 -f diff "${i}" | patch -p1 "${i}"
+	#Also, simplified scripts for MariaDB don't require double quote marks, so we also ignore SC2016.
+	shellcheck -o all -e SC2312 -e SC2016 -f diff "${i}" | patch -p1 "${i}"
 	#This line shows any issues that could not be auto-fixed.
-	shellcheck -o all -e SC2312 "${i}"
+	shellcheck -o all -e SC2312 -e SC2016 "${i}"
 	#As the scripts have no file extension in our cron folder, we will use this truncated name for its subfolders.
 	i_tmp="${i##./}"
 	#Populate the corresponding file credentials for the ones in the credentials file.
 	credential=""
-	if [[ -f "${credentials_file}" ]]; then
+	if [[ -f ${credentials_file} ]]; then
 		while read -r credential_key credential_value; do
 			i_trimmed="${i##*/}"
-			if [[ "${credential_key}" == "${i_trimmed}" ]]; then
+			if [[ ${credential_key} == "${i_trimmed}" ]]; then
 				credential="${credential_value}"
 			fi
 		done <"${credentials_file}"
 	else
-		echo "You must first make a copy of the existing \"credentials_default.csv\" file, edit it with your settings, then save it as \"credentials.csv\" in this folder." &&
-			echo "Each credential needs to be generated using something like GetAuth and the \"read\" permission ( https://getauth.thms.uk/?scopes=read )." && exit
+		echo 'You must first make a copy of the existing "credentials_default.csv" file, edit it with your settings, then save it as "credentials.csv" in this folder.' &&
+			echo 'Each credential needs to be generated using something like GetAuth and the "read" permission ( https://getauth.thms.uk/?scopes=read ).' && exit
 	fi
 	#These changes apply to the cron folder.
 	if [[ $(uname -n) == "${serveruname}" ]]; then

@@ -12,7 +12,7 @@ printf "\rUpdateContact\t\t%s\n\r" "${camax}"
 
 cb=${limit}
 cbmax=0
-sudo mariadb friendica -B -N -q -e "drop table if exists tmp_url; create table tmp_url (select \`url\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`));"
+sudo mariadb friendica -B -N -q -e 'drop table if exists tmp_url; create table tmp_url (select `url` from `contact` where `id` in (select `contact-id` from `group_member`) or `id` in (select `cid` from `user-contact`) or `id` in (select `uid` from `user`));'
 until [[ ${cb} -lt ${limit} ]]; do
 	cb=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`command\` = \"ContactDiscovery\" and regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', ''), '\\\\\\\\', '') not in (select \`url\` from tmp_url) and \`done\` = 0 limit ${cb}; select row_count();")
 	cbmax=$((cbmax + cb))

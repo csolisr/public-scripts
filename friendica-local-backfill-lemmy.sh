@@ -22,24 +22,24 @@ lastepoch=$(date -d "${amountofdays} days ago" '+%s')
 #Parallel part of the function
 loop() {
 	#If the item is not empty
-	if [[ -n "${item}" && ! "${item}" =~ " " ]]; then
+	if [[ -n ${item} && ! ${item} =~ " " ]]; then
 		#Manually backfill the address to our backend
 		#curl -s --no-progress-meter -H "User-Agent: ${useragent}" -H "Authorization: Bearer ${token}" "${searchurl}${item}" -O /dev/null
 		item_result=$(curl -s --no-progress-meter -H "User-Agent: ${useragent}" -H "Authorization: Bearer ${token}" "${searchurl}${item}")
 		itemid=$(echo "${item_result}" | jq -r '.statuses[0].id')
 		#Download the HTML of the page, clean it with XMLStarlet
 		jpdl=$(curl -s --no-progress-meter -H "User-Agent: ${useragent}" "${item}" 2>/dev/null)
-		if [[ -n "${jpdl}" ]]; then
+		if [[ -n ${jpdl} ]]; then
 			jp=$(echo "${jpdl}" | xmlstarlet fo -H -R 2>/dev/null)
 			#Select the canonical address of the page
-			j=$(echo "${jp}" | xmlstarlet sel -t -v "/html/head/link[@rel=\"canonical\"]/@href" 2>/dev/null)
+			j=$(echo "${jp}" | xmlstarlet sel -t -v '/html/head/link[@rel="canonical"]/@href' 2>/dev/null)
 			#If neither is empty, and if the canonical address is in another server, backfill that as well
-			if [[ -n "${jp}" && -n "${j}" && "${j}" != "${item}" ]]; then
+			if [[ -n ${jp} && -n ${j} && ${j} != "${item}" ]]; then
 				#curl -s --no-progress-meter -H "Authorization: Bearer ${token}" "${searchurl}${j}" -O /dev/null
 				j_result=$(curl -s --no-progress-meter -H "Authorization: Bearer ${token}" "${searchurl}${j}")
 				jid=$(echo "${j_result}" | jq -r '.statuses[0].id')
-				if [[ "${jid}" != "null" ]]; then
-					if [[ "${itemid}" != null ]]; then
+				if [[ ${jid} != "null" ]]; then
+					if [[ ${itemid} != null ]]; then
 						echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal), ${j} (external) - ${itemid} = ${jid}" #&> /dev/null
 					else
 						echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${j} (external) - ${jid}" #&> /dev/null
@@ -50,7 +50,7 @@ loop() {
 			#If there is no external canonical address to backfill, but there is an internal one:
 			else
 				#If our backend has returned an item ID:
-				if [[ -n "${itemid}" && "${itemid}" != "null" ]]; then
+				if [[ -n ${itemid} && ${itemid} != "null" ]]; then
 					echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal) - ${itemid}" #&> /dev/null
 				else
 					echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal) - Waiting for itemid" #&> /dev/null
@@ -61,11 +61,11 @@ loop() {
 }
 comm_loop() {
 	#If any community is found
-	if [[ -n "${comm}" ]]; then
+	if [[ -n ${comm} ]]; then
 		#Iterate per page until we have no new items
 		keep_looping=1
 		m_page="1"
-		while [[ "${keep_looping}" -eq 1 ]]; do
+		while [[ ${keep_looping} -eq 1 ]]; do
 			#Lemmy backend
 			s="https://${a}/feeds/${comm}.xml"
 			echo "${commnumber}/${commtotal} Feed: ${s}" #&> /dev/null
@@ -74,7 +74,7 @@ comm_loop() {
 			while IFS="" read -r m_line; do
 				m+=("${m_line}")
 			done < <(curl -s -L -m 10 -H "User-Agent: ${useragent}" "${s}"?sort=New\&limit=50\&page="${m_page}" | xmlstarlet sel -t -m "//item" -v "concat(guid,'|',pubDate,'#')" -n 2>/dev/null | tr ' ' '_')
-			if [[ "${#m[@]}" -eq 0 ]]; then
+			if [[ ${#m[@]} -eq 0 ]]; then
 				#If no items are found, fall back to Piefed backend.
 				#Warning: this RSS feed does not seem to have a limit of items, so we will just assume no looping is allowed
 				comm_trimmed=$(echo "${comm}" | sed -e "s/c\///g")
@@ -101,9 +101,9 @@ comm_loop() {
 				#Parse date from the second item of the separator
 				epoch=$(date -d "$(echo "${itemdate}" | tr '_' ' ')" '+%s')
 				#If the items are valid (not empty):
-				if [[ -n "${itemurl}" && -n "${itemdate}" ]]; then
+				if [[ -n ${itemurl} && -n ${itemdate} ]]; then
 					#If the date is older than the specified time, ignore
-					if [[ "${epoch}" -gt "${lastepoch}" ]]; then
+					if [[ ${epoch} -gt ${lastepoch} ]]; then
 						mb+=("${itemurl}")
 					else
 						dropped=$((dropped + 1))
@@ -130,7 +130,7 @@ comm_loop() {
 			)
 			wait
 			#End loop
-			if [[ "${dropped}" -gt 0 || "${ai}" -eq 0 ]]; then
+			if [[ ${dropped} -gt 0 || ${ai} -eq 0 ]]; then
 				keep_looping=0
 			else
 				m_page=$((m_page + 1))
@@ -141,7 +141,7 @@ comm_loop() {
 outer_loop() {
 	sitereq=$(curl -s -L --head -m 5 -H "User-Agent: ${useragent}" --request GET "${a}")
 	status=$(echo "${sitereq}" | grep "200")
-	if [[ -n "${status}" ]]; then
+	if [[ -n ${status} ]]; then
 		#Only process communities from the sites we want to backfill, ignore the rest
 		comms=()
 		#Parse all the landing page feeds for several categories
@@ -158,13 +158,13 @@ outer_loop() {
 			#TODO: fetch the community URLs straight from our backend, if possible.
 			for n in "${sites[@]}"; do
 				#Only process communities from the sites we want to backfill, ignore the rest
-				if [[ "${i}" =~ ${n} ]]; then
+				if [[ ${i} =~ ${n} ]]; then
 					#Parse the RSS feed, find each community ("https://example.com/c/community")
 					#TODO: find if there's a better way to parse this through XMLStarlet alone
 					for sp in $(curl -L -m 10 -s -H "User-Agent: ${useragent}" "${i}" 2>/dev/null | xmlstarlet sel -T -t -c "//item/description" 2>/dev/null |
 						grep -o -e "<a href=\"https://${n}/c/.*\">.*<\/a>" |
 						sed -e "s/</\n/g" -e "s/>/\n/g" | grep -o -e "https://${n}/c/.*" |
-						sed -e "s/https:\/\/${n}\///g" -e "s/\"//g" -e "s/ /\r\n/g" | uniq -i); do
+						sed -e "s/https:\/\/${n}\///g" -e 's/"//g' -e "s/ /\r\n/g" | uniq -i); do
 						#If any community is found, add it to our list
 						if [[ -n ${sp} ]]; then
 							comms+=("${sp}")
@@ -189,7 +189,7 @@ outer_loop() {
 			i+=("${line}")
 		done < <(mariadb "${db}" -N -B -q -e "select c.url from \`contact\` c join \`user-contact\` u where c.url like \"https:\/\/${a}%\/c\/%\" and c.id = u.cid and (u.rel = 2 or u.rel=3)")
 		for n in "${i[@]}"; do
-			if [[ "${n}" =~ ${a} ]]; then
+			if [[ ${n} =~ ${a} ]]; then
 				#If any community is found, add it to our list
 				sp=$(echo "${n}" | sed -e "s/https:\/\/${a}\///g")
 				if [[ -n ${sp} ]]; then

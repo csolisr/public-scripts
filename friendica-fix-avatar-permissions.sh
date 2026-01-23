@@ -13,27 +13,27 @@ tmpfile=/tmp/friendica-fix-avatar-permissions.txt
 avatarfolder=avatar
 
 loop_1() {
-	if [[ "${p}" =~ .jpeg || "${p}" =~ .jpg ]]; then
+	if [[ ${p} =~ .jpeg || ${p} =~ .jpg ]]; then
 		nice -n 10 jpegoptim -m 76 "${p}" #&> /dev/null
-	elif [[ "${p}" =~ .gif ]]; then
+	elif [[ ${p} =~ .gif ]]; then
 		nice -n 10 gifsicle --batch -O3 --lossy=80 --colors=255 "${p}" #&> /dev/null
 		#Specific compression for large GIF files
 		while [[ $(stat -c%s "${p}" 2>/dev/null || echo 0) -ge 512000 ]]; do
 			frameamount=$(($(exiftool -b -FrameCount "${p}" || 1) - 1))
 			nice -n 10 gifsicle "${p}" $(seq -f "#%g" 0 2 "${frameamount}") -O3 --lossy=80 --colors=255 -o "${p}" #&> /dev/null
 		done
-	elif [[ "${p}" =~ .png ]]; then
+	elif [[ ${p} =~ .png ]]; then
 		nice -n 10 oxipng -o max "${p}" #&> /dev/null
-	elif [[ "${p}" =~ .webp ]]; then
+	elif [[ ${p} =~ .webp ]]; then
 		#If file is not animated
-		if [[ -f "${p}" ]]; then
+		if [[ -f ${p} ]]; then
 			if grep -q -a -l -e "ANIM" -e "ANMF" "${p}"; then
 				tmppic="/tmp/temp_$(date +%s).webp"
 				nice -n 10 cwebp -mt -af -quiet "${p}" -o "${tmppic}" #&> /dev/null
-				if [[ -f "${tmppic}" ]]; then
+				if [[ -f ${tmppic} ]]; then
 					size_new=$(stat -c%s "${tmppic}" 2>/dev/null || echo 0)
 					size_original=$(stat -c%s "${p}" 2>/dev/null || echo 0)
-					if [[ "${size_original}" -gt "${size_new}" ]]; then
+					if [[ ${size_original} -gt ${size_new} ]]; then
 						mv "${tmppic}" "${p}" #&> /dev/null
 					else
 						rm "${tmppic}" #&> /dev/null
@@ -45,7 +45,7 @@ loop_1() {
 }
 
 cd "${folder}" || exit
-if [[ ! -f "${tmpfile}" ]]; then
+if [[ ! -f ${tmpfile} ]]; then
 	sudo bin/console movetoavatarcache | sudo tee "${tmpfile}" #&> /dev/null
 fi
 grep -e "https://${site}/${avatarfolder}/" "${tmpfile}" | sed -e "s/.*${site}/${folderescaped}/g" -e "s/?ts=.*//g" | (

@@ -10,16 +10,16 @@ cd "${folder}" || exit
 #jpeg
 p_jpeg_loop() {
 	quality=$(identify -verbose "${p}" | grep "Quality" | sed -e "s/.*Quality: //g")
-	if [[ ! -s "${quality}" ]]; then
+	if [[ ! -s ${quality} ]]; then
 		quality="76"
 	fi
-	if [[ -n "${quality}" ]]; then
+	if [[ -n ${quality} ]]; then
 		keep_compressing_picture=1
-		while [[ "${keep_compressing_picture}" -gt 0 ]]; do
+		while [[ ${keep_compressing_picture} -gt 0 ]]; do
 			j=$(nice -n 15 jpegoptim -m "${quality}" "${p}")
 			echo "${j}"
 			jr=$(echo "${j}" | grep -e "[OK]" | grep -e ", optimized.")
-			if [[ -z "${jr}" ]]; then
+			if [[ -z ${jr} ]]; then
 				keep_compressing_picture=0
 			fi
 		done
@@ -78,16 +78,16 @@ wait
 #webp
 s_webp_loop() {
 	keep_compressing_picture=1
-	while [[ "${keep_compressing_picture}" -gt 0 ]]; do
+	while [[ ${keep_compressing_picture} -gt 0 ]]; do
 		#If file is not animated
-		if [[ -f "${s}" ]]; then
+		if [[ -f ${s} ]]; then
 			#if [[ -z $(grep -o -a -e "ANIM" -e "ANMF" "${s}") ]]; then
 			if ! grep -q -o -a -e "ANIM" -e "ANMF" "${s}"; then
 				cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp #&>/dev/null
 				if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]; then
 					size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp || 0)
 					size_original=$(stat -c%s "${s}" || 0)
-					if [[ -n "${size_original}" && -n "${size_new}" && "${size_original}" -gt "${size_new}" && "${size_new}" -gt "0" ]]; then
+					if [[ -n ${size_original} && -n ${size_new} && ${size_original} -gt ${size_new} && ${size_new} -gt "0" ]]; then
 						size_diff=$((size_original - size_new))
 						echo "${s}: Saved ${size_diff} bytes" #&> /dev/null
 						mv /tmp/"${s##.*\/}"_temp.webp "${s}" #&> /dev/null

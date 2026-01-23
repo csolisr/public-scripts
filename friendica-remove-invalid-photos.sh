@@ -17,41 +17,41 @@ folder=/var/www/friendica
 timeout=60
 #Command-line parameter number 1: whether to enable the more intensive optimizations (1=on). Defaults to 0=off.
 intensive_optimizations=${1:-"0"}
-if [[ "${intensive_optimizations}" != "0" && "${intensive_optimizations}" != "1" ]]; then
+if [[ ${intensive_optimizations} != "0" && ${intensive_optimizations} != "1" ]]; then
 	intensive_optimizations=0
 fi
 #Command-line parameter number 2: multiplier for the amount of threads, 1 = as many as the device has cores. Defaults to 1.
 thread_multiplier=${2:-"1"}
-if [[ ! "${thread_multiplier}" =~ ^[0-9]+$ || $((10#${thread_multiplier})) -le 0 ]]; then
+if [[ ! ${thread_multiplier} =~ ^[0-9]+$ || $((10#${thread_multiplier})) -le 0 ]]; then
 	thread_multiplier=1
 fi
 #Command-line parameter number 3: whether to display the amount of time taken for certain processes (1=on). Defaults to 0=off.
 time_counter=${3:-"0"}
-if [[ "${time_counter}" != "0" && "${time_counter}" != "1" ]]; then
+if [[ ${time_counter} != "0" && ${time_counter} != "1" ]]; then
 	time_counter=0
 fi
 #Command-line parameter number 4: last known ID to have been successfully processed. Defaults to 0
 lastid=${4:-"0"}
-if [[ ! "${lastid}" =~ ^[0-9]+$ || $((10#${lastid})) -le 0 ]]; then
+if [[ ! ${lastid} =~ ^[0-9]+$ || $((10#${lastid})) -le 0 ]]; then
 	lastid=0
 fi
 #Command-line parameter number 5: whether to enable the lockfile and the item counter, or disable it for a performance boost (0=off). Defaults to 1=on.
 lockfile_enabled=${5:-"1"}
-if [[ "${lockfile_enabled}" != "0" && "${lockfile_enabled}" != "1" ]]; then
+if [[ ${lockfile_enabled} != "0" && ${lockfile_enabled} != "1" ]]; then
 	lockfile_enabled=1
 fi
 nfolder="/tmp/friendica-remove-invalid-photos"
 nfile="${nfolder}/n$(date +%s).csv"
 nlock="${nfolder}/n$(date +%s).lock"
-if [[ ! -d "${nfolder}" ]]; then
+if [[ ! -d ${nfolder} ]]; then
 	mkdir "${nfolder}"
 fi
-if [[ -f "${nfile}" ]]; then
+if [[ -f ${nfile} ]]; then
 	rm -rf "${nfile}" && touch "${nfile}"
 else
 	touch "${nfile}"
 fi
-if [[ -f "${nlock}" ]]; then
+if [[ -f ${nlock} ]]; then
 	rm -rf "${nlock}" && touch "${nlock}"
 else
 	touch "${nlock}"
@@ -62,13 +62,13 @@ n=0
 #Total number of entries processed
 nt=0
 #Highest possible ID known
-maxid=$("${dbengine}" "${db}" -B -N -q -e "select max(\`id\`) from contact")
+maxid=$("${dbengine}" "${db}" -B -N -q -e 'select max(`id`) from contact')
 #Limit per batch
 #limit=$(((maxid / 1000) + 1))
 limit="${maxid}"
 dbcount=0
 idcount=0
-if [[ "${intensive_optimizations}" -gt 0 ]]; then
+if [[ ${intensive_optimizations} -gt 0 ]]; then
 	#https:// = 8 characters | /avatar/ = 8 characters
 	indexlength=$(("${#url}" + 16))
 	"${dbengine}" "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
@@ -82,7 +82,7 @@ else
 fi
 
 loop() {
-	if [[ "${time_counter}" -eq 1 ]]; then
+	if [[ ${time_counter} -eq 1 ]]; then
 		t_id=$(($(date +%s%N) / 1000000))
 	fi
 	result_string=""
@@ -91,40 +91,40 @@ loop() {
 	#Lockfile-protected read
 	if [[ ${lockfile_enabled} -eq 1 ]]; then
 		r=0
-		if [[ "${time_counter}" -eq 1 ]]; then
+		if [[ ${time_counter} -eq 1 ]]; then
 			t_r=$(($(date +%s%N) / 1000000))
 		fi
 		#Fallback in case the process dies
 		(
 			sleep "${timeout}"s
-			if [[ "${r}" -eq 0 ]]; then
+			if [[ ${r} -eq 0 ]]; then
 				rm -rf "${nlock}"
 			fi
 		) &
-		while [[ "${r}" -eq 0 ]]; do
-			if [[ ! -d "${nfolder}" ]]; then
+		while [[ ${r} -eq 0 ]]; do
+			if [[ ! -d ${nfolder} ]]; then
 				mkdir "${nfolder}"
 			fi
-			if [[ ! -f "${nlock}" ]]; then
+			if [[ ! -f ${nlock} ]]; then
 				touch "${nlock}"
 			fi
-			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo 0) == "" ]]; then
+			if [[ -f ${nlock} && $(cat "${nlock}" 2>/dev/null || echo 0) == "" ]]; then
 				rm -rf "${nlock}" && touch "${nlock}" && echo "${id}" | tee "${nlock}" &>/dev/null
-				if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
+				if [[ -f ${nlock} && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
 					read -r n_tmp nt_tmp <"${nfile}" || break
-					if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+					if [[ -n ${n_tmp} && -n ${nt_tmp} ]]; then
 						n="${n_tmp}"
 						nt="${nt_tmp}"
-						if [[ -f "${nlock}" ]]; then
+						if [[ -f ${nlock} ]]; then
 							rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 						fi
 						r=1
 					fi
-				elif [[ -f "${nlock}" ]]; then
+				elif [[ -f ${nlock} ]]; then
 					nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
-					if [[ -n "${nlm}" ]]; then
+					if [[ -n ${nlm} ]]; then
 						nlmt=$((10#${nlm}))
-						if [[ "${nlmt}" -lt $((id + limit)) ]]; then
+						if [[ ${nlmt} -lt $((id + limit)) ]]; then
 							rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 						fi
 					else
@@ -133,13 +133,13 @@ loop() {
 				fi
 			fi
 		done
-		if [[ "${time_counter}" -eq 1 ]]; then
+		if [[ ${time_counter} -eq 1 ]]; then
 			result_string=$(printf "%s R%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_r)))
 		fi
 	fi
-	if [[ -n "${id}" ]]; then
+	if [[ -n ${id} ]]; then
 		while read -r avatar photo thumb micro; do
-			if [[ -n "${photo}" && -n "${thumb}" && -n "${micro}" ]]; then
+			if [[ -n ${photo} && -n ${thumb} && -n ${micro} ]]; then
 				#If there is a photo
 				folderescaped=${folder////\\/}
 				#Substitute the URL path with the folder path so we can search for it in the local file system
@@ -150,10 +150,10 @@ loop() {
 				#Micro is 48px
 				k_micro=$(sed -e "s/https:\/\/${url}/${folderescaped}/g" -e "s/\?ts=.*//g" <<<"${micro}")
 				#If any of the images is not found in the filesystem
-				if [[ ! -e "${k_photo}" || ! -e "${k_thumb}" || ! -e "${k_micro}" ]]; then
+				if [[ ! -e ${k_photo} || ! -e ${k_thumb} || ! -e ${k_micro} ]]; then
 					#If the avatar uses the standard fallback picture or is local, we cannot use it as a base
 					#If we have a remote avatar as a fallback, download it
-					if [[ -n "${avatar}" && $(grep -q -v -e "${url}" -e "images/person" <(echo "${avatar}")) -gt 0 ]]; then
+					if [[ -n ${avatar} && $(grep -q -v -e "${url}" -e "images/person" <(echo "${avatar}")) -gt 0 ]]; then
 						result_string=$(printf "%s Remote %s" "${result_string}" "${avatar}")
 						nl=1
 						sudo -u "${user}" curl "${avatar}" -s -o "${k_photo}"
@@ -181,7 +181,7 @@ loop() {
 						error_found=1
 					fi
 				else
-					if [[ "${time_counter}" -eq 1 ]]; then
+					if [[ ${time_counter} -eq 1 ]]; then
 						t=$(($(date +%s%N) / 1000000))
 					fi
 					#If the images are all found in the filesystem, but fetching any of the images causes an error
@@ -190,7 +190,7 @@ loop() {
 						-s "${thumb}" -X HEAD -I --http2-prior-knowledge -4 -N --next \
 						-s "${micro}" -X HEAD -I --http2-prior-knowledge -4 -N |
 						grep -q "content-type: image") ]]; then
-						if [[ "${time_counter}" -eq 1 ]]; then
+						if [[ ${time_counter} -eq 1 ]]; then
 							result_string=$(printf "%s F%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t)))
 						fi
 						result_string=$(printf "${result_string} Fetch error: %s" "${photo}")
@@ -199,7 +199,7 @@ loop() {
 						nl=1
 						error_found=1
 					else
-						if [[ "${time_counter}" -eq 1 ]]; then
+						if [[ ${time_counter} -eq 1 ]]; then
 							result_string=$(printf "%s F%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t)))
 						fi
 						result_string=$(printf "%s (FOUND)" "${result_string}")
@@ -211,7 +211,7 @@ loop() {
 				result_string=$(printf "%s No local" "${result_string}")
 				#If the avatar uses the standard fallback picture or is local, we cannot use it as a base
 				#If we have a remote avatar as a fallback, download it
-				if [[ -n "${avatar}" && $(grep -q -v -e "${url}" -e "images/person" <(echo "${avatar}")) -gt 0 ]]; then
+				if [[ -n ${avatar} && $(grep -q -v -e "${url}" -e "images/person" <(echo "${avatar}")) -gt 0 ]]; then
 					result_string=$(printf "${result_string} Remote %s" "${avatar}")
 					nl=1
 					sudo -u "${user}" curl "${avatar}" -s -o "${k_photo}"
@@ -240,7 +240,7 @@ loop() {
 					error_found=1
 				fi
 			fi
-			if [[ "${error_found}" -gt 0 ]]; then
+			if [[ ${error_found} -gt 0 ]]; then
 				"${dbengine}" "${db}" -N -B -q -e "insert ignore into workerqueue (command, parameter, priority, created) \
 						values (\"UpdateContact\", \"[${id}]\", 20, concat(curdate(), \" \", curtime()));"
 				result_string=$(printf "%s (added)" "${result_string}")
@@ -251,35 +251,35 @@ loop() {
 	fi
 	if [[ ${lockfile_enabled} -eq 1 ]]; then
 		w=0
-		if [[ "${time_counter}" -eq 1 ]]; then
+		if [[ ${time_counter} -eq 1 ]]; then
 			t_w=$(($(date +%s%N) / 1000000))
 		fi
-		while [[ "${w}" -eq 0 ]]; do
-			if [[ ! -d "${nfolder}" ]]; then
+		while [[ ${w} -eq 0 ]]; do
+			if [[ ! -d ${nfolder} ]]; then
 				mkdir "${nfolder}"
 			fi
-			if [[ ! -f "${nlock}" ]]; then
+			if [[ ! -f ${nlock} ]]; then
 				#n is increased only if error_found = 1
 				touch "${nlock}"
 			fi
-			if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
+			if [[ -f ${nlock} && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
 				rm -rf "${nlock}" && touch "${nlock}" && echo "${id}" | tee "${nlock}" &>/dev/null
-				if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
+				if [[ -f ${nlock} && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
 					read -r n_tmp nt_tmp <"${nfile}" || break
-					if [[ -n "${n_tmp}" && -n "${nt_tmp}" ]]; then
+					if [[ -n ${n_tmp} && -n ${nt_tmp} ]]; then
 						if [[ $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${id}" ]]; then
-							if [[ "${n_tmp}" -ge "${n}" ]]; then
+							if [[ ${n_tmp} -ge ${n} ]]; then
 								n=$((n_tmp + error_found))
 							else
 								n=$((n + error_found))
 							fi
-							if [[ "${nt_tmp}" -ge "${nt}" ]]; then
+							if [[ ${nt_tmp} -ge ${nt} ]]; then
 								nt=$((nt_tmp + 1))
 							else
 								nt=$((nt + 1))
 							fi
 							echo "${n} ${nt}" >"${nfile}"
-							if [[ -f "${nlock}" ]]; then
+							if [[ -f ${nlock} ]]; then
 								rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 							fi
 							w=1
@@ -288,11 +288,11 @@ loop() {
 				fi
 			fi
 		done
-		if [[ "${time_counter}" -eq 1 ]]; then
+		if [[ ${time_counter} -eq 1 ]]; then
 			result_string=$(printf "%s W%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_w)))
 		fi
 	fi
-	if [[ "${time_counter}" -eq 1 ]]; then
+	if [[ ${time_counter} -eq 1 ]]; then
 		result_string=$(printf "%s T%dms" "${result_string}" $(($(($(date +%s%N) / 1000000)) - t_id)))
 	fi
 	final_string=""
@@ -307,7 +307,7 @@ loop() {
 	blank_string=""
 	columns_length="${COLUMNS}"
 	#Account for the case where the string is more than a terminal line long
-	while [[ "${final_string_length}" -gt "${columns_length}" ]]; do
+	while [[ ${final_string_length} -gt ${columns_length} ]]; do
 		columns_length=$((columns_length + COLUMNS))
 	done
 	blank_string_length=$((columns_length - final_string_length))
@@ -321,7 +321,7 @@ loop() {
 	done
 	final_string=$(printf "%s%s" "${final_string}" "${blank_string}")
 	#Add a new line only when necessary
-	if [[ "${nl}" -eq 1 ]]; then
+	if [[ ${nl} -eq 1 ]]; then
 		final_string=$(printf "%s\n\r\n" "${final_string}")
 	fi
 	printf "%s\r" "${final_string}"
@@ -332,7 +332,7 @@ cd "${folder}" || exit
 echo "${n} ${nt}" >"${nfile}"
 #until [[ "${idcount}" -ge "${dbcount}" || "${nt}" -gt "${dbcount}" || "${lastid}" -gt "${maxid}" ]]; do
 c=""
-if [[ "${intensive_optimizations}" -gt 0 ]]; then
+if [[ ${intensive_optimizations} -gt 0 ]]; then
 	c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) order by id limit ${limit}")
 	#c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%') order by id limit ${limit}")
 	#c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and ((\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) order by id limit ${limit}")
@@ -342,11 +342,11 @@ else
 	#c=$("${dbengine}" "${db}" -B -N -q -e "select \`id\` from \`contact\` where \`id\` > ${lastid} and ((\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = '')) and (id in (select cid from \`user-contact\`) or id in (select \`uid\` from \`user\`) or \`id\` in (select \`contact-id\` from \`group_member\`)) order by id limit ${limit}")
 fi
 while read -r id; do
-	if [[ -n "${id}" && $((10#${id})) -ge "${lastid}" ]]; then
+	if [[ -n ${id} && $((10#${id})) -ge ${lastid} ]]; then
 		lastid=$((10#${id}))
 		id=$((10#${id}))
 	fi
-	if [[ -n "${lastid}" ]]; then
+	if [[ -n ${lastid} ]]; then
 		idcount=$((idcount + 1))
 		loop &
 	fi
@@ -360,29 +360,29 @@ if [[ ${lockfile_enabled} -eq 1 ]]; then
 	rl=0
 	(
 		sleep 60s
-		if [[ "${rl}" -eq 0 ]]; then rm -rf "${nlock}"; fi
+		if [[ ${rl} -eq 0 ]]; then rm -rf "${nlock}"; fi
 	) &
-	while [[ "${rl}" -eq 0 ]]; do
-		if [[ ! -f "${nlock}" ]]; then
+	while [[ ${rl} -eq 0 ]]; do
+		if [[ ! -f ${nlock} ]]; then
 			touch "${nlock}"
 		fi
-		if [[ -f "${nlock}" && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
+		if [[ -f ${nlock} && $(cat "${nlock}" 2>/dev/null || echo "") == "" ]]; then
 			rm -rf "${nlock}" && touch "${nlock}" && echo "${lastid}" | tee "${nlock}" &>/dev/null
-			if [[ -f "${nlock}" && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${lastid}" ]]; then
+			if [[ -f ${nlock} && $(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0) == "${lastid}" ]]; then
 				read -r n_tmp_l nt_tmp_l <"${nfile}" || break
-				if [[ -n "${n_tmp_l}" && -n "${nt_tmp_l}" ]]; then
+				if [[ -n ${n_tmp_l} && -n ${nt_tmp_l} ]]; then
 					n="${n_tmp_l}"
 					nt="${nt_tmp_l}"
-					if [[ -f "${nlock}" ]]; then
+					if [[ -f ${nlock} ]]; then
 						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 					fi
 					rl=1
 				fi
-			elif [[ -f "${nlock}" ]]; then
+			elif [[ -f ${nlock} ]]; then
 				nlm=$(grep -e "[0-9]" "${nlock}" 2>/dev/null || echo 0)
-				if [[ -n "${nlm}" ]]; then
+				if [[ -n ${nlm} ]]; then
 					nlmt=$((10#${nlm}))
-					if [[ "${nlmt}" -lt $((id + limit)) ]]; then
+					if [[ ${nlmt} -lt $((id + limit)) ]]; then
 						rm -rf "${nlock}" && touch "${nlock}" && echo "" >"${nlock}"
 					fi
 				else
@@ -392,16 +392,16 @@ if [[ ${lockfile_enabled} -eq 1 ]]; then
 		fi
 	done
 fi
-if [[ -f "${nfile}" ]]; then
+if [[ -f ${nfile} ]]; then
 	rm -rf "${nfile}"
 fi
-if [[ -f "${nlock}" ]]; then
+if [[ -f ${nlock} ]]; then
 	rm -rf "${nlock}"
 fi
-if [[ ! -d "${nfolder}" && $(find "${nfolder}" | wc -l) -eq 0 ]]; then
+if [[ ! -d ${nfolder} && $(find "${nfolder}" | wc -l) -eq 0 ]]; then
 	rm -rf "${nfolder}"
 fi
-"${dbengine}" "${db}" -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` and w1.\`command\` = \"UpdateContact\" and w1.\`done\` = 0)"
-if [[ "${intensive_optimizations}" -gt 0 ]]; then
+"${dbengine}" "${db}" -e 'delete from workerqueue where `id` in (select distinct w2.`id` from workerqueue w1 inner join workerqueue w2 where w1.`id` > w2.`id` and w1.`parameter` = w2.`parameter` and w1.`command` = "UpdateContact" and w1.`done` = 0)'
+if [[ ${intensive_optimizations} -gt 0 ]]; then
 	"${dbengine}" "${db}" -e "alter table contact drop index photo_index"
 fi

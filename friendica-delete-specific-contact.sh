@@ -15,9 +15,9 @@ avatarfolderescaped=${avatarfolder////\\/}
 input_id=${1:-""}
 
 #Check if our dependencies are installed
-if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
+if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	#Check if there was an input id; if not, skip
-	if [[ "${input_id}" != "" ]]; then
+	if [[ ${input_id} != "" ]]; then
 		while read -r id nick baseurl; do
 			baseurltrimmed=$(echo "${baseurl}" | sed -e "s/http[s]*:\/\///g")
 			#Find the pictures in the avatar folders and delete them
@@ -67,7 +67,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 			blank_string=""
 			columns_length="${COLUMNS}"
 			#Account for the case where the string is more than a terminal line long
-			while [[ "${final_string_length}" -gt "${columns_length}" ]]; do
+			while [[ ${final_string_length} -gt ${columns_length} ]]; do
 				columns_length=$((columns_length + COLUMNS))
 			done
 			blank_string_length=$((columns_length - final_string_length))

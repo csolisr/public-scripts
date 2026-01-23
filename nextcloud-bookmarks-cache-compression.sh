@@ -79,7 +79,7 @@ main_loop() {
 			stat -c%s "${i}"         #&> /dev/null
 		elif file "${i}" | grep -q "JSON text"; then
 			last_compression=$(jq -r .lastCompression "${i}")
-			if [[ "${last_compression}" == "null" ]]; then
+			if [[ ${last_compression} == "null" ]]; then
 				compress_loop "${i}" #&> /dev/null
 				#elif [[ "${last_compression}" =~ '^[0-9]+$' && "${last_compression}" -lt $(date -d '7 days ago' '+%s') ]]; then
 				#compress_loop "${i}"

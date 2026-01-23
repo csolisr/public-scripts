@@ -24,7 +24,7 @@ loop() {
 	if [[ $? -eq 0 && -z ${f} && -f ${y} ]]; then
 		yb="${y%%-48*}"
 		yc="${yb%/*}"
-		if [[ "${intense_optimizations}" -eq 1 ]]; then
+		if [[ ${intense_optimizations} -eq 1 ]]; then
 			find "${yc}" -path "${yb}*" -exec rm -f {} \; &
 		else
 			find "${yc}" -path "${yb}*" -exec rm -rfv {} \; &
@@ -33,7 +33,7 @@ loop() {
 			wait -n
 		fi
 	fi
-	if [[ "${intense_optimizations}" -eq 0 ]]; then
+	if [[ ${intense_optimizations} -eq 0 ]]; then
 		printf "\rFolder %s\tEntry %s  " "${n}" "${m}"
 	fi
 	return "${d}"
@@ -49,14 +49,14 @@ d=0
 while read -r x; do
 	n=$((n + 1))
 	#If the directory still exists
-	if [[ -d "${x}" && "${n}" -ge "${input_id}" ]]; then
+	if [[ -d ${x} && ${n} -ge ${input_id} ]]; then
 		m=0
 		while read -r y; do
 			m=$((m + 1))
 			loop "${x}" "${m}" "${n}" "${d}" "${y}" #&
 		done < <(find "${x}" -type f \( -iname "*-48*" -or -iname "*-80*" -or -iname "*-320*" \))
 	fi
-	if [[ "${intense_optimizations}" -eq 1 ]]; then
+	if [[ ${intense_optimizations} -eq 1 ]]; then
 		printf "\rFolder %d\tDone     " "${n}"
 	else
 		printf "\r\nFolder %d done - %s\n" "${n}" "${x}"

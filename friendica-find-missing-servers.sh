@@ -34,13 +34,13 @@ loop_1() {
 	#	fi
 	#This is mostly for RSS feeds, we only check whether the site itself is up
 	#Skip check if the message contains a reference to Cloudflare
-	if [[ "${protocol}" != "bsky" ]]; then
+	if [[ ${protocol} != "bsky" ]]; then
 		header=$(curl -s -L -I -m 30 -X HEAD "https://${site}")
 		error_code=$(grep -e "HTTP" < <(echo "${header}"))
 		if ! grep -q -e "HTTP.*200" -e "cloudflare" < <(echo "${header}"); then
-			if grep -q -e "HTTP.*404" -e "HTTP.*502" < <(echo "${header}") || [[ -z "${header}" ]]; then
+			if grep -q -e "HTTP.*404" -e "HTTP.*502" < <(echo "${header}") || [[ -z ${header} ]]; then
 				echo "${site}" >>"${tmpfile}"
-				if [[ -z "${header}" || ! -s "${header}" ]]; then
+				if [[ -z ${header} || ! -s ${header} ]]; then
 					header="(null)"
 				fi
 				echo "Added ${site}, error code: ${error_code}"
@@ -120,7 +120,7 @@ loop_3() {
 	blank_string=""
 	columns_length="${COLUMNS}"
 	#Account for the case where the string is more than a terminal line long
-	while [[ "${final_string_length}" -gt "${columns_length}" ]]; do
+	while [[ ${final_string_length} -gt ${columns_length} ]]; do
 		columns_length=$((columns_length + COLUMNS))
 	done
 	blank_string_length=$((columns_length - final_string_length))
@@ -137,17 +137,17 @@ loop_3() {
 }
 
 #Check if our dependencies are installed
-if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(type date) ]]; then
+if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
-	if [[ "${intense_optimizations}" -gt 0 ]]; then
-		"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` add index if not exists \`tmp_contact_baseurl\` (\`baseurl\`)"
-		"${dbengine}" "${db}" -N -B -q -e "alter table \`post-user\` add index if not exists \`tmp_post_user_id\` (\`author-id\`, \`causer-id\`, \`owner-id\`)"
+	if [[ ${intense_optimizations} -gt 0 ]]; then
+		"${dbengine}" "${db}" -N -B -q -e 'alter table `contact` add index if not exists `tmp_contact_baseurl` (`baseurl`)'
+		"${dbengine}" "${db}" -N -B -q -e 'alter table `post-user` add index if not exists `tmp_post_user_id` (`author-id`, `causer-id`, `owner-id`)'
 	fi
 	echo "Listing sites"
 	siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
 	siteslistamount=$(echo "${siteslist}" | wc -l)
 	echo "Amount of unique sites: ${siteslistamount}"
-	if [[ ! -f "${tmpfile}" ]]; then
+	if [[ ! -f ${tmpfile} ]]; then
 		while read -r sites protocol; do
 			loop_1 "${sites}" "${protocol}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
@@ -157,7 +157,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		wait
 	fi
 	sitesdown=()
-	if [[ -f "${tmpfile}" ]]; then
+	if [[ -f ${tmpfile} ]]; then
 		while read -r line; do
 			sitesdown+=("${line}")
 		done <"${tmpfile}"
@@ -165,7 +165,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	t=$(sort -n "${tmpfile}" | uniq)
 	echo "${t}" >"${tmpfile}"
 	echo "Amount of sites down: ${#sitesdown[@]} / ${siteslistamount}"
-	if [[ ! -f "${idsdownfile}" ]]; then
+	if [[ ! -f ${idsdownfile} ]]; then
 		for b in "${sitesdown[@]}"; do
 			loop_2 "${b}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
@@ -180,7 +180,7 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 	echo "0 0 0 0 0 0 0 0 0 0 0" >"${usrfile}"
 	while read -r id nick baseurl; do
 		#If ID only includes numbers and the row is not malformed
-		if [[ "${id}" =~ ^[0-9]+$ && -n "${nick}" && -n "${baseurl}" ]]; then
+		if [[ ${id} =~ ^[0-9]+$ && -n ${nick} && -n ${baseurl} ]]; then
 			#The community no longer exists, delete
 			loop_3 "${id}" "${nick}" "${baseurl}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
@@ -199,9 +199,9 @@ if [[ -n $(type curl) && -n "${dbengine}" && -n $(type "${dbengine}") && -n $(ty
 		alter table \`post\` auto_increment = 1; \
 		alter table \`photo\` auto_increment = 1; \
 		alter table \`contact\` auto_increment = 1"
-	if [[ "${intense_optimizations}" -gt 0 ]]; then
-		"${dbengine}" "${db}" -N -B -q -e "alter table \`contact\` drop index \`tmp_contact_baseurl\`"
-		"${dbengine}" "${db}" -N -B -q -e "alter table \`post-user\` drop index \`tmp_post_user_id\`"
+	if [[ ${intense_optimizations} -gt 0 ]]; then
+		"${dbengine}" "${db}" -N -B -q -e 'alter table `contact` drop index `tmp_contact_baseurl`'
+		"${dbengine}" "${db}" -N -B -q -e 'alter table `post-user` drop index `tmp_post_user_id`'
 	fi
 	date
 fi

@@ -23,19 +23,19 @@ intense_optimizations=${1:-"0"}
 #Second parameter. Amount of maximum age in days to keep on the database; anything older will be removed. Defaults to 7 days (one week).
 interval=${2:-"7"}
 
-if [[ "${intense_optimizations}" -gt 0 ]]; then
+if [[ ${intense_optimizations} -gt 0 ]]; then
 	bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
 fi
 
 echo "tmp_item_uri_expired" #&> /dev/null
 tmp_item_uri_expired_q="${limit}"
 tmp_item_uri_expired_current_id=0
-tmp_item_uri_expired_limit_id=$("${dbengine}" "${db}" -N -B -q -e "SELECT \`uri-id\` FROM \`post-thread-user-view\` WHERE \`uid\` = 0 AND \`received\` < (CURDATE() - INTERVAL 1 DAY) ORDER BY \`received\` DESC LIMIT 1")
-until [[ "${tmp_item_uri_expired_q}" -lt "${limit}" ]]; do
+tmp_item_uri_expired_limit_id=$("${dbengine}" "${db}" -N -B -q -e 'SELECT `uri-id` FROM `post-thread-user-view` WHERE `uid` = 0 AND `received` < (CURDATE() - INTERVAL 1 DAY) ORDER BY `received` DESC LIMIT 1')
+until [[ ${tmp_item_uri_expired_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_expired_q=0
 	while read -r id; do
-		if [[ -s "${id}" ]]; then
+		if [[ -s ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -69,11 +69,11 @@ wait
 echo "tmp_post_origin_deleted" #&> /dev/null
 tmp_post_origin_deleted_q="${limit}"
 tmp_post_origin_deleted_current_uri_id=0
-until [[ "${tmp_post_origin_deleted_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_post_origin_deleted_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_origin_deleted_q=0
 	while read -r uri_id uid; do
-		if [[ -s "${uri_id}" && -s "${uid}" ]]; then
+		if [[ -s ${uri_id} && -s ${uid} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-origin\` WHERE \`parent-uri-id\` = ${uri_id} AND \`uid\` = ${uid}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -94,11 +94,11 @@ wait
 echo "tmp_post_user_deleted" #&> /dev/null
 tmp_post_user_deleted_q="${limit}"
 tmp_post_user_deleted_current_uri_id=0
-until [[ "${tmp_post_user_deleted_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_post_user_deleted_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_user_deleted_q=0
 	while read -r uri_id; do
-		if [[ -s "${uri_id}" ]]; then
+		if [[ -s ${uri_id} ]]; then
 			tmp_post_user_deleted_q=$((tmp_post_user_deleted_q + 1))
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-user\` WHERE \`uri-id\` = ${uri_id}" &
@@ -119,11 +119,11 @@ wait
 echo "tmp_post_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_uri_id_not_in_post_user_q="${limit}"
 tmp_post_uri_id_not_in_post_user_current_uri_id=0
-until [[ "${tmp_post_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_post_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
-		if [[ -s "${uri_id}" ]]; then
+		if [[ -s ${uri_id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post\` WHERE \`uri-id\` = ${uri_id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -147,11 +147,11 @@ wait
 echo "tmp_post_content_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_content_uri_id_not_in_post_user_q="${limit}"
 tmp_post_content_uri_id_not_in_post_user_current_uri_id=0
-until [[ "${tmp_post_content_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_post_content_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_content_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
-		if [[ -s "${uri_id}" ]]; then
+		if [[ -s ${uri_id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-content\` WHERE \`uri-id\` = ${uri_id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -175,11 +175,11 @@ wait
 echo "tmp_post_thread_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_thread_uri_id_not_in_post_user_q="${limit}"
 tmp_post_thread_uri_id_not_in_post_user_current_uri_id=0
-until [[ "${tmp_post_thread_uri_id_not_in_post_user_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_post_thread_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_thread_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
-		if [[ -s "${uri_id}" ]]; then
+		if [[ -s ${uri_id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-thread\` WHERE \`uri-id\` = ${uri_id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -203,11 +203,11 @@ wait
 echo "tmp_post_user_uri_id_not_in_post" #&> /dev/null
 tmp_post_user_uri_id_not_in_post_q="${limit}"
 tmp_post_user_uri_id_not_in_post_current_uri_id=0
-until [[ "${tmp_post_user_uri_id_not_in_post_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_post_user_uri_id_not_in_post_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_user_uri_id_not_in_post_q=0
 	while read -r uri_id; do
-		if [[ -s "${uri_id}" ]]; then
+		if [[ -s ${uri_id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-user\` WHERE \`uri-id\` = ${uri_id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -231,11 +231,11 @@ wait
 echo "tmp_item_uri_not_in_valid_post_thread" #&> /dev/null
 tmp_item_uri_not_in_valid_post_thread_q="${limit}"
 tmp_item_uri_not_in_valid_post_thread_current_id=0
-until [[ "${tmp_item_uri_not_in_valid_post_thread_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_item_uri_not_in_valid_post_thread_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_in_valid_post_thread_q=0
 	while read -r id; do
-		if [[ -s "${id}" ]]; then
+		if [[ -s ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -265,11 +265,11 @@ wait
 echo "tmp_item_uri_not_in_valid_post_user" #&> /dev/null
 tmp_item_uri_not_in_valid_post_user_q="${limit}"
 tmp_item_uri_not_in_valid_post_user_current_id=0
-until [[ "${tmp_item_uri_not_in_valid_post_user_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_item_uri_not_in_valid_post_user_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_in_valid_post_user_q=0
 	while read -r id; do
-		if [[ -s "${id}" ]]; then
+		if [[ -s ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -292,11 +292,11 @@ wait
 echo "tmp_attach_not_in_post_media" #&> /dev/null
 tmp_attach_not_in_post_media_q="${limit}"
 tmp_attach_not_in_post_media_current_id=0
-until [[ "${tmp_attach_not_in_post_media_q}" -lt "${limit}" ]]; do
+until [[ ${tmp_attach_not_in_post_media_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_attach_not_in_post_media_q=0
 	while read -r id; do
-		if [[ -s "${id}" ]]; then
+		if [[ -s ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`attach\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -321,12 +321,12 @@ echo "tmp_item_uri_not_valid" #&> /dev/null
 tmp_item_uri_not_valid_q="${limit}"
 tmp_item_uri_not_valid_current_id=0
 tmp_item_uri_not_valid_last_id=$("${dbengine}" "${db}" -N -B -q -e \
-	"SELECT \`uri-id\` FROM \`post\` WHERE \`received\` < CURDATE() - INTERVAL 1 DAY ORDER BY \`received\` DESC LIMIT 1")
-until [[ "${tmp_item_uri_not_valid_q}" -lt "${limit}" ]]; do
+	'SELECT `uri-id` FROM `post` WHERE `received` < CURDATE() - INTERVAL 1 DAY ORDER BY `received` DESC LIMIT 1')
+until [[ ${tmp_item_uri_not_valid_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_valid_q=0
 	while read -r id; do
-		if [[ -s "${id}" ]]; then
+		if [[ -s ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -403,15 +403,15 @@ until [[ "${tmp_item_uri_not_valid_q}" -lt "${limit}" ]]; do
 done
 wait
 
-if [[ "${intense_optimizations}" -gt 0 ]]; then
+if [[ ${intense_optimizations} -gt 0 ]]; then
 	echo "tmp_item_uri_duplicate" #&> /dev/null
 	tmp_item_uri_duplicate_q="${limit}"
 	tmp_item_uri_duplicate_current_id=0
-	until [[ "${tmp_item_uri_duplicate_q}" -lt "${limit}" ]]; do
+	until [[ ${tmp_item_uri_duplicate_q} -lt ${limit} ]]; do
 		initial_i=$(date +%s)
 		tmp_item_uri_duplicate_q=0
 		while read -r id; do
-			if [[ -s "${id}" ]]; then
+			if [[ -s ${id} ]]; then
 				"${dbengine}" "${db}" -N -B -q -e \
 					"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -431,11 +431,11 @@ if [[ "${intense_optimizations}" -gt 0 ]]; then
 	echo "tmp_post_media_duplicate"
 	tmp_post_media_duplicate_q="${limit}"
 	tmp_post_media_duplicate_current_id=0
-	until [[ "${tmp_post_media_duplicate_q}" -lt "${limit}" ]]; do
+	until [[ ${tmp_post_media_duplicate_q} -lt ${limit} ]]; do
 		initial_i=$(date +%s)
 		tmp_post_media_duplicate_q=0
 		while read -r id; do
-			if [[ -s "${id}" ]]; then
+			if [[ -s ${id} ]]; then
 				"${dbengine}" "${db}" -N -B -q -e \
 					"DELETE FROM \`post-media\` WHERE \`id\` = ${id}" &
 				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -455,11 +455,11 @@ if [[ "${intense_optimizations}" -gt 0 ]]; then
 	echo "tmp_post_user_duplicate"
 	tmp_post_user_duplicate_q="${limit}"
 	tmp_post_user_duplicate_current_id=0
-	until [[ "${tmp_post_user_duplicate_q}" -lt "${limit}" ]]; do
+	until [[ ${tmp_post_user_duplicate_q} -lt ${limit} ]]; do
 		initial_i=$(date +%s)
 		tmp_post_user_duplicate_q=0
 		while read -r id; do
-			if [[ -s "${id}" ]]; then
+			if [[ -s ${id} ]]; then
 				"${dbengine}" "${db}" -N -B -q -e \
 					"DELETE FROM \`post-user\` WHERE \`id\` = ${id}" &
 				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
