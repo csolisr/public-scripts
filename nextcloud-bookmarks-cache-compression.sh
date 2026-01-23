@@ -59,7 +59,8 @@ compress_loop() {
 		rm "/tmp/${i_trimmed}" "/tmp/${i_trimmed}.base64" &>/dev/null
 		;;
 	*)
-		printf "\n\r" && echo "${count}/${total} JSON: ${i_trimmed} > ${file_type}"
+		:
+		#printf "\n\r" && echo "${count}/${total} JSON: ${i_trimmed} > ${file_type}"
 		;;
 	esac
 }
@@ -68,7 +69,7 @@ main_loop() {
 	printf "\r%s/%s %s " "${count}" "${total}" "${i}" #&> /dev/null
 	if [[ $(stat -c%s "${i}") -gt 4 ]]; then
 		#i_trimmed=$(echo "${i}" | sed -e "s/.*-//g")
-		i_trimmed="${i//.*-/}"
+		i_trimmed="${i//*-/}"
 		if file "${i}" | grep -q "ASCII text"; then
 			echo "${count}/${total} Text: ${i}" #&> /dev/null
 			#base64 -d "$i" | file -
