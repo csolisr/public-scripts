@@ -94,57 +94,62 @@ core_loop() {
 		url="https://www.youtube.com/playlist?list=WL"
 		full_url="${url}"
 	fi
-	#for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
-	#full_url=$(curl "${url}" | tr -d "\n\r" | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl")
-	echo "${url} = ${full_url}"
-	if [[ -f ${cookies} || ${channel} == "subscriptions" || ${channel} == "WL" ]]; then
-		#If available, you can use the cookies from your browser directly. Substitute
-		#	--cookies "${cookies}"
-		#for the below, substituting for your browser of choice:
-		#	--cookies-from-browser "firefox"
-		#In case this still fails, you can resort to a PO Token. Follow the instructions at
-		# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
-		#and add a new variable with the contents of the PO Token in the form
-		#	potoken="INSERTYOURPOTOKENHERE"
-		#then substitute the "--extractor-args" line below with
-		#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
-		#including the backslash so the multiline command keeps working.
-		"${ytdl}" "${full_url}" \
-			--js-runtimes deno:"${deno}" \
-			--remote-components ejs:npm \
-			--cookies "${cookies}" \
-			--skip-download --download-archive "${archive}" \
-			--dateafter "${breaktime}" \
-			--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
-			--break-on-reject --lazy-playlist --write-info-json \
-			--sleep-requests "${sleeptime}" \
-			--parse-metadata "video::(?P<formats>)" \
-			--parse-metadata "video::(?P<thumbnails>)" \
-			--parse-metadata "video::(?P<subtitles>)" \
-			--parse-metadata "video::(?P<automatic_captions>)" \
-			--parse-metadata "video::(?P<chapters>)" \
-			--parse-metadata "video::(?P<heatmap>)" \
-			--parse-metadata "video::(?P<tags>)" \
-			--parse-metadata "video::(?P<categories>)"
-	else
-		"${ytdl}" "${full_url}" \
-			--js-runtimes deno:"${deno}" \
-			--remote-components ejs:npm \
-			--skip-download --download-archive "${archive}" \
-			--dateafter "${breaktime}" \
-			--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
-			--break-on-reject --lazy-playlist --write-info-json \
-			--sleep-requests "${sleeptime}" \
-			--parse-metadata "video::(?P<formats>)" \
-			--parse-metadata "video::(?P<thumbnails>)" \
-			--parse-metadata "video::(?P<subtitles>)" \
-			--parse-metadata "video::(?P<automatic_captions>)" \
-			--parse-metadata "video::(?P<chapters>)" \
-			--parse-metadata "video::(?P<heatmap>)" \
-			--parse-metadata "video::(?P<tags>)" \
-			--parse-metadata "video::(?P<categories>)"
-	fi
-	#done
+	for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
+		if [[ ${section_url} == "${url}/videos" ]]; then
+			full_url=$(curl "${url}" | tr -d "\n\r" | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl")
+		else
+			full_url="${section_url}"
+		fi
+		#echo "${url} = ${full_url}"
+		echo "${section_url} = ${full_url}"
+		if [[ -f ${cookies} || ${channel} == "subscriptions" || ${channel} == "WL" ]]; then
+			#If available, you can use the cookies from your browser directly. Substitute
+			#	--cookies "${cookies}"
+			#for the below, substituting for your browser of choice:
+			#	--cookies-from-browser "firefox"
+			#In case this still fails, you can resort to a PO Token. Follow the instructions at
+			# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
+			#and add a new variable with the contents of the PO Token in the form
+			#	potoken="INSERTYOURPOTOKENHERE"
+			#then substitute the "--extractor-args" line below with
+			#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
+			#including the backslash so the multiline command keeps working.
+			"${ytdl}" "${full_url}" \
+				--js-runtimes deno:"${deno}" \
+				--remote-components ejs:npm \
+				--cookies "${cookies}" \
+				--skip-download --download-archive "${archive}" \
+				--dateafter "${breaktime}" \
+				--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+				--break-on-reject --lazy-playlist --write-info-json \
+				--sleep-requests "${sleeptime}" \
+				--parse-metadata "video::(?P<formats>)" \
+				--parse-metadata "video::(?P<thumbnails>)" \
+				--parse-metadata "video::(?P<subtitles>)" \
+				--parse-metadata "video::(?P<automatic_captions>)" \
+				--parse-metadata "video::(?P<chapters>)" \
+				--parse-metadata "video::(?P<heatmap>)" \
+				--parse-metadata "video::(?P<tags>)" \
+				--parse-metadata "video::(?P<categories>)"
+		else
+			"${ytdl}" "${full_url}" \
+				--js-runtimes deno:"${deno}" \
+				--remote-components ejs:npm \
+				--skip-download --download-archive "${archive}" \
+				--dateafter "${breaktime}" \
+				--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+				--break-on-reject --lazy-playlist --write-info-json \
+				--sleep-requests "${sleeptime}" \
+				--parse-metadata "video::(?P<formats>)" \
+				--parse-metadata "video::(?P<thumbnails>)" \
+				--parse-metadata "video::(?P<subtitles>)" \
+				--parse-metadata "video::(?P<automatic_captions>)" \
+				--parse-metadata "video::(?P<chapters>)" \
+				--parse-metadata "video::(?P<heatmap>)" \
+				--parse-metadata "video::(?P<tags>)" \
+				--parse-metadata "video::(?P<categories>)"
+		fi
+	done
 	if [[ ${enablecsv} == 1 ]]; then
 		if [[ -f ${tmpcsv} ]]; then
 			rm -rf "${tmpcsv}"
@@ -181,8 +186,10 @@ core_loop() {
 						echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
 						touch "${subfolder}/${channel}-remove.csv"
 						jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${subfolder}/${channel}-remove.csv"
+							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
 						done
+						sort "${temporary}/${channel}-remove.txt" | uniq >"${subfolder}/${channel}-remove.csv"
+						rm "${temporary}/${channel}-remove.txt"
 						rm "${x}"
 					fi
 				done <"${diff_file}"
@@ -218,9 +225,9 @@ core_loop() {
 			rm "${temporary}/${channel}.db"
 		fi
 		if [[ ${channel} == "subscriptions" ]]; then
-			echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos from subscriptions\",\"videos\":[" >"${temporary}/${channel}.db"
+			echo '{"playlistName":"Subscriptions","protected":false,"description":"Videos from subscriptions","videos":[' >"${temporary}/${channel}.db"
 		elif [[ ${channel} == "WL" ]]; then
-			echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos to watch later\",\"videos\":[" >"${temporary}/${channel}.db"
+			echo '{"playlistName":"Watch Later","protected":false,"description":"Videos to watch later","videos":[' >"${temporary}/${channel}.db"
 		else
 			echo "{\"playlistName\":\"${channel}\",\"protected\":false,\"description\":\"Videos from ${channel} to watch later\",\"videos\":[" >"${temporary}/${channel}.db"
 		fi
