@@ -5,9 +5,9 @@ camax=0
 until [[ ${ca} -lt ${limit} ]]; do
 	ca=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', '') not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"UpdateContact\" and \`done\` = 0 limit ${ca}; select row_count();")
 	camax=$((camax + ca))
-	printf "\rUpdateContact\t\t%s\r" "${camax}"
+	printf "\rUpdateContact\t\t%s\r" "${camax}" #&> /dev/null
 done
-printf "\rUpdateContact\t\t%s\n\r" "${camax}"
+printf "\rUpdateContact\t\t%s\n\r" "${camax}" #&> /dev/null
 #echo "UpdateContact      $camax"
 
 cb=${limit}
@@ -16,9 +16,9 @@ sudo mariadb friendica -B -N -q -e 'drop table if exists tmp_url; create table t
 until [[ ${cb} -lt ${limit} ]]; do
 	cb=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`command\` = \"ContactDiscovery\" and regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', ''), '\\\\\\\\', '') not in (select \`url\` from tmp_url) and \`done\` = 0 limit ${cb}; select row_count();")
 	cbmax=$((cbmax + cb))
-	printf "\rContactDiscovery\t%s\r" "${cbmax}"
+	printf "\rContactDiscovery\t%s\r" "${cbmax}" #&> /dev/null
 done
-printf "\rContactDiscovery\t%s\n\r" "${cbmax}"
+printf "\rContactDiscovery\t%s\n\r" "${cbmax}" #&> /dev/null
 #echo "ContactDiscovery   $cbmax"
 
 cc=${limit}
@@ -26,9 +26,9 @@ ccmax=0
 until [[ ${cc} -lt ${limit} ]]; do
 	cc=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`command\`= \"AddContact\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_url) and \`done\` = 0 limit ${cc}; select row_count();")
 	ccmax=$((ccmax + cc))
-	printf "\rAddContact      \t%s\r" "${ccmax}"
+	printf "\rAddContact      \t%s\r" "${ccmax}" #&> /dev/null
 done
-printf "\rAddContact      \t%s\n\r" "${ccmax}"
+printf "\rAddContact      \t%s\n\r" "${ccmax}" #&> /dev/null
 #echo "AddContact $ccmax"
 
 cd=${limit}
@@ -37,9 +37,9 @@ cdmax=0
 until [[ ${cd} -lt ${limit} ]]; do
 	cd=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`command\` = \"UpdateGServer\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_url) and \`done\` = 0 limit ${cd}; select row_count();")
 	cdmax=$((cdmax + cd))
-	printf "\rUpdateGServer\t\t%s\r" "${cdmax}"
+	printf "\rUpdateGServer\t\t%s\r" "${cdmax}" #&> /dev/null
 done
-printf "\rUpdateGServer\t\t%s\n\r" "${cdmax}"
+printf "\rUpdateGServer\t\t%s\n\r" "${cdmax}" #&> /dev/null
 #echo "UpdateGServer      $cdmax"
 
 ce=${limit}
@@ -47,9 +47,9 @@ cemax=0
 until [[ ${ce} -lt ${limit} ]]; do
 	ce=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`command\`= \"FetchFeaturedPosts\" and regexp_replace(substring_index(substring_index(\`parameter\`, '\\\"', -2), '\\\"', 1), '\\\\\\\\', '') not in (select \`url\` from tmp_url) and \`done\` = 0 limit ${ce}; select row_count();")
 	cemax=$((cemax + ce))
-	printf "\rFetchFeaturedPosts\t%s\r" "${cemax}"
+	printf "\rFetchFeaturedPosts\t%s\r" "${cemax}" #&> /dev/null
 done
-printf "\rFetchFeaturedPosts\t%s\n\r" "${cemax}"
+printf "\rFetchFeaturedPosts\t%s\n\r" "${cemax}" #&> /dev/null
 #echo "FetchFeaturedPosts $cemax"
 
 cf=${limit}
@@ -58,10 +58,10 @@ until [[ ${cf} -lt ${limit} ]]; do
 	#cf=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', ''), '\\\\\\\\', ''), '.*\"actor\"\:\"', ''), '\".*', '') not in (select \`url\` from \`tmp_url\`) and \`command\` = \"FetchMissingReplies\" and \`done\` = 0 limit ${cf}; select row_count();")
 	cf=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where not (regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\\\\\\', ''), '.*\"actor\"\:\"', ''), '\".*', '') in (select \`url\` from \`tmp_url\`) or regexp_replace(regexp_replace(regexp_replace(\`parameter\`, '\\\\\\\\', ''), '.*\"audience\"\:\"', ''), '\".*', '') in (select \`url\` from \`tmp_url\`)) and \`command\` = \"FetchMissingReplies\" and \`done\` = 0 limit ${cf}; select row_count();")
 	cfmax=$((cfmax + cf))
-	printf "\rFetchMissingReplies\t%s\r" "${cfmax}"
+	printf "\rFetchMissingReplies\t%s\r" "${cfmax}" #&> /dev/null
 done
 sudo mariadb friendica -B -N -q -e "drop table if exists tmp_url"
-printf "\rFetchMissingReplies\t%s\n\r" "${cfmax}"
+printf "\rFetchMissingReplies\t%s\n\r" "${cfmax}" #&> /dev/null
 #echo "FetchMissingReplies $cfmax"
 
 cg=${limit}
@@ -69,9 +69,9 @@ cgmax=0
 until [[ ${cg} -lt ${limit} ]]; do
 	cg=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where command=\"ProcessQueue\" and pid=0 and done=0 limit ${cg}; select row_count();")
 	cgmax=$((cgmax + cg))
-	printf "\rProcessQueue\t\t%s\r" "${cgmax}"
+	printf "\rProcessQueue\t\t%s\r" "${cgmax}" #&> /dev/null
 done
-printf "\rProcessQueue\t\t%s\n\r" "${cgmax}"
+printf "\rProcessQueue\t\t%s\n\r" "${cgmax}" #&> /dev/null
 #echo "ProcessQueue       $cgmax"
 
 ch=${limit}
@@ -79,9 +79,9 @@ chmax=0
 until [[ ${ch} -lt ${limit} ]]; do
 	ch=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', '') not in (select \`id\` from \`contact\` where \`id\` in (select \`contact-id\` from \`group_member\`) or \`id\` in (select \`cid\` from \`user-contact\`) or \`id\` in (select \`uid\` from \`user\`)) and \`command\` = \"OnePoll\" and \`done\` = 0 limit ${ch}; select row_count();")
 	chmax=$((chmax + ch))
-	printf "\rOnePoll\t\t\t%s\r" "${chmax}"
+	printf "\rOnePoll\t\t\t%s\r" "${chmax}" #&> /dev/null
 done
-printf "\rOnePoll\t\t\t%s\n\r" "${chmax}"
+printf "\rOnePoll\t\t\t%s\n\r" "${chmax}" #&> /dev/null
 #echo "OnePoll           $chmax"
 
 ci=${limit}
@@ -90,9 +90,9 @@ until [[ ${ci} -lt ${limit} ]]; do
 	#ci=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` and w1.command = \"UpdateContact\" and w1.\`pid\` = 0 and w1.\`done\` = 0) limit ${ci}; select row_count();")
 	ci=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`id\` in (select distinct w2.\`id\` from workerqueue w1 inner join workerqueue w2 where w1.\`id\` > w2.\`id\` and w1.\`parameter\` = w2.\`parameter\` and w1.command = w2.command and w1.\`done\` = 0) limit ${ci}; select row_count();")
 	cimax=$((cimax + ci))
-	printf "\rWorkerQueue\t\t%s\r" "${cimax}"
+	printf "\rWorkerQueue\t\t%s\r" "${cimax}" #&> /dev/null
 done
-printf "\rWorkerQueue\t\t%s\n\r" "${cimax}"
+printf "\rWorkerQueue\t\t%s\n\r" "${cimax}" #&> /dev/null
 #echo "WorkerQueue       $cimax"
 
 cj=${limit}
@@ -100,7 +100,7 @@ cjmax=0
 until [[ ${cj} -lt ${limit} ]]; do
 	cj=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where \`command\` = \"FetchMissingActivity\" and (\`parameter\` like \"%relay.%/actor%\" or \`parameter\` like \"%relay.fedi.buzz%\") and done = 0 limit ${cj}; select row_count();")
 	cjmax=$((cjmax + cj))
-	printf "\rFetchMissingActivity\t%s\r" "${cjmax}"
+	printf "\rFetchMissingActivity\t%s\r" "${cjmax}" #&> /dev/null
 done
-printf "\rFetchMissingActivity\t%s\n\r" "${cjmax}"
+printf "\rFetchMissingActivity\t%s\n\r" "${cjmax}" #&> /dev/null
 #echo "FetchMissingActivity $cimax"
