@@ -70,29 +70,30 @@ main_loop() {
 	if [[ $(stat -c%s "${i}") -gt 4 ]]; then
 		#i_trimmed=$(echo "${i}" | sed -e "s/.*-//g")
 		i_trimmed="${i//*-/}"
-		if file "${i}" | grep -q "ASCII text"; then
-			echo "${count}/${total} Text: ${i}" #&> /dev/null
-			#base64 -d "$i" | file -
-			#base64 -d "$i" | stat -c%s -
-			printf "\n\r"            #&> /dev/null
-			file "${i}"              #&> /dev/null
-			fold -w 80 "${i}" | head #&> /dev/null
-			stat -c%s "${i}"         #&> /dev/null
-		elif file "${i}" | grep -q "JSON text"; then
-			last_compression=$(jq -r .lastCompression "${i}")
-			if [[ ${last_compression} == "null" ]]; then
-				compress_loop "${i}" #&> /dev/null
+		sed -e 's/\\//g' -e 's/\n//g' -e 's/\r//g' "${i}" >"/tmp/${i_trimmed}.tmp"
+		if [[ -f "/tmp/${i_trimmed}.tmp" ]]; then
+			if file "/tmp/${i_trimmed}.tmp" | grep -q "ASCII text"; then
+				last_compression=$(jq -r .lastCompression "/tmp/${i_trimmed}.tmp")
+				if [[ ${last_compression} == "null" ]]; then
+					compress_loop #&> /dev/null
+				fi
+			elif file "/tmp/${i_trimmed}.tmp" | grep -q "JSON text"; then
+				last_compression=$(jq -r .lastCompression "/tmp/${i_trimmed}.tmp")
+				if [[ ${last_compression} == "null" ]]; then
+					compress_loop #&> /dev/null
 				#elif [[ "${last_compression}" =~ '^[0-9]+$' && "${last_compression}" -lt $(date -d '7 days ago' '+%s') ]]; then
 				#compress_loop "${i}"
 				#else
 				#echo "${count}/${total} JSON: $i_trimmed"
 				#file_type=$(jq -r .contentType "$i")
 				#echo "${file_type}"
+				fi
+			else
+				printf "\n\r"                     #&> /dev/null
+				stat -c%s "/tmp/${i_trimmed}.tmp" #&> /dev/null
+				file "/tmp/${i_trimmed}.tmp"      #&> /dev/null
 			fi
-		else
-			printf "\n\r"    #&> /dev/null
-			stat -c%s "${i}" #&> /dev/null
-			file "${i}"      #&> /dev/null
+			rm -rf "/tmp/${i_trimmed}.tmp" #&> /dev/null
 		fi
 	fi
 }
@@ -106,5 +107,5 @@ find "${cache_folder}" -type f -mtime "-${mtime}" -size "+${size}" | while read 
 		wait -n
 	fi
 done
-printf "\n\r" #&> /dev/null
 wait
+printf "\n\r" #&> /dev/null
