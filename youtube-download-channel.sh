@@ -94,26 +94,68 @@ core_loop() {
 		url="https://www.youtube.com/playlist?list=WL"
 		full_url="${url}"
 	fi
-	for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
-		if [[ ${section_url} == "${url}/videos" ]]; then
-			full_url=$(curl "${url}" | tr -d "\n\r" | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl")
-		else
-			full_url="${section_url}"
-		fi
-		#echo "${url} = ${full_url}"
-		echo "${section_url} = ${full_url}"
-		if [[ -f ${cookies} || ${channel} == "subscriptions" || ${channel} == "WL" ]]; then
-			#If available, you can use the cookies from your browser directly. Substitute
-			#	--cookies "${cookies}"
-			#for the below, substituting for your browser of choice:
-			#	--cookies-from-browser "firefox"
-			#In case this still fails, you can resort to a PO Token. Follow the instructions at
-			# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
-			#and add a new variable with the contents of the PO Token in the form
-			#	potoken="INSERTYOURPOTOKENHERE"
-			#then substitute the "--extractor-args" line below with
-			#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
-			#including the backslash so the multiline command keeps working.
+	if [[ ${channel} != "subscriptions" && ${channel} != "WL" ]]; then
+		#Channels need to manually check for each of videos, shorts, and streams. This does not apply for playlists and subscription lists.
+		for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
+			if [[ ${section_url} == "${url}/videos" ]]; then
+				full_url=$(curl -s "${url}" | tr -d "\n\r" | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl")
+				if [[ -z ${full_url} ]]; then
+					full_url="${url}"
+				fi
+			else
+				full_url="${section_url}"
+			fi
+			echo "${section_url} = ${full_url}"
+			if [[ -f ${cookies} ]]; then
+				#If available, you can use the cookies from your browser directly. Substitute
+				#	--cookies "${cookies}"
+				#for the below, substituting for your browser of choice:
+				#	--cookies-from-browser "firefox"
+				#In case this still fails, you can resort to a PO Token. Follow the instructions at
+				# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
+				#and add a new variable with the contents of the PO Token in the form
+				#	potoken="INSERTYOURPOTOKENHERE"
+				#then substitute the "--extractor-args" line below with
+				#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
+				#including the backslash so the multiline command keeps working.
+				"${ytdl}" "${full_url}" \
+					--js-runtimes deno:"${deno}" \
+					--remote-components ejs:npm \
+					--cookies "${cookies}" \
+					--skip-download --download-archive "${archive}" \
+					--dateafter "${breaktime}" \
+					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+					--break-on-reject --lazy-playlist --write-info-json \
+					--sleep-requests "${sleeptime}" \
+					--parse-metadata "video::(?P<formats>)" \
+					--parse-metadata "video::(?P<thumbnails>)" \
+					--parse-metadata "video::(?P<subtitles>)" \
+					--parse-metadata "video::(?P<automatic_captions>)" \
+					--parse-metadata "video::(?P<chapters>)" \
+					--parse-metadata "video::(?P<heatmap>)" \
+					--parse-metadata "video::(?P<tags>)" \
+					--parse-metadata "video::(?P<categories>)"
+			else
+				"${ytdl}" "${full_url}" \
+					--js-runtimes deno:"${deno}" \
+					--remote-components ejs:npm \
+					--skip-download --download-archive "${archive}" \
+					--dateafter "${breaktime}" \
+					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+					--break-on-reject --lazy-playlist --write-info-json \
+					--sleep-requests "${sleeptime}" \
+					--parse-metadata "video::(?P<formats>)" \
+					--parse-metadata "video::(?P<thumbnails>)" \
+					--parse-metadata "video::(?P<subtitles>)" \
+					--parse-metadata "video::(?P<automatic_captions>)" \
+					--parse-metadata "video::(?P<chapters>)" \
+					--parse-metadata "video::(?P<heatmap>)" \
+					--parse-metadata "video::(?P<tags>)" \
+					--parse-metadata "video::(?P<categories>)"
+			fi
+		done
+	else
+		if [[ -f ${cookies} ]]; then
 			"${ytdl}" "${full_url}" \
 				--js-runtimes deno:"${deno}" \
 				--remote-components ejs:npm \
@@ -131,25 +173,8 @@ core_loop() {
 				--parse-metadata "video::(?P<heatmap>)" \
 				--parse-metadata "video::(?P<tags>)" \
 				--parse-metadata "video::(?P<categories>)"
-		else
-			"${ytdl}" "${full_url}" \
-				--js-runtimes deno:"${deno}" \
-				--remote-components ejs:npm \
-				--skip-download --download-archive "${archive}" \
-				--dateafter "${breaktime}" \
-				--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
-				--break-on-reject --lazy-playlist --write-info-json \
-				--sleep-requests "${sleeptime}" \
-				--parse-metadata "video::(?P<formats>)" \
-				--parse-metadata "video::(?P<thumbnails>)" \
-				--parse-metadata "video::(?P<subtitles>)" \
-				--parse-metadata "video::(?P<automatic_captions>)" \
-				--parse-metadata "video::(?P<chapters>)" \
-				--parse-metadata "video::(?P<heatmap>)" \
-				--parse-metadata "video::(?P<tags>)" \
-				--parse-metadata "video::(?P<categories>)"
 		fi
-	done
+	fi
 	if [[ ${enablecsv} == 1 ]]; then
 		if [[ -f ${tmpcsv} ]]; then
 			rm -rf "${tmpcsv}"
