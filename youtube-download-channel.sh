@@ -94,11 +94,11 @@ core_loop() {
 		url="https://www.youtube.com/playlist?list=WL"
 		full_url="${url}"
 	fi
-	if [[ ${channel} != "subscriptions" && ${channel} != "WL" ]]; then
-		#Channels need to manually check for each of videos, shorts, and streams. This does not apply for playlists and subscription lists.
+	if [[ ${channel} != "WL" ]]; then
+		#Channels need to manually check for each of videos, shorts, and streams. This does not apply for the Watch Later list.
 		for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
 			if [[ ${section_url} == "${url}/videos" ]]; then
-				full_url=$(curl -s "${url}" | tr -d "\n\r" | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl")
+				full_url=$(curl -s "${url}" | tr -d "\n\r" 2>/dev/null | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n 2>/dev/null | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl" 2>/dev/null)
 				if [[ -z ${full_url} ]]; then
 					full_url="${url}"
 				fi
@@ -106,7 +106,9 @@ core_loop() {
 				full_url="${section_url}"
 			fi
 			echo "${section_url} = ${full_url}"
-			if [[ -f ${cookies} ]]; then
+			#TODO: test if section exists
+			#test=$(curl -s -L -I -m 30 -X HEAD "${full_url}"
+			if [[ ${channel} == "subscriptions" || -f ${cookies} ]]; then
 				#If available, you can use the cookies from your browser directly. Substitute
 				#	--cookies "${cookies}"
 				#for the below, substituting for your browser of choice:
@@ -119,9 +121,9 @@ core_loop() {
 				#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
 				#including the backslash so the multiline command keeps working.
 				"${ytdl}" "${full_url}" \
+					--cookies "${cookies}" \
 					--js-runtimes deno:"${deno}" \
 					--remote-components ejs:npm \
-					--cookies "${cookies}" \
 					--skip-download --download-archive "${archive}" \
 					--dateafter "${breaktime}" \
 					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
@@ -155,7 +157,7 @@ core_loop() {
 			fi
 		done
 	else
-		if [[ -f ${cookies} ]]; then
+		if [[ -f ${cookies} && ${channel} == "WL" ]]; then
 			"${ytdl}" "${full_url}" \
 				--js-runtimes deno:"${deno}" \
 				--remote-components ejs:npm \
