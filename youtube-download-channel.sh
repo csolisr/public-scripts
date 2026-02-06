@@ -71,16 +71,19 @@ core_loop() {
 	if [[ ! -f ${archive} ]]; then
 		touch "${archive}" && chmod 664 "${archive}" && chown "${folder_user}:${folder_group}" "${archive}"
 	fi
-	#if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
-	#	if [[ "${channel}" = "subscriptions" ]]; then
-	#		find "${subfolder}" -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}"; done
-	#	else
-	#		tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
-	#	fi
-	#fi
 	if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
-		tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
+		if [[ ${channel} == "subscriptions" ]]; then
+			find "${subfolder}" -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}"; done
+		else
+			tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
+		fi
 	fi
+	#	if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
+	#		tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
+	#		if [[ ${channel} == "subscriptions" ]]; then
+	#			tar -xvp -I zstd -f "${subfolder}/WL.tar.zst"
+	#		fi
+	#	fi
 	#Fix permissions after extraction, in case the script was run as root
 	find "${temporary}" -type f -exec chmod 664 {} \;
 	find "${temporary}" -type f -exec chown "${folder_user}:${folder_group}" {} \;
@@ -127,6 +130,7 @@ core_loop() {
 					--skip-download --download-archive "${archive}" \
 					--dateafter "${breaktime}" \
 					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+					--max-downloads 10000 \
 					--break-on-reject --lazy-playlist --write-info-json \
 					--sleep-requests "${sleeptime}" \
 					--parse-metadata "video::(?P<formats>)" \
@@ -144,6 +148,7 @@ core_loop() {
 					--skip-download --download-archive "${archive}" \
 					--dateafter "${breaktime}" \
 					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+					--max-downloads 10000 \
 					--break-on-reject --lazy-playlist --write-info-json \
 					--sleep-requests "${sleeptime}" \
 					--parse-metadata "video::(?P<formats>)" \
