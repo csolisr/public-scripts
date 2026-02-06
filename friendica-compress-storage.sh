@@ -11,7 +11,7 @@ storagefolder=/var/www/friendica/storage
 #The folder storage name, with slashes escaped to work through sed
 folderescaped=${storagefolder////\\/}
 target_size=${1:-100}
-target_time=${2:-8}
+target_time=${2:-2}
 
 loop_1() {
 	ks=$(echo "${p}" | sed -e "s/${folderescaped}//g" -e "s/\///g")

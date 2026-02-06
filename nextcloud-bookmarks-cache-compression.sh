@@ -3,8 +3,8 @@ nextcloud_folder_default="/var/www/nextcloud"
 if [[ -d "/home/yunohost.app/nextcloud/data" ]]; then
 	nextcloud_folder_default="/home/yunohost.app/nextcloud"
 fi
-mtime=${1:-"8"}
-size=${2:-"100"}
+target_size=${1:-"100"}
+target_time=${2:-"2"}
 nextcloud_folder=${3:-"${nextcloud_folder_default}"}
 appdata_folder=$(find "${nextcloud_folder}/data" -maxdepth 1 -type d -iname "appdata_oc*" | head -n 1)
 cache_folder="${appdata_folder}/bookmarks/cache"
@@ -99,8 +99,8 @@ main_loop() {
 }
 
 count=0
-total=$(find "${cache_folder}" -type f -mtime "-${mtime}" -size "+${size}" | wc -l)
-find "${cache_folder}" -type f -mtime "-${mtime}" -size "+${size}" | while read -r i; do
+total=$(find "${cache_folder}" -type f -mtime "-${target_time}" -size "+${target_size}" | wc -l)
+find "${cache_folder}" -type f -mtime "-${target_time}" -size "+${target_size}" | while read -r i; do
 	count=$((count + 1))
 	main_loop "${i}" &
 	if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
