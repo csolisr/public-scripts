@@ -67,7 +67,7 @@ printf "\rFetchMissingReplies\t%s\n\r" "${cfmax}" #&> /dev/null
 cg=${limit}
 cgmax=0
 until [[ ${cg} -lt ${limit} ]]; do
-	cg=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where command=\"ProcessQueue\" and pid=0 and done=0 limit ${cg}; select row_count();")
+	cg=$(sudo mariadb friendica -B -N -q -e "delete from workerqueue where command=\"ProcessQueue\" and regexp_replace(regexp_replace(\`parameter\`, '\\\[', ''), '\\\]', '') not in (select \`id\` from \`workerqueue\`) and pid=0 and done=0 limit ${cg}; select row_count();")
 	cgmax=$((cgmax + cg))
 	printf "\rProcessQueue\t\t%s\r" "${cgmax}" #&> /dev/null
 done
