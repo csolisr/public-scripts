@@ -200,36 +200,38 @@ core_loop() {
 	find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 		count=$((count + 1))
 		(
-			if [[ -f ${x} && ${channel} != "subscriptions" && ${channel} != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
+			if [[ ${channel} != "subscriptions" && ${channel} != "WL" && -f ${x} && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
 				echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 			fi
-			if [[ -f ${x} && ${breaktime} =~ ^[0-9]+$ ]]; then
+			if [[ ${breaktime} =~ ^[0-9]+$ && -f ${x} ]]; then
 				file_timestamp=$(jq -rc '.timestamp' "${x}")
 				if [[ ${breaktime_timestamp} -ge ${file_timestamp} ]]; then
 					echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
 				fi
 			fi
-			if [[ -f ${x} && -f ${diff_file} && (${channel} == "subscriptions" || ${channel} == "WL") ]]; then
-				#if [[ -f "${x}" && -f "${diff_file}" && "${channel}" = "subscriptions" ]]; then
+			#if [[ -f ${x} && -f ${diff_file} && (${channel} == "subscriptions" || ${channel} == "WL") ]]; then
+			if [[ ${channel} == "subscriptions" && -f ${x} && -f ${diff_file} ]]; then
 				channel_id=$(jq -rc ".channel_id" "${x}")
-				while read -r line; do
-					if [[ -f ${x} && ${line} == "${channel_id}" && -f ${subscriptions_old} ]]; then
-						unsubscribed_channel=$(grep "${line}" "${subscriptions_old}" | cut -d ',' -f3-)
-						echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
-						touch "${subfolder}/${channel}-remove.csv"
-						jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
-						done
-						sort "${temporary}/${channel}-remove.txt" | uniq >"${subfolder}/${channel}-remove.csv"
-						rm "${temporary}/${channel}-remove.txt"
-						rm "${x}"
-					fi
-				done <"${diff_file}"
+				if [[ -f ${subscriptions_old} ]]; then
+					while read -r line; do
+						#if [[ ${line} == "${channel_id}" && -f ${x} ]]; then
+						if [[ ${line} == "${channel_id}" ]]; then
+							unsubscribed_channel=$(grep "${line}" "${subscriptions_old}" | cut -d ',' -f3-)
+							echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
+							touch "${subfolder}/${channel}-remove.csv"
+							jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
+								#echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
+								echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' | tee -a "${temporary}/${channel}-remove.csv"
+							done
+							sort "${temporary}/${channel}-remove.txt" | uniq >"${subfolder}/${channel}-remove.csv"
+							rm "${temporary}/${channel}-remove.txt"
+							rm "${x}"
+						fi
+					done <"${diff_file}"
+				fi
 			fi
 			if [[ -f ${x} ]]; then
-				if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
-					jq '.formats="" | .automatic_captions="" | .subtitles="" | .thumbnails="" | .tags="" | .chapters="" | .heatmap="" | .categories=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
-				fi
+				jq '.formats="" | .automatic_captions="" | .subtitles="" | .thumbnails="" | .tags="" | .chapters="" | .heatmap="" | .categories=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
 				echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
 				if [[ ${enablecsv} == "1" ]]; then
 					jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
@@ -257,7 +259,7 @@ core_loop() {
 			rm "${temporary}/${channel}.db"
 		fi
 		if [[ ${channel} == "subscriptions" ]]; then
-			echo '{"playlistName":"Subscriptions","protected":false,"description":"Videos from subscriptions","videos":[' >"${temporary}/${channel}.db"
+			echo '{"playlistName":"1. Subscriptions","protected":false,"description":"Videos from subscriptions","videos":[' >"${temporary}/${channel}.db"
 		elif [[ ${channel} == "WL" ]]; then
 			echo '{"playlistName":"Watch Later","protected":false,"description":"Videos to watch later","videos":[' >"${temporary}/${channel}.db"
 		else
@@ -297,7 +299,7 @@ core_loop() {
 	#Fix permissions before compression, in case the script was run as root
 	find "${temporary}" -type f -exec chmod 664 {} \;
 	find "${temporary}" -type f -exec chown "${folder_user}:${folder_group}" {} \;
-	tar -cvp -I "zstd -T0" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
+	tar -cvp -I "zstd -T0 --fast" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
 	total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 	sort "${temporary}/${channel}.txt" | uniq >"${archive}"
 	rm -rf "${temporary}"
@@ -310,7 +312,8 @@ if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 	while read -r channel_entry cutdate; do
 		channel="${channel_entry}"
 		breaktime="${cutdate}"
-		if [[ -n ${channel} && -n ${cutdate} ]]; then
+		#Allow for commented-out channels
+		if [[ -n ${channel} && -n ${cutdate} && ${channel:0:1} != "#" ]]; then
 			core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
 		fi
 	done <"${loop_file}"
@@ -329,7 +332,7 @@ if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 			touch "${final}"
 		fi
 		#Concatenate all playlists
-		#TODO: properly add "Watch Later" and "Favorites" lists
+		#TODO: properly add "Favorites" list
 		find . -iname "*.db" | while read -r i; do
 			cat "${i}" >>"${final}"
 			#They are not separated by a comma, curiously enough
