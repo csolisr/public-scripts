@@ -211,8 +211,8 @@ core_loop() {
 			fi
 			#if [[ -f ${x} && -f ${diff_file} && (${channel} == "subscriptions" || ${channel} == "WL") ]]; then
 			if [[ ${channel} == "subscriptions" && -f ${x} && -f ${diff_file} ]]; then
-				channel_id=$(jq -rc ".channel_id" "${x}")
 				if [[ -f ${subscriptions_old} ]]; then
+					channel_id=$(jq -rc ".channel_id" "${x}")
 					while read -r line; do
 						#if [[ ${line} == "${channel_id}" && -f ${x} ]]; then
 						if [[ ${line} == "${channel_id}" ]]; then
@@ -223,8 +223,8 @@ core_loop() {
 								#echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
 								echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' | tee -a "${temporary}/${channel}-remove.csv"
 							done
-							sort "${temporary}/${channel}-remove.txt" | uniq >"${subfolder}/${channel}-remove.csv"
-							rm "${temporary}/${channel}-remove.txt"
+							sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
+							rm "${temporary}/${channel}-remove.csv"
 							rm "${x}"
 						fi
 					done <"${diff_file}"
