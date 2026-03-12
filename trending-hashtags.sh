@@ -31,6 +31,8 @@ useragent="Trending Hashtags Fetcher (https://${mysite})"
 languages=("en-US" "es-ES" "ja-JP" "de-DE" "fr-FR")
 #Manual overrides for some external services, such as bridges, generally blocked by some servers.
 overrides=("threads.net" "threads.com" "threads.instagram.com" "bsky.brid.gy" "bird.makeup" "mostr.pub" "newsmast.org" "newsmast.social" "mastodon.social" "misskey.io" "misskey.gg" "mstdn.jp" "mastodon.cloud" "mastodon.world" "fosstodon.org" "mas.to" "mastodon.art" "troet.cafe" "mastodon.online")
+#Holos service URL
+holos_url="https://discover.holos.social/feeds/trending"
 
 fetch_sites() {
 	while read -r searchsite; do
@@ -83,27 +85,34 @@ fetch_block() {
 }
 
 fetch_hashtags() {
-	while read -r searchsite; do
-		did_add_hashtag=0
-		while read -r hashtag_to_add; do
-			if [[ -n ${hashtag_to_add} && ${hashtag_to_add} != "null" ]]; then
-				already_printed=0
-				if [[ -f ${tags_file} ]]; then
-					if [[ ${already_printed} -eq 0 ]]; then
-						if [[ ${localmode} != "0" ]]; then
-							echo "Site: ${searchsite} Hashtag: #${hashtag_to_add}" #&> /dev/null
+	#while read -r searchsite; do
+	while read -r searchlines; do
+		searchsite=$(echo "${searchlines}" | jq -r '.[0]')
+		searchsw=$(echo "${searchlines}" | jq -r '.[1]')
+		#did_add_hashtag=0
+		#If this software uses the Mastodon API:
+		if [[ ${searchsw} = "mastodon" ]]; then
+			while read -r hashtag_to_add; do
+				if [[ -n ${hashtag_to_add} && ${hashtag_to_add} != "null" ]]; then
+					already_printed=0
+					if [[ -f ${tags_file} ]]; then
+						if [[ ${already_printed} -eq 0 ]]; then
+							if [[ ${localmode} != "0" ]]; then
+								echo "Site: ${searchsite} Hashtag: #${hashtag_to_add}" #&> /dev/null
+							fi
+							already_printed=1
 						fi
-						already_printed=1
-					fi
-					echo "${hashtag_to_add}" >>"${tags_file}"
-					if [[ -n ${hashtag_to_add} ]]; then
-						did_add_hashtag=1
+						echo "${hashtag_to_add}" >>"${tags_file}"
+						#if [[ -n ${hashtag_to_add} ]]; then
+							#did_add_hashtag=1
+						#fi
 					fi
 				fi
-			fi
-		done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/trends/tags" 2>/dev/null | jq -r '.[].name' 2>/dev/null)
+			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/trends/tags" 2>/dev/null | jq -r '.[].name' 2>/dev/null)
+		fi
 		#If this returns nothing, fall back to the Misskey API
-		if [[ ${did_add_hashtag} -eq 0 ]]; then
+		#if [[ ${did_add_hashtag} -eq 0 ]]; then
+		if [[ ${searchsw} = "misskey" ]]; then
 			while read -r hashtag_to_add; do
 				if [[ -n ${hashtag_to_add} && ${hashtag_to_add} != "null" ]]; then
 					already_printed=0
@@ -141,8 +150,24 @@ fetch_hashtags() {
 		#		"https://${searchsite}/api/v1/search/videos?sort=-trending&count=100&isLocal=false&search=*"
 		#			From here you will need to fetch pairs of '.data[].uuid' and '.data[].channel.host' to get the actual URL, in the form of
 		#			"https://${host}/videos/watch/${uuid}"
-	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
+	done < <(echo "${serverssresponse}" | | jq -r '[.data[] | [{domain, software:.software.slug}]]' | jq -c -r '.[][]| [.domain, .software]'
+	#done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
+	#Finally use the Holos API
+	for hashtag_to_add in $(curl "${holos_url}/hashtags.rss" 2> /dev/null | xmlstarlet sel -t -v "/rss/channel/item/title" 2> /dev/null | tr --delete '#'); do
+		if [[ -n ${hashtag_to_add} && ${hashtag_to_add} != "null" ]]; then
+			already_printed=0
+			if [[ -f ${tags_file} ]]; then
+				if [[ ${already_printed} -eq 0 ]]; then
+					if [[ ${localmode} != "0" ]]; then
+						echo "Site: ${holos_url} (Holos API) Hashtag: #${hashtag_to_add}" #&> /dev/null
+					fi
+					already_printed=1
+				fi
+				echo "${hashtag_to_add}" >>"${tags_file}"
+			fi
+		fi
+	done
 	#Deduplicate
 	if [[ -f ${tags_file} ]]; then
 		if [[ ${localmode} != "0" ]]; then
@@ -156,38 +181,46 @@ fetch_hashtags() {
 	print_count "${count_file}" "${count_parameter}"
 	#Populate
 	if [[ -f ${tags_file} ]]; then
-		while read -r searchsite; do
+		#while read -r searchsite; do
+		while read -r searchlines; do
+			searchsite=$(echo "${searchlines}" | jq -r '.[0]')
+			searchsw=$(echo "${searchlines}" | jq -r '.[1]')
 			while read -r hashtag_to_add; do
-				fetch_hashtag "${hashtag_to_add}" "${searchsite}" &
+				fetch_hashtag "${hashtag_to_add}" "${searchsite}" "${searchsw}" &
 				if [[ $(jobs -r -p | wc -l) -ge ${threads} ]]; then
 					wait -n
 				fi
 			done <"${tags_file}"
-		done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
+		#done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
+		done < <(echo "${serverssresponse}" | | jq -r '[.data[] | [{domain, software:.software.slug}]]' | jq -c -r '.[][]| [.domain, .software]'
 	fi
 }
 
 fetch_hashtag() {
+	#If this software uses the Mastodon API:
 	if [[ ${hashtag_to_add} != "null" ]]; then
-		did_add_url=0
-		already_printed=0
-		#Fetch the URLs that contain the hashtag, and populate your website with them
-		while read -r url_to_fetch; do
-			if [[ -n ${url_to_fetch} && ${url_to_fetch} != "null" ]]; then
-				if [[ ${already_printed} -eq 0 ]]; then
-					if [[ ${localmode} != "0" ]]; then
-						echo "Site: ${searchsite} Hashtag: #${hashtag_to_add}" #&> /dev/null
+		if [[ ${searchsw} = "mastodon" ]]; then
+			#did_add_url=0
+			already_printed=0
+			#Fetch the URLs that contain the hashtag, and populate your website with them
+			while read -r url_to_fetch; do
+				if [[ -n ${url_to_fetch} && ${url_to_fetch} != "null" ]]; then
+					if [[ ${already_printed} -eq 0 ]]; then
+						if [[ ${localmode} != "0" ]]; then
+							echo "Site: ${searchsite} Hashtag: #${hashtag_to_add}" #&> /dev/null
+						fi
+						already_printed=1
 					fi
-					already_printed=1
+					fetch_url "${url_to_fetch}" "${searchsite}"
+					#if [[ -n ${url_to_fetch} ]]; then
+						#did_add_url=1
+					#fi
 				fi
-				fetch_url "${url_to_fetch}" "${searchsite}"
-				if [[ -n ${url_to_fetch} ]]; then
-					did_add_url=1
-				fi
-			fi
-		done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/timelines/tag/${hashtag_to_add}?local=false" 2>/dev/null | jq -r '.[].uri' 2>/dev/null)
+			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/timelines/tag/${hashtag_to_add}?local=false" 2>/dev/null | jq -r '.[].uri' 2>/dev/null)
+		fi
 		#If no URLs are found, fall back to the Misskey API
-		if [[ ${did_add_url} -eq 0 ]]; then
+		#if [[ ${did_add_url} -eq 0 ]]; then
+		if [[ ${searchsw} = "misskey" ]]; then
 			while read -r url_to_fetch; do
 				if [[ -n ${url_to_fetch} && ${url_to_fetch} != "null" ]]; then
 					if [[ ${already_printed} -eq 0 ]]; then
@@ -225,6 +258,21 @@ fetch_trending_posts() {
 		done
 	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
+	#Finally use the Holos API
+	for url_to_fetch in $(curl "${holos_url}/posts.rss" 2> /dev/null | xmlstarlet sel -t -v "/rss/channel/item/link" 2> /dev/null); do
+		if [[ ${url_to_fetch} != "null" ]]; then
+			if [[ ${already_printed} -eq 0 ]]; then
+				if [[ ${localmode} != "0" ]]; then
+					echo "Site: ${holos_url} (Holos API) Trending posts" #&> /dev/null
+				fi
+				already_printed=1
+			fi
+			fetch_url "${url_to_fetch}" &
+			if [[ $(jobs -r -p | wc -l) -ge ${threads} ]]; then
+				wait -n
+			fi
+		fi
+	done
 }
 
 fetch_url() {
