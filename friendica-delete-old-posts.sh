@@ -28,7 +28,7 @@ sudo "${dbengine}" "${db}" -vvve "\
 		or p.\`author-id\` in (select \`contact-id\` from \`group_member\`) \
 		or p.\`causer-id\` in (select \`contact-id\` from \`group_member\`) \
 		or p.\`owner-id\` in (select \`contact-id\` from \`group_member\`) \
-	);" # &> /dev/null
+	);" #&> /dev/null
 
 #Show only in case we're not optimizing for speed.
 if [[ ${intense_optimizations} -eq 0 ]]; then
@@ -54,7 +54,7 @@ if [[ ${intense_optimizations} -eq 0 ]]; then
 		select count(p.\`uri-id\`), p.\`created\` from \`post\` p \
 			inner join tmp_post tmp on p.\`uri-id\` = tmp.\`uri-id\` \
 			group by date_format(p.\`created\`, \"%y%m\") \
-			order by \`created\` desc;" # &> /dev/null
+			order by \`created\` desc;" #&> /dev/null
 fi
 
 if [[ ${intense_optimizations} -lt 2 ]]; then
@@ -76,7 +76,7 @@ if [[ ${intense_optimizations} -lt 2 ]]; then
 		delete from \`post-category\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
 		delete from \`post-history\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
 		delete from \`post\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
-	" # &> /dev/null
+	" #&> /dev/null
 fi
 
 #Show only in case we're not optimizing for speed.
@@ -118,7 +118,7 @@ if [[ ${intense_optimizations} -eq 0 ]]; then
 		delete from \`post-category\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
 		delete from \`post-history\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
 		delete from \`post\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
-	" # &> /dev/null
+	" #&> /dev/null
 fi
 
 #Execute only for the most intensive deletion.
@@ -168,12 +168,12 @@ if [[ ${intense_optimizations} -eq 2 ]]; then
 		delete from \`post-category\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
 		delete from \`post-history\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
 		delete from \`post\` where \`uri-id\` in (select \`uri-id\` from \`tmp_post\`); \
-	" # &> /dev/null
+	" #&> /dev/null
 fi
 
 if [[ ${intense_optimizations} -ne 1 ]]; then
 	#Show all the leftover posts, sorted by date.
-	sudo "${dbengine}" "${db}" -e 'select count(*), `created` from `post` group by date_format(`created`, "%y%m") order by `created` desc' # &> /dev/null
+	sudo "${dbengine}" "${db}" -e 'select count(*), `created` from `post` group by date_format(`created`, "%y%m") order by `created` desc' #&> /dev/null
 fi
 
 #Fix the auto-increment for the affected tables. Clear temporary tables.
@@ -188,4 +188,4 @@ sudo "${dbengine}" "${db}" -v -e "\
 	alter table \`post-category\` auto_increment = 1; \
 	alter table \`post-history\` auto_increment = 1; \
 	alter table \`post\` auto_increment = 1; \
-	drop table if exists tmp_post_matches;" # &> /dev/null
+	drop table if exists tmp_post_matches;" #&> /dev/null
