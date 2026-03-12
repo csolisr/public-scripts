@@ -33,6 +33,7 @@ languages=("en-US" "es-ES" "ja-JP" "de-DE" "fr-FR")
 overrides=("threads.net" "threads.com" "threads.instagram.com" "bsky.brid.gy" "bird.makeup" "mostr.pub" "newsmast.org" "newsmast.social" "mastodon.social" "misskey.io" "misskey.gg" "mstdn.jp" "mastodon.cloud" "mastodon.world" "fosstodon.org" "mas.to" "mastodon.art" "troet.cafe" "mastodon.online")
 #Holos service URL
 holos_url="https://discover.holos.social/feeds/trending"
+holos_limit="100"
 
 fetch_sites() {
 	while read -r searchsite; do
@@ -154,7 +155,7 @@ fetch_hashtags() {
 	#done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
 	#Finally use the Holos API
-	for hashtag_to_add in $(curl "${holos_url}/hashtags.rss" 2>/dev/null | xmlstarlet sel -t -v "/rss/channel/item/title" 2>/dev/null | tr --delete '#'); do
+	for hashtag_to_add in $(curl "${holos_url}/hashtags.rss?limit=${holos_limit}" 2>/dev/null | xmlstarlet sel -t -v "/rss/channel/item/title" 2>/dev/null | tr --delete '#'); do
 		if [[ -n ${hashtag_to_add} && ${hashtag_to_add} != "null" ]]; then
 			already_printed=0
 			if [[ -f ${tags_file} ]]; then
@@ -259,7 +260,7 @@ fetch_trending_posts() {
 	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
 	#Finally use the Holos API
-	for url_to_fetch in $(curl "${holos_url}/posts.rss" 2>/dev/null | xmlstarlet sel -t -v "/rss/channel/item/link" 2>/dev/null); do
+	for url_to_fetch in $(curl "${holos_url}/posts.rss?limit=${holos_limit}" 2>/dev/null | xmlstarlet sel -t -v "/rss/channel/item/link" 2>/dev/null); do
 		if [[ ${url_to_fetch} != "null" ]]; then
 			if [[ ${already_printed} -eq 0 ]]; then
 				if [[ ${localmode} != "0" ]]; then
