@@ -341,7 +341,7 @@ if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 fi
 
 #Scripts used specifically for my web server
-if [[ $(uname -n) == "azkware" ]]; then
+if [[ $(uname -n) == "azkware.net" ]]; then
 	#Used to scan my files in my Nextcloud folder
 	../nextcloud-files-scan.sh "Document/Scripts"
 	#Deduplicate files on my Nextcloud versions
