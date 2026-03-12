@@ -91,7 +91,7 @@ fetch_hashtags() {
 		searchsw=$(echo "${searchlines}" | jq -r '.[1]')
 		#did_add_hashtag=0
 		#If this software uses the Mastodon API:
-		if [[ ${searchsw} = "mastodon" ]]; then
+		if [[ ${searchsw} == "mastodon" ]]; then
 			while read -r hashtag_to_add; do
 				if [[ -n ${hashtag_to_add} && ${hashtag_to_add} != "null" ]]; then
 					already_printed=0
@@ -104,7 +104,7 @@ fetch_hashtags() {
 						fi
 						echo "${hashtag_to_add}" >>"${tags_file}"
 						#if [[ -n ${hashtag_to_add} ]]; then
-							#did_add_hashtag=1
+						#did_add_hashtag=1
 						#fi
 					fi
 				fi
@@ -112,7 +112,7 @@ fetch_hashtags() {
 		fi
 		#If this returns nothing, fall back to the Misskey API
 		#if [[ ${did_add_hashtag} -eq 0 ]]; then
-		if [[ ${searchsw} = "misskey" ]]; then
+		if [[ ${searchsw} == "misskey" ]]; then
 			while read -r hashtag_to_add; do
 				if [[ -n ${hashtag_to_add} && ${hashtag_to_add} != "null" ]]; then
 					already_printed=0
@@ -150,11 +150,11 @@ fetch_hashtags() {
 		#		"https://${searchsite}/api/v1/search/videos?sort=-trending&count=100&isLocal=false&search=*"
 		#			From here you will need to fetch pairs of '.data[].uuid' and '.data[].channel.host' to get the actual URL, in the form of
 		#			"https://${host}/videos/watch/${uuid}"
-	done < <(echo "${serverssresponse}" | | jq -r '[.data[] | [{domain, software:.software.slug}]]' | jq -c -r '.[][]| [.domain, .software]'
+	done < <(echo "${serversresponse}" | jq -r '[.data[] | [{domain, software:.software.slug}]]' | jq -c -r '.[][]| [.domain, .software]')
 	#done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
 	#Finally use the Holos API
-	for hashtag_to_add in $(curl "${holos_url}/hashtags.rss" 2> /dev/null | xmlstarlet sel -t -v "/rss/channel/item/title" 2> /dev/null | tr --delete '#'); do
+	for hashtag_to_add in $(curl "${holos_url}/hashtags.rss" 2>/dev/null | xmlstarlet sel -t -v "/rss/channel/item/title" 2>/dev/null | tr --delete '#'); do
 		if [[ -n ${hashtag_to_add} && ${hashtag_to_add} != "null" ]]; then
 			already_printed=0
 			if [[ -f ${tags_file} ]]; then
@@ -191,15 +191,15 @@ fetch_hashtags() {
 					wait -n
 				fi
 			done <"${tags_file}"
-		#done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
-		done < <(echo "${serverssresponse}" | | jq -r '[.data[] | [{domain, software:.software.slug}]]' | jq -c -r '.[][]| [.domain, .software]'
+			#done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
+		done < <(echo "${serversresponse}" | jq -r '[.data[] | [{domain, software:.software.slug}]]' | jq -c -r '.[][]| [.domain, .software]')
 	fi
 }
 
 fetch_hashtag() {
 	#If this software uses the Mastodon API:
 	if [[ ${hashtag_to_add} != "null" ]]; then
-		if [[ ${searchsw} = "mastodon" ]]; then
+		if [[ ${searchsw} == "mastodon" ]]; then
 			#did_add_url=0
 			already_printed=0
 			#Fetch the URLs that contain the hashtag, and populate your website with them
@@ -213,14 +213,14 @@ fetch_hashtag() {
 					fi
 					fetch_url "${url_to_fetch}" "${searchsite}"
 					#if [[ -n ${url_to_fetch} ]]; then
-						#did_add_url=1
+					#did_add_url=1
 					#fi
 				fi
 			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/timelines/tag/${hashtag_to_add}?local=false" 2>/dev/null | jq -r '.[].uri' 2>/dev/null)
 		fi
 		#If no URLs are found, fall back to the Misskey API
 		#if [[ ${did_add_url} -eq 0 ]]; then
-		if [[ ${searchsw} = "misskey" ]]; then
+		if [[ ${searchsw} == "misskey" ]]; then
 			while read -r url_to_fetch; do
 				if [[ -n ${url_to_fetch} && ${url_to_fetch} != "null" ]]; then
 					if [[ ${already_printed} -eq 0 ]]; then
@@ -259,7 +259,7 @@ fetch_trending_posts() {
 	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
 	#Finally use the Holos API
-	for url_to_fetch in $(curl "${holos_url}/posts.rss" 2> /dev/null | xmlstarlet sel -t -v "/rss/channel/item/link" 2> /dev/null); do
+	for url_to_fetch in $(curl "${holos_url}/posts.rss" 2>/dev/null | xmlstarlet sel -t -v "/rss/channel/item/link" 2>/dev/null); do
 		if [[ ${url_to_fetch} != "null" ]]; then
 			if [[ ${already_printed} -eq 0 ]]; then
 				if [[ ${localmode} != "0" ]]; then
