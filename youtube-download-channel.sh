@@ -108,6 +108,10 @@ core_loop() {
 			else
 				full_url="${section_url}"
 			fi
+			maxdownloads=10000
+			if [[ ${section_url} == "${url}/shorts" ]]; then
+				maxdownloads=1000
+			fi
 			echo "${section_url} = ${full_url}"
 			#TODO: test if section exists
 			#test=$(curl -s -L -I -m 30 -X HEAD "${full_url}"
@@ -130,7 +134,7 @@ core_loop() {
 					--skip-download --download-archive "${archive}" \
 					--dateafter "${breaktime}" \
 					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
-					--max-downloads 10000 \
+					--max-downloads "${maxdownloads}" \
 					--break-on-reject --lazy-playlist --write-info-json \
 					--sleep-requests "${sleeptime}" \
 					--parse-metadata "video::(?P<formats>)" \
@@ -148,7 +152,7 @@ core_loop() {
 					--skip-download --download-archive "${archive}" \
 					--dateafter "${breaktime}" \
 					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
-					--max-downloads 10000 \
+					--max-downloads "${maxdownloads}" \
 					--break-on-reject --lazy-playlist --write-info-json \
 					--sleep-requests "${sleeptime}" \
 					--parse-metadata "video::(?P<formats>)" \
@@ -212,17 +216,19 @@ core_loop() {
 				fi
 				if [[ (${channel} == "subscriptions" || ${channel} == "WL") && -f ${diff_file} && -f ${subscriptions_old} ]]; then
 					channel_id=$(jq -rc ".channel_id" "${x}")
-					if grep -q -e "${channel_id}" "${diff_file}"; then
-						unsubscribed_channel=$(grep "${channel_id}" "${subscriptions_old}" | cut -d ',' -f3-)
-						echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
-						touch "${subfolder}/${channel}-remove.csv"
-						jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' | tee -a "${temporary}/${channel}-remove.csv"
-						done
-						sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
-						rm "${temporary}/${channel}-remove.csv"
-						rm "${x}"
-					fi
+					while read -r line; do
+						if [[ ${line} == "${channel_id}" ]]; then
+							unsubscribed_channel=$(grep "${line}" "${subscriptions_old}" | cut -d ',' -f3-)
+							echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
+							touch "${subfolder}/${channel}-remove.csv"
+							jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
+								echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' | tee -a "${temporary}/${channel}-remove.csv"
+							done
+							sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
+							rm "${temporary}/${channel}-remove.csv"
+							rm "${x}"
+						fi
+					done <"${diff_file}"
 				fi
 				if [[ -f ${x} ]]; then
 					if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
