@@ -31,7 +31,7 @@ final="${folder}/../FreeTube/playlists.db"
 
 core_loop() {
 	if [[ -f ${subscriptions_old} && -f ${subscriptions_new} ]]; then
-		diff <(sort "${subscriptions_old}" | cut -d ',' -f2) <(sort "${subscriptions_new}" | cut -d ',' -f2) | grep "< " | sed -e "s/< //g" -e "s/http:\/\/www.youtube.com\/channel\///g" | sort | uniq >"${diff_file}"
+		diff <(tr -d '\r' <"${subscriptions_old}" | sort | cut -d ',' -f2) <(tr -d '\r' <"${subscriptions_new}" | sort | cut -d ',' -f2) | grep "< " | sed -e "s/< //g" -e "s/http:\/\/www.youtube.com\/channel\///g" | sort | uniq >"${diff_file}"
 	fi
 	temporary="/tmp/subscriptions-${channel}"
 	if [[ ! -w "/tmp" ]]; then
@@ -110,7 +110,7 @@ core_loop() {
 			fi
 			maxdownloads=10000
 			if [[ ${section_url} == "${url}/shorts" ]]; then
-				maxdownloads=1000
+				maxdownloads=200
 			fi
 			echo "${section_url} = ${full_url}"
 			#TODO: test if section exists
@@ -204,49 +204,47 @@ core_loop() {
 	find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 		count=$((count + 1))
 		(
-			if [[ -f ${x} ]]; then
-				if [[ ${channel} != "subscriptions" && ${channel} != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
-					echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
+			if [[ -f ${x} && ${channel} != "subscriptions" && ${channel} != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
+				echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
+			fi
+			if [[ -f ${x} && ${breaktime} =~ ^[0-9]+$ ]]; then
+				file_timestamp=$(jq -rc '.timestamp' "${x}")
+				if [[ ${breaktime_timestamp} -ge ${file_timestamp} ]]; then
+					echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
 				fi
-				if [[ ${breaktime} =~ ^[0-9]+$ ]]; then
-					file_timestamp=$(jq -rc '.timestamp' "${x}")
-					if [[ ${breaktime_timestamp} -ge ${file_timestamp} ]]; then
-						echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
-					fi
-				fi
-				if [[ (${channel} == "subscriptions" || ${channel} == "WL") && -f ${diff_file} && -f ${subscriptions_old} ]]; then
-					channel_id=$(jq -rc ".channel_id" "${x}")
-					while read -r line; do
-						if [[ ${line} == "${channel_id}" ]]; then
-							unsubscribed_channel=$(grep "${line}" "${subscriptions_old}" | cut -d ',' -f3-)
-							echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
-							touch "${subfolder}/${channel}-remove.csv"
-							jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-								echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' | tee -a "${temporary}/${channel}-remove.csv"
-							done
-							sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
-							rm "${temporary}/${channel}-remove.csv"
-							rm "${x}"
-						fi
-					done <"${diff_file}"
-				fi
-				if [[ -f ${x} ]]; then
-					if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
-						jq '.formats=""|.automatic_captions=""|.subtitles=""|.thumbnails=""|.tags=""|.chapters=""|.heatmap=""|.categories=""|.description=""|._format_sort_fields=""|._version=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
-					fi
-					echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
-					if [[ ${enablecsv} == "1" ]]; then
+			fi
+			if [[ -f ${x} && (${channel} == "subscriptions" || ${channel} == "WL") && -f ${diff_file} && -f ${subscriptions_old} ]]; then
+				channel_id=$(jq -rc ".channel_id" "${x}")
+				while read -r line; do
+					if [[ ${line} == "${channel_id}" ]]; then
+						unsubscribed_channel=$(tr -d '\r' <"${subscriptions_old}" | grep "${line}" | cut -d ',' -f3-)
+						echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
+						touch "${subfolder}/${channel}-remove.csv"
 						jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${tmpcsv}"
+							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
 						done
+						sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
+						rm "${temporary}/${channel}-remove.csv"
+						rm "${x}"
 					fi
-					if [[ ${enabledb} == "1" ]]; then
-						jq -c '[.upload_date, .timestamp]' "${x}" | while read -r i; do
-							echo "${i},${x##*/}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e 's/\\"/＂/g' >>"${sortcsv}"
-						done
-					fi
-					echo "${count}/${total} ${x}"
+				done <"${diff_file}"
+			fi
+			if [[ -f ${x} ]]; then
+				if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
+					jq '.formats=""|.automatic_captions=""|.subtitles=""|.thumbnails=""|.tags=""|.chapters=""|.heatmap=""|.categories=""|.description=""|._format_sort_fields=""|._version=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
 				fi
+				echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
+				if [[ ${enablecsv} == "1" ]]; then
+					jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
+						echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${tmpcsv}"
+					done
+				fi
+				if [[ ${enabledb} == "1" ]]; then
+					jq -c '[.upload_date, .timestamp]' "${x}" | while read -r i; do
+						echo "${i},${x##*/}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e 's/\\"/＂/g' >>"${sortcsv}"
+					done
+				fi
+				echo "${count}/${total} ${x}"
 			fi
 		) &
 		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
