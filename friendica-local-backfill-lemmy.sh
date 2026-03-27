@@ -27,7 +27,7 @@ loop() {
 		#curl -s --no-progress-meter -H "User-Agent: ${useragent}" -H "Authorization: Bearer ${token}" "${searchurl}${item}" -O /dev/null
 		item_result=$(curl -s --no-progress-meter -H "User-Agent: ${useragent}" -H "Authorization: Bearer ${token}" "${searchurl}${item}")
 		if [[ -n ${item_result} ]]; then
-			itemid=$(echo "${item_result}" | jq -r '.statuses[0].id')
+			itemid=$(echo "${item_result}" | jq -r '.statuses[0].id' 2>/dev/null)
 			#Download the HTML of the page, clean it with XMLStarlet
 			jpdl=$(curl -s --no-progress-meter -H "User-Agent: ${useragent}" "${item}" 2>/dev/null)
 			if [[ -n ${jpdl} ]]; then
@@ -38,15 +38,17 @@ loop() {
 				if [[ -n ${jp} && -n ${j} && ${j} != "${item}" ]]; then
 					#curl -s --no-progress-meter -H "Authorization: Bearer ${token}" "${searchurl}${j}" -O /dev/null
 					j_result=$(curl -s --no-progress-meter -H "Authorization: Bearer ${token}" "${searchurl}${j}")
-					jid=$(echo "${j_result}" | jq -r '.statuses[0].id')
-					if [[ ${jid} != "null" ]]; then
-						if [[ ${itemid} != null ]]; then
-							echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal), ${j} (external) - ${itemid} = ${jid}" #&> /dev/null
+					if [[ -n ${j_result} ]]; then
+						jid=$(echo "${j_result}" | jq -r '.statuses[0].id' 2>/dev/null)
+						if [[ ${jid} != "null" ]]; then
+							if [[ ${itemid} != null ]]; then
+								echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal), ${j} (external) - ${itemid} = ${jid}" #&> /dev/null
+							else
+								echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${j} (external) - ${jid}" #&> /dev/null
+							fi
 						else
-							echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${j} (external) - ${jid}" #&> /dev/null
+							echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal) - Waiting for itemid" #&> /dev/null
 						fi
-					else
-						echo "${commnumber}/${commtotal} Community = ${comm} Position = ${position}/${ai}; Post = ${item} (internal) - Waiting for itemid" #&> /dev/null
 					fi
 				#If there is no external canonical address to backfill, but there is an internal one:
 				else
