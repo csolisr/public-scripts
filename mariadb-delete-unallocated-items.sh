@@ -11,8 +11,9 @@ rm "${file}" && touch "${file}"
 limit=1000
 count=0
 sum=0
+query_string_last_table=""
 while read -r id; do
-	max_count=$("${dbengine}" "${db}" -NBqe "SELECT DISTINCT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE REFERENCED_TABLE_SCHEMA = \"${db}\" AND REFERENCED_TABLE_NAME = \"${referenced_table_name}\" AND REFERENCED_COLUMN_NAME = \"${id}\"" | wc -l)
+	max_count=$("${dbengine}" "${db}" -NBqe "SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE REFERENCED_TABLE_SCHEMA = \"${db}\" AND REFERENCED_TABLE_NAME = \"${referenced_table_name}\" AND REFERENCED_COLUMN_NAME = \"${id}\"" | wc -l)
 	if [[ ${max_count} -gt 0 ]]; then
 		query_string_count_prefix="SELECT COUNT(i.\`${id}\`) FROM \`${referenced_table_name}\` i"
 		query_string_find_prefix="SELECT i.\`${id}\` FROM \`${referenced_table_name}\` i"
@@ -20,14 +21,19 @@ while read -r id; do
 		query_string_content=""
 		query_string_suffix=" WHERE "
 		while read -r table column; do
-			count=$((count + 1))
+			if [[ ${table} != "${query_string_last_table}" ]]; then
+				count=$((count + 1))
+				query_string_last_table="${table}"
+				query_string_content="${query_string_content} LEFT JOIN \`${table}\` t${count} ON i.\`${id}\` = t${count}.\`${column}\`"
+			else
+				query_string_content="${query_string_content} AND i.\`${id}\` = t${count}.\`${column}\`"
+			fi
 			if [[ ${intense_optimizations} -eq 0 ]]; then
 				echo "${id} ${table} ${column}" | tee -a "${file}"
 				current=$("${dbengine}" "${db}" -NBqe "SELECT COUNT(x.\`${id}\`) FROM \`${referenced_table_name}\` x INNER JOIN \`${table}\` y ON x.\`${id}\` = y.\`${column}\`" | tee -a "${file}")
 				echo "${current}"
 				sum=$((sum + current))
 			fi
-			query_string_content="${query_string_content} LEFT JOIN \`${table}\` t${count} ON i.\`${id}\` = t${count}.\`${column}\`"
 			query_string_suffix="${query_string_suffix} \`t${count}\`.\`${column}\` IS NULL"
 			if [[ ${count} -lt ${max_count} ]]; then
 				query_string_suffix="${query_string_suffix} AND "
