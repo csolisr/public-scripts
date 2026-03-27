@@ -3,14 +3,14 @@ job_limit=${1:-"10000"}
 loop_limit=${2:-"1000"}
 dbengine=""
 if [[ -n $(type mariadb) ]]; then
-    dbengine="mariadb"
+	dbengine="mariadb"
 elif [[ -n $(type mysql) ]]; then
-    dbengine="mysql"
+	dbengine="mysql"
 else
-    exit
+	exit
 fi
-db=friendica
-if [[ $("${dbengine}" "${db}" -B -N -q -e "select count(*) from workerqueue where \`done\` = 0") -gt ${job_limit} ]]; then
+db="friendica"
+if [[ $("${dbengine}" "${db}" -B -N -q -e 'select count(*) from workerqueue where `done` = 0') -gt ${job_limit} ]]; then
 	ca=${loop_limit}
 	camax=0
 	until [[ ${ca} -lt ${loop_limit} ]]; do
