@@ -1,19 +1,19 @@
 #!/bin/bash
 #Parameters:
-#1st parameter: Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)
-channel=${1:-"subscriptions"}
-#2nd parameter: Time limit for the download. Leave blank to save all videos from the last month.
-breaktime=${2:-"today-1month"}
-#3rd parameter: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low.
-sleeptime=${3:-"0.1"}
-#4th parameter: Whether to enable exporting to FreeTube playlist database (1=on by default, 0=off)
-enabledb=${4:-"1"}
-#5th parameter: Whether to enable exporting to a CSV file (1=on by default, 0=off)
-enablecsv=${5:-"1"}
-#6th parameter: Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required.
-personal_folder=${6:-"/cygdrive/d/Nextcloud/Multimedia/Document/Playnite"}
-#7th parameter: Whether to override reading the loop file. Required if running individual channel fetches.
-override_loop=${7:-"0"}
+#1st parameter: Whether to override reading the loop file. Required if running individual channel fetches.
+override_loop=${1:-"0"}
+#2nd parameter: Whether to enable exporting to FreeTube playlist database (1=on by default, 0=off)
+enabledb=${2:-"1"}
+#3rd parameter: Whether to enable exporting to a CSV file (1=on by default, 0=off)
+enablecsv=${3:-"1"}
+#4th parameter: Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)
+channel=${4:-"subscriptions"}
+#5th parameter: Time limit for the download. Leave blank to save all videos from the last month.
+breaktime=${5:-"today-1month"}
+#6th parameter: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low.
+sleeptime=${6:-"0.1"}
+#7th parameter: Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required.
+personal_folder=${7:-"/cygdrive/d/Nextcloud/Multimedia/Document/Playnite"}
 #Internal variables:
 #Via https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
 folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
@@ -85,8 +85,8 @@ core_loop() {
 	#		fi
 	#	fi
 	#Fix permissions after extraction, in case the script was run as root
-	find "${temporary}" -type f -exec chmod 664 {} \;
-	find "${temporary}" -type f -exec chown "${folder_user}:${folder_group}" {} \;
+	find "${temporary}" -type f -and -not -perm 664 -exec chmod 664 {} \;
+	find "${temporary}" -type f -and \( -not -user "${folder_user}" -or -not -group "${folder_group}" \) -exec chown "${folder_user}:${folder_group}" {} \;
 	url="https://www.youtube.com/@${channel}"
 	#Via https://github.com/yt-dlp/yt-dlp/issues/13573#issuecomment-3020152141
 	full_url=$("${ytdl}" -I0 --print "playlist:https://www.youtube.com/playlist?list=UU%(channel_id.2:)s" "${url}")
@@ -204,14 +204,14 @@ core_loop() {
 	find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
 		count=$((count + 1))
 		(
-			if [[ -f ${x} && ${channel} != "subscriptions" && ${channel} != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
-				echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
-			fi
 			if [[ -f ${x} && ${breaktime} =~ ^[0-9]+$ ]]; then
 				file_timestamp=$(jq -rc '.timestamp' "${x}")
 				if [[ ${breaktime_timestamp} -ge ${file_timestamp} ]]; then
 					echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
 				fi
+			fi
+			if [[ -f ${x} && ${channel} != "subscriptions" && ${channel} != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
+				echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 			fi
 			if [[ -f ${x} && (${channel} == "subscriptions" || ${channel} == "WL") && -f ${diff_file} && -f ${subscriptions_old} ]]; then
 				channel_id=$(jq -rc ".channel_id" "${x}")
