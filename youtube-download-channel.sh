@@ -52,6 +52,7 @@ inner_loop() {
 				unsubscribed_channel=$(tr -d '\r' <"${subscriptions_old}" | grep "${line}" | cut -d ',' -f3-)
 				echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
 				touch "${subfolder}/${channel}-remove.csv"
+				touch "${temporary}/${channel}-remove.csv"
 				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
 					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
 				done
