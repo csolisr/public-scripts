@@ -14,6 +14,8 @@ breaktime=${5:-"today-1month"}
 sleeptime=${6:-"0.1"}
 #7th parameter: Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required.
 personal_folder=${7:-"/cygdrive/d/Nextcloud/Multimedia/Document/Playnite"}
+#8th parameter: Whether to count the time used by the application's loops for statistical purposes. (1=on by default, 0=off)
+track=${8:-"1"}
 #Internal variables:
 #Via https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
 folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
@@ -28,6 +30,60 @@ subscriptions_new="${subfolder}/subscriptions-new.csv"
 diff_file="/tmp/subscriptions-diff.csv"
 loop_file="${subfolder}/loop-file.csv"
 final="${folder}/../FreeTube/playlists.db"
+max_jobs=$(($(getconf _NPROCESSORS_ONLN) * 2))
+
+inner_loop() {
+	if [[ ${track} -eq 1 ]]; then
+		mostinnerstarttime=$(date -u +%s%3N)
+	fi
+	if [[ -f ${x} && ${breaktime} =~ ^[0-9]+$ ]]; then
+		file_timestamp=$(jq -rc '.timestamp' "${x}")
+		if [[ ${breaktime_timestamp} -ge ${file_timestamp} ]]; then
+			echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
+		fi
+	fi
+	if [[ -f ${x} && ${channel} != "subscriptions" && ${channel} != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
+		echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
+	fi
+	if [[ -f ${x} && (${channel} == "subscriptions" || ${channel} == "WL") && -f ${diff_file} && -f ${subscriptions_old} ]]; then
+		channel_id=$(jq -rc ".channel_id" "${x}")
+		while read -r line; do
+			if [[ ${line} == "${channel_id}" ]]; then
+				unsubscribed_channel=$(tr -d '\r' <"${subscriptions_old}" | grep "${line}" | cut -d ',' -f3-)
+				echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
+				touch "${subfolder}/${channel}-remove.csv"
+				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
+					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
+				done
+				sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
+				rm "${temporary}/${channel}-remove.csv"
+				rm "${x}"
+			fi
+		done <"${diff_file}"
+	fi
+	if [[ -f ${x} ]]; then
+		if [[ $(stat -c%s "${x}") -gt 3000 ]]; then
+			jq '.formats=""|.automatic_captions=""|.subtitles=""|.thumbnails=""|.tags=""|.chapters=""|.heatmap=""|.categories=""|.description=""|._format_sort_fields=""|._version=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
+		fi
+		echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
+		if [[ ${enablecsv} == "1" ]]; then
+			jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
+				echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${tmpcsv}"
+			done
+		fi
+		if [[ ${enabledb} == "1" ]]; then
+			jq -c '[.upload_date, .timestamp]' "${x}" | while read -r i; do
+				echo "${i},${x##*/}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e 's/\\"/＂/g' >>"${sortcsv}"
+			done
+		fi
+		echo "${count}/${total} ${x}"
+	fi
+	if [[ ${track} -eq 1 ]]; then
+		mostinnerendtime=$(date -u +%s%3N)
+		mostinnerelapsedtime=$((mostinnerendtime - mostinnerstarttime))
+		echo "${count}/${total} Processing time: ${mostinnerelapsedtime}ms"
+	fi
+}
 
 core_loop() {
 	if [[ -f ${subscriptions_old} && -f ${subscriptions_new} ]]; then
@@ -202,53 +258,31 @@ core_loop() {
 	count=0
 	total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 	find "${temporary}" -type f -iname "*.info.json" | while read -r x; do
+		if [[ ${track} -eq 1 ]]; then
+			innerstarttime=$(date -u +%s%3N)
+		fi
 		count=$((count + 1))
-		(
-			if [[ -f ${x} && ${breaktime} =~ ^[0-9]+$ ]]; then
-				file_timestamp=$(jq -rc '.timestamp' "${x}")
-				if [[ ${breaktime_timestamp} -ge ${file_timestamp} ]]; then
-					echo "${count}/${total} ${x} uploaded before ${breaktime}, removing..." && rm "${x}"
-				fi
+		inner_loop &
+		#if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
+		#wait -n
+		#fi
+		if [[ ${track} -eq 1 ]]; then
+			job_start=$(jobs -r -p | wc -l)
+			innersleeptime=$(date -u +%s%3N)
+			total_sleeps=0
+		fi
+		while [[ $(jobs -r -p | wc -l) -ge ${max_jobs} ]]; do
+			if [[ ${track} -eq 1 ]]; then
+				total_sleeps=$((total_sleeps + 1))
 			fi
-			if [[ -f ${x} && ${channel} != "subscriptions" && ${channel} != "WL" && $(jq -rc ".uploader_id" "${x}") != "@${channel}" ]]; then
-				echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
-			fi
-			if [[ -f ${x} && (${channel} == "subscriptions" || ${channel} == "WL") && -f ${diff_file} && -f ${subscriptions_old} ]]; then
-				channel_id=$(jq -rc ".channel_id" "${x}")
-				while read -r line; do
-					if [[ ${line} == "${channel_id}" ]]; then
-						unsubscribed_channel=$(tr -d '\r' <"${subscriptions_old}" | grep "${line}" | cut -d ',' -f3-)
-						echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
-						touch "${subfolder}/${channel}-remove.csv"
-						jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-							echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
-						done
-						sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
-						rm "${temporary}/${channel}-remove.csv"
-						rm "${x}"
-					fi
-				done <"${diff_file}"
-			fi
-			if [[ -f ${x} ]]; then
-				if [[ $(stat -c%s "${x}") -gt 4096 ]]; then
-					jq '.formats=""|.automatic_captions=""|.subtitles=""|.thumbnails=""|.tags=""|.chapters=""|.heatmap=""|.categories=""|.description=""|._format_sort_fields=""|._version=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
-				fi
-				echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
-				if [[ ${enablecsv} == "1" ]]; then
-					jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-						echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${tmpcsv}"
-					done
-				fi
-				if [[ ${enabledb} == "1" ]]; then
-					jq -c '[.upload_date, .timestamp]' "${x}" | while read -r i; do
-						echo "${i},${x##*/}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e 's/\\"/＂/g' >>"${sortcsv}"
-					done
-				fi
-				echo "${count}/${total} ${x}"
-			fi
-		) &
-		if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
-			wait -n
+			sleep "${sleeptime}"
+		done
+		if [[ ${track} -eq 1 ]]; then
+			innerendtime=$(date -u +%s%3N)
+			innerelapsedtime=$((innerendtime - innerstarttime))
+			innersleepelapsedtime=$((innerendtime - innersleeptime))
+			job_end=$(jobs -r -p | wc -l)
+			echo "${count}/${total} wait for job ${job_start}>${job_end}/${max_jobs} : ${innerelapsedtime}ms / ${innersleepelapsedtime}ms (${total_sleeps})"
 		fi
 	done
 	wait
@@ -268,6 +302,9 @@ core_loop() {
 		count=0
 		total=$(wc -l <"${temporary}/${channel}-sort-ordered.csv")
 		while read -r line; do
+			if [[ ${track} -eq 1 ]]; then
+				innerstarttime=$(date -u +%s%3N)
+			fi
 			count=$((count + 1))
 			file=$(echo "${line}" | cut -d ',' -f3-)
 			if [[ -f ${file} ]]; then
@@ -279,6 +316,11 @@ core_loop() {
 					#TODO: Process the playlist files
 					rm "${temporary}/${file}"
 				fi
+			fi
+			if [[ ${track} -eq 1 ]]; then
+				innerendtime=$(date -u +%s%3N)
+				innerelapsedtime=$((innerendtime - innerstarttime))
+				echo "${count}/${total} Processing time: ${innerelapsedtime}ms"
 			fi
 		done <"${temporary}/${channel}-sort-ordered.csv"
 		echo "],\"_id\":\"${channel}$(date +%s)\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"${temporary}/${channel}.db"
@@ -297,8 +339,8 @@ core_loop() {
 	fi
 	cd "${temporary}" || exit
 	#Fix permissions before compression, in case the script was run as root
-	find "${temporary}" -type f -exec chmod 664 {} \;
-	find "${temporary}" -type f -exec chown "${folder_user}:${folder_group}" {} \;
+	find "${temporary}" -type f -and -not -perm 664 -exec chmod 664 {} \;
+	find "${temporary}" -type f -and \( -not -user "${folder_user}" -or -not -group "${folder_group}" \) -exec chown "${folder_user}:${folder_group}" {} \;
 	tar -cvp -I "zstd -T0 --fast" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
 	total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 	sort "${temporary}/${channel}.txt" | uniq >"${archive}"
