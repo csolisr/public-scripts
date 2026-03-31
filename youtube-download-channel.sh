@@ -58,8 +58,6 @@ inner_loop() {
 				done
 			fi
 		done <"${diff_file}"
-		sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
-		rm "${temporary}/${channel}-remove.csv"
 		rm "${x}"
 	fi
 	if [[ -f ${x} ]]; then
@@ -287,6 +285,9 @@ core_loop() {
 		fi
 	done
 	wait
+	if [[ -f "${temporary}/${channel}-remove.csv" ]]; then
+		sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv" && rm "${temporary}/${channel}-remove.csv"
+	fi
 	sleep 1
 	if [[ ${enabledb} -eq 1 ]]; then
 		sort "${sortcsv}" | uniq >"${temporary}/${channel}-sort-ordered.csv"
