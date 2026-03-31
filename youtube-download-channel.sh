@@ -55,15 +55,15 @@ inner_loop() {
 				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
 					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
 				done
-				sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
-				rm "${temporary}/${channel}-remove.csv"
-				rm "${x}"
 			fi
 		done <"${diff_file}"
+		sort "${temporary}/${channel}-remove.csv" | uniq >"${subfolder}/${channel}-remove.csv"
+		rm "${temporary}/${channel}-remove.csv"
+		rm "${x}"
 	fi
 	if [[ -f ${x} ]]; then
 		if [[ $(stat -c%s "${x}") -gt 3000 ]]; then
-			jq '.formats=""|.automatic_captions=""|.subtitles=""|.thumbnails=""|.tags=""|.chapters=""|.heatmap=""|.categories=""|.description=""|._format_sort_fields=""|._version=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
+			jq '.formats=""|.automatic_captions=""|.subtitles=""|.thumbnails=""|.tags=""|.chapters=""|.heatmap=""|.categories=""|.description=""|._format_sort_fields=""|.http_headers=""|.url=""|.manifest_url=""|._version=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
 		fi
 		echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
 		if [[ ${enablecsv} -eq 1 ]]; then
