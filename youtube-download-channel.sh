@@ -66,12 +66,12 @@ inner_loop() {
 			jq '.formats=""|.automatic_captions=""|.subtitles=""|.thumbnails=""|.tags=""|.chapters=""|.heatmap=""|.categories=""|.description=""|._format_sort_fields=""|._version=""' "${x}" >"${x}.tmp" && mv "${x}.tmp" "${x}"
 		fi
 		echo "youtube $(jq -cr '.id' "${x}")" >>"${temporary}/${channel}.txt"
-		if [[ ${enablecsv} == "1" ]]; then
+		if [[ ${enablecsv} -eq 1 ]]; then
 			jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
 				echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${tmpcsv}"
 			done
 		fi
-		if [[ ${enabledb} == "1" ]]; then
+		if [[ ${enabledb} -eq 1 ]]; then
 			jq -c '[.upload_date, .timestamp]' "${x}" | while read -r i; do
 				echo "${i},${x##*/}" | sed -e "s/^\[//g" -e "s/\],/,/g" -e 's/\\"/＂/g' >>"${sortcsv}"
 			done
@@ -287,7 +287,7 @@ core_loop() {
 	done
 	wait
 	sleep 1
-	if [[ ${enabledb} == "1" ]]; then
+	if [[ ${enabledb} -eq 1 ]]; then
 		sort "${sortcsv}" | uniq >"${temporary}/${channel}-sort-ordered.csv"
 		if [[ -f "${temporary}/${channel}.db" ]]; then
 			rm "${temporary}/${channel}.db"
@@ -328,7 +328,7 @@ core_loop() {
 		grep -v -e ":[ ]*null" "${temporary}/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" -e "s/\[\r,/\[/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "${temporary}/${channel}.db"
 		rm "${temporary}/${channel}-sort-ordered.csv" "${sortcsv}"
 	fi
-	if [[ ${enablecsv} == "1" ]]; then
+	if [[ ${enablecsv} -eq 1 ]]; then
 		sort "${tmpcsv}" | uniq >"${temporary}/${channel}-without-header.csv"
 		echo '"Upload Date", "Timestamp", "Duration", "Uploader", "Title", "Webpage URL", "Livestream"' >"${temporary}/${channel}-tmp.csv"
 		cat "${temporary}/${channel}-without-header.csv" >>"${temporary}/${channel}-tmp.csv"
@@ -348,7 +348,9 @@ core_loop() {
 }
 
 #Start of the script proper
-starttime=$(date +'%s')
+if [[ ${track} -eq 1 ]]; then
+	starttime=$(date +'%s')
+fi
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
 if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 	while read -r channel_entry cutdate; do
@@ -362,10 +364,9 @@ if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 else
 	core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
 fi
-
 if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
-	if [[ ${enabledb} -eq "1" ]]; then
+	if [[ ${enabledb} -eq 1 ]]; then
 		cd ./subscriptions || exit
 		if [[ -f ${final} ]]; then
 			rm -rf "${final}"
@@ -381,7 +382,6 @@ if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 		done
 	fi
 fi
-
 #Scripts used specifically for my web server
 if [[ $(uname -n) == "azkware.net" ]]; then
 	#Used to scan my files in my Nextcloud folder
@@ -406,8 +406,9 @@ if [[ $(uname -n) == "azkware.net" ]]; then
 		echo "---"
 	done
 fi
-
-endtime=$(date +'%s')
-elapsedtime=$((endtime - starttime))
-elapsedtimehuman=$(date -d@"${elapsedtime}" -u +%Hh\ %Mm\ %Ss)
-echo "Time elapsed = ${elapsedtimehuman}"
+if [[ ${track} -eq 1 ]]; then
+	endtime=$(date +'%s')
+	elapsedtime=$((endtime - starttime))
+	elapsedtimehuman=$(date -d@"${elapsedtime}" -u +%Hh\ %Mm\ %Ss)
+	echo "Time elapsed = ${elapsedtimehuman}"
+fi
