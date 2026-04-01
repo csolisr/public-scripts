@@ -56,9 +56,9 @@ inner_loop() {
 				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
 					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
 				done
+				rm "${x}"
 			fi
 		done <"${diff_file}"
-		rm "${x}"
 	fi
 	if [[ -f ${x} ]]; then
 		if [[ $(stat -c%s "${x}") -gt 3000 ]]; then
