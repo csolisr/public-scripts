@@ -24,7 +24,7 @@ found_file="/tmp/found_urls.txt"
 #File that will hold the trending hashtags found.
 tags_file="/tmp/trending_hashtags.txt"
 #Amount of threads that will be used for multiprocessing.
-threads=$(getconf _NPROCESSORS_ONLN)
+threads=$(($(getconf _NPROCESSORS_ONLN) - ($(getconf _NPROCESSORS_ONLN) / 2)))
 #User agent (to be used to identify the process)
 useragent="Trending Hashtags Fetcher (https://${mysite})"
 #Languages for the trending topics, in ISO format.

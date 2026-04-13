@@ -168,7 +168,7 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 	if [[ ! -f ${idsdownfile} ]]; then
 		for b in "${sitesdown[@]}"; do
 			loop_2 "${b}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) - ($(getconf _NPROCESSORS_ONLN) / 2))) ]]; then
 				wait -n
 			fi
 		done

@@ -2,7 +2,7 @@
 limit=1000
 folder=/var/www/friendica
 user=friendica
-phpversion=php8.2
+phpversion=php8.4
 dbengine=""
 if [[ -n $(type mariadb) ]]; then
 	dbengine="mariadb"

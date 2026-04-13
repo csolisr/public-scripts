@@ -215,7 +215,7 @@ outer_loop() {
 		for comm in "${comms_dedup[@]}"; do
 			commnumber=$((commnumber + 1))
 			comm_loop "${comm}" "${commnumber}" "${commtotal}" "${a}" &
-			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; then
+			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) - ($(getconf _NPROCESSORS_ONLN) / 2))) ]]; then
 				wait -n
 			fi
 		done

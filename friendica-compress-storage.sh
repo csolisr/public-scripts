@@ -63,7 +63,7 @@ count=0
 while read -r p; do
 	count=$((count + 1))
 	loop_1 "${p}" "${count}" "${total}" &
-	until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) / 2)) ]]; do
+	until [[ $(jobs -r -p | wc -l) -lt $(($(getconf _NPROCESSORS_ONLN) - ($(getconf _NPROCESSORS_ONLN) / 2))) ]]; do
 		wait -n
 	done
 	#done < <(find "${storagefolder}" -depth -mindepth 2 -type f -not -iname "index.html")
