@@ -24,11 +24,12 @@ found_file="/tmp/found_urls.txt"
 #File that will hold the trending hashtags found.
 tags_file="/tmp/trending_hashtags.txt"
 #Amount of threads that will be used for multiprocessing.
-threads=$(($(getconf _NPROCESSORS_ONLN) - ($(getconf _NPROCESSORS_ONLN) / 2)))
+threads=$(($(getconf _NPROCESSORS_ONLN) * 2))
 #User agent (to be used to identify the process)
 useragent="Trending Hashtags Fetcher (https://${mysite})"
 #Languages for the trending topics, in ISO format.
-languages=("en-US" "es-ES" "ja-JP" "de-DE" "fr-FR")
+#languages=("en-US" "es-ES" "ja-JP" "de-DE" "fr-FR")
+languages=("en-US" "es-ES")
 #Manual overrides for some external services, such as bridges, generally blocked by some servers.
 overrides=("threads.net" "threads.com" "threads.instagram.com" "bsky.brid.gy" "bird.makeup" "mostr.pub" "newsmast.org" "newsmast.social" "mastodon.social" "misskey.io" "misskey.gg" "mstdn.jp" "mastodon.cloud" "mastodon.world" "fosstodon.org" "mas.to" "mastodon.art" "troet.cafe" "mastodon.online")
 #Holos service URL
@@ -47,9 +48,9 @@ fetch_sites() {
 fetch_blocks() {
 	while read -r searchsite; do
 		fetch_block "${searchsite}" &
-		if [[ $(jobs -r -p | wc -l) -ge ${threads} ]]; then
-			wait -n
-		fi
+		until [[ $(jobs -r -p | wc -l) -le ${threads} ]]; do
+			sleep 0.1
+		done
 	done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 	wait
 	#Deduplicate
@@ -188,13 +189,14 @@ fetch_hashtags() {
 			searchsw=$(echo "${searchlines}" | jq -r '.[1]')
 			while read -r hashtag_to_add; do
 				fetch_hashtag "${hashtag_to_add}" "${searchsite}" "${searchsw}" &
-				if [[ $(jobs -r -p | wc -l) -ge ${threads} ]]; then
-					wait -n
-				fi
+				until [[ $(jobs -r -p | wc -l) -le ${threads} ]]; do
+					sleep 0.1
+				done
 			done <"${tags_file}"
 			#done < <(echo "${serversresponse}" | jq -r '.data[].domain' 2>/dev/null)
 		done < <(echo "${serversresponse}" | jq -r '[.data[] | [{domain, software:.software.slug}]]' | jq -c -r '.[][]| [.domain, .software]')
 	fi
+	wait
 }
 
 fetch_hashtag() {
@@ -250,10 +252,9 @@ fetch_trending_posts() {
 						already_printed=1
 					fi
 					fetch_url "${url_to_fetch}" &
-					if [[ $(jobs -r -p | wc -l) -ge ${threads} ]]; then
-						wait -n
-					fi
-
+					until [[ $(jobs -r -p | wc -l) -le ${threads} ]]; do
+						sleep 0.1
+					done
 				fi
 			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" -H "Accept-Language: ${language}" "https://${searchsite}/api/v1/trends/statuses" 2>/dev/null | jq -r '.[].uri' 2>/dev/null)
 		done
@@ -269,11 +270,12 @@ fetch_trending_posts() {
 				already_printed=1
 			fi
 			fetch_url "${url_to_fetch}" &
-			if [[ $(jobs -r -p | wc -l) -ge ${threads} ]]; then
-				wait -n
-			fi
+			until [[ $(jobs -r -p | wc -l) -le ${threads} ]]; do
+				sleep 0.1
+			done
 		fi
 	done
+	wait
 }
 
 fetch_url() {
@@ -313,9 +315,9 @@ search_urls() {
 	while read -r url_to_fetch; do
 		current_url=$((current_url + 1))
 		search_url "${url_to_fetch}" "${current_url}" "${total_url}" &
-		if [[ $(jobs -r -p | wc -l) -ge ${threads} ]]; then
-			wait -n
-		fi
+		until [[ $(jobs -r -p | wc -l) -le ${threads} ]]; do
+			sleep 0.1
+		done
 	done <"${url_file}"
 	wait
 	#Print amount of URLs
