@@ -81,7 +81,7 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 			done
 			response=$(printf "%s%s%s" "${response_left}" "${blank_string}" "${response}")
 			printf "%s\r" "${response}"
-		done < <("${dbengine}" "${db}" -NBqe "select \`id\`, \`nick\`, \`baseurl\` from contact where \`id\` = \"${input_id}\"")
+		done < <("${dbengine}" "${db}" -NBqe "select \`id\`, \`nick\`, \`baseurl\` from contact where \`id\` = \"${input_id}\" and \`id\` != 0")
 		printf "\n\r"
 	else
 		echo "${input_id}"
