@@ -284,6 +284,7 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 			or \`id\` in (select \`uid\` from \`user\`) \
 			or \`id\` in (select \`contact-id\` from \`group_member\`)) and \
 			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \
+			c.\`id\` > ${currentid} and \
 			c.\`nick\` not in ('threads.sys', 'relay', 'friendica', 'sharkey', 'bot', 'catodon', \
 			'flipboard', 'lemmy', 'mitra', 'mstdn_bot', 'peertube', 'piefed', 'admin') \
 			limit ${loopsize}")
