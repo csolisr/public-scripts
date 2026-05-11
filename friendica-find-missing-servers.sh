@@ -34,7 +34,7 @@ loop_1() {
 	#	fi
 	#This is mostly for RSS feeds, we only check whether the site itself is up
 	#Skip check if the message contains a reference to Cloudflare
-	if [[ ${protocol} != "bsky" ]]; then
+	if [[ ${protocol} != "bsky" && ${protocol} != "" && -n ${protocol} ]]; then
 		header=$(curl -s -L -I -m 30 -X HEAD "https://${site}")
 		error_code=$(grep -e "HTTP" < <(echo "${header}"))
 		if ! grep -q -e "HTTP.*200" -e "cloudflare" < <(echo "${header}"); then
@@ -144,7 +144,7 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 		"${dbengine}" "${db}" -N -B -q -e 'alter table `post-user` add index if not exists `tmp_post_user_id` (`author-id`, `causer-id`, `owner-id`)'
 	fi
 	echo "Listing sites"
-	siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
+	siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != '' and protocol != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
 	siteslistamount=$(echo "${siteslist}" | wc -l)
 	echo "Amount of unique sites: ${siteslistamount}"
 	if [[ ! -f ${tmpfile} ]]; then
@@ -187,6 +187,7 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 				wait -n
 			fi
 		fi
+		wait
 	done <"${idsdownfile}"
 	printf "\n\r"
 	rm "${tmpfile}" 2>/dev/null
