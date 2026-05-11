@@ -1,10 +1,12 @@
 #!/bin/bash
 #Amount of days to fetch. Can pass as the first parameter.
 amountofdays=${1:-"1"}
-#URL of your instance. Can pass as the second parameter.
-mysite=${2:-"friendica.example.net"}
-#Token from your website. Can pass as the third parameter. Needs to be generated using something like GetAuth and the "read" permission ( https://getauth.thms.uk/?scopes=read )
-token=${3:-"12345678"}
+#Whether to add popular posts from other communities from the same page. Can pass as the second parameter.
+popularposts=${2:-"0"}
+#URL of your instance. Can pass as the third parameter.
+mysite=${3:-"friendica.example.net"}
+#Token from your website. Can pass as the fourth parameter. Needs to be generated using something like GetAuth and the "read" permission ( https://getauth.thms.uk/?scopes=read )
+token=${4:-"12345678"}
 #MariaDB database.
 db="friendica"
 #User agent
@@ -148,45 +150,47 @@ outer_loop() {
 	if [[ -n ${status} ]]; then
 		#Only process communities from the sites we want to backfill, ignore the rest
 		comms=()
-		#Parse all the landing page feeds for several categories
-		lemmyfeed="https://${a}/feeds/local.xml"
-		for i in \
-			"${lemmyfeed}?sort=Active&limit=50" \
-			"${lemmyfeed}?sort=Hot&limit=50" \
-			"${lemmyfeed}?sort=Scaled&limit=50" \
-			"${lemmyfeed}?sort=TopDay&limit=50" \
-			"${lemmyfeed}?sort=TopHour&limit=50" \
-			"${lemmyfeed}?sort=TopSixHour&limit=50" \
-			"${lemmyfeed}?sort=TopTwelveHour&limit=50"; do
+		if [[ ${popularposts} -eq 1 ]]; then
+			#Parse all the landing page feeds for several categories
+			lemmyfeed="https://${a}/feeds/local.xml"
+			for i in \
+				"${lemmyfeed}?sort=Active&limit=50" \
+				"${lemmyfeed}?sort=Hot&limit=50" \
+				"${lemmyfeed}?sort=Scaled&limit=50" \
+				"${lemmyfeed}?sort=TopDay&limit=50" \
+				"${lemmyfeed}?sort=TopHour&limit=50" \
+				"${lemmyfeed}?sort=TopSixHour&limit=50" \
+				"${lemmyfeed}?sort=TopTwelveHour&limit=50"; do
 
-			#TODO: fetch the community URLs straight from our backend, if possible.
-			for n in "${sites[@]}"; do
-				#Only process communities from the sites we want to backfill, ignore the rest
-				if [[ ${i} =~ ${n} ]]; then
-					#Parse the RSS feed, find each community ("https://example.com/c/community")
-					#TODO: find if there's a better way to parse this through XMLStarlet alone
-					for sp in $(curl -L -m 10 -s -H "User-Agent: ${useragent}" "${i}" 2>/dev/null | xmlstarlet sel -T -t -c "//item/description" 2>/dev/null |
-						grep -o -e "<a href=\"https://${n}/c/.*\">.*<\/a>" |
-						sed -e "s/</\n/g" -e "s/>/\n/g" | grep -o -e "https://${n}/c/.*" |
-						sed -e "s/https:\/\/${n}\///g" -e 's/"//g' -e "s/ /\r\n/g" | uniq -i); do
-						#If any community is found, add it to our list
-						if [[ -n ${sp} ]]; then
-							comms+=("${sp}")
-						fi
-					done
-					#TODO: Use the list of users to populate as well
-					#for sq in $(curl -L -m 10 -s -H "User-Agent: ${useragent}" "${i}" 2>/dev/null | xmlstarlet sel -T -t -c "//item/description" 2>/dev/null |
-					#grep -o -e "<a href=\"https://${n}/u/.*\">.*<\/a>" |
-					#sed -e "s/</\n/g" -e "s/>/\n/g" | grep -o -e "https://${n}/u/.*" |
-					#sed -e "s/https:\/\/${n}\///g" -e "s/\"//g" -e "s/ /\r\n/g" | uniq -i); do
-					##If any user is found, add it to our list
-					#if [[ -n ${sq} ]]; then
-					#users+=("${sq}")
-					#fi
-					#done
-				fi
+				#TODO: fetch the community URLs straight from our backend, if possible.
+				for n in "${sites[@]}"; do
+					#Only process communities from the sites we want to backfill, ignore the rest
+					if [[ ${i} =~ ${n} ]]; then
+						#Parse the RSS feed, find each community ("https://example.com/c/community")
+						#TODO: find if there's a better way to parse this through XMLStarlet alone
+						for sp in $(curl -L -m 10 -s -H "User-Agent: ${useragent}" "${i}" 2>/dev/null | xmlstarlet sel -T -t -c "//item/description" 2>/dev/null |
+							grep -o -e "<a href=\"https://${n}/c/.*\">.*<\/a>" |
+							sed -e "s/</\n/g" -e "s/>/\n/g" | grep -o -e "https://${n}/c/.*" |
+							sed -e "s/https:\/\/${n}\///g" -e 's/"//g' -e "s/ /\r\n/g" | uniq -i); do
+							#If any community is found, add it to our list
+							if [[ -n ${sp} ]]; then
+								comms+=("${sp}")
+							fi
+						done
+						#TODO: Use the list of users to populate as well
+						#for sq in $(curl -L -m 10 -s -H "User-Agent: ${useragent}" "${i}" 2>/dev/null | xmlstarlet sel -T -t -c "//item/description" 2>/dev/null |
+						#grep -o -e "<a href=\"https://${n}/u/.*\">.*<\/a>" |
+						#sed -e "s/</\n/g" -e "s/>/\n/g" | grep -o -e "https://${n}/u/.*" |
+						#sed -e "s/https:\/\/${n}\///g" -e "s/\"//g" -e "s/ /\r\n/g" | uniq -i); do
+						##If any user is found, add it to our list
+						#if [[ -n ${sq} ]]; then
+						#users+=("${sq}")
+						#fi
+						#done
+					fi
+				done
 			done
-		done
+		fi
 		#Fetch an array of all communities known on our database
 		i=()
 		while IFS="" read -r line; do
