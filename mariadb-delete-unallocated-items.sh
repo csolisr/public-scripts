@@ -87,7 +87,7 @@ while read -r id; do
 					sleep "${sleep_time}"
 				fi
 			done
-			"${dbengine}" "${db}" -NBque "DROP TABLE IF EXISTS \`tmp_${referenced_table_name}\`;"
+			"${dbengine}" "${db}" -NBqe "DROP TABLE IF EXISTS \`tmp_${referenced_table_name}\`;"
 		fi
 		findings_this_batch="${limit}"
 		total_findings=0
