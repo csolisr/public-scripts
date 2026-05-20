@@ -17,7 +17,7 @@ while read -r id; do
 	if [[ ${max_count} -gt 0 ]]; then
 		query_string_count_prefix="SELECT COUNT(i.\`${id}\`) FROM \`${referenced_table_name}\` i"
 		query_string_find_prefix="SELECT i.\`${id}\` FROM \`${referenced_table_name}\` i"
-		query_string_delete_prefix="DELETE IGNORE FROM \`${referenced_table_name}\` WHERE \`${id}\` IN ("
+		query_string_pre_delete_prefix="CREATE TABLE IF NOT EXISTS \`tmp_${referenced_table_name}\` (SELECT \`${id}\` FROM \`${referenced_table_name}\` WHERE \`${id}\` IN ("
 		query_string_content=""
 		query_string_suffix=" WHERE "
 		while read -r table column; do
@@ -41,29 +41,32 @@ while read -r id; do
 		done < <("${dbengine}" "${db}" -NBqe "SELECT DISTINCT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE REFERENCED_TABLE_SCHEMA = \"${db}\" AND REFERENCED_TABLE_NAME = \"${referenced_table_name}\" AND REFERENCED_COLUMN_NAME = \"${id}\"")
 		query_string_count="${query_string_count_prefix} ${query_string_content} ${query_string_suffix}"
 		query_string_find="${query_string_find_prefix} ${query_string_content} ${query_string_suffix}"
-		query_string_delete="${query_string_delete_prefix} ${query_string_find_prefix} ${query_string_content} ${query_string_suffix}"
+		query_string_pre_delete="${query_string_pre_delete_prefix} ${query_string_find_prefix} ${query_string_content} ${query_string_suffix}"
 		if [[ ${intense_optimizations} -eq 0 ]]; then
 			echo "Sum: ${sum}"
 			echo "Total:" | tee -a "${file}"
 			"${dbengine}" "${db}" -vvve "${query_string_count}"
 		fi
 		if [[ ${delete_items} -eq 1 ]]; then
-			echo "${query_string_delete}"
 			deletions=1
 			total_deletions=0
 			deleted_per_second=0
 			sleep_time=1
 			original_limit="${limit}"
+			query_string_pre_delete_suffix=") ORDER BY \`${id}\` ASC);"
+			if [[ ${enable_maximum_item} -gt 0 ]]; then
+				maximum_item=$("${dbengine}" "${db}" -N -B -q -e 'SELECT `uri-id` FROM `post-thread-user-view` WHERE `uid` = 0 AND `received` < (CURDATE() - INTERVAL 1 DAY) ORDER BY `received` DESC LIMIT 1')
+				query_string_pre_delete_suffix=") AND \`${id}\` < ${maximum_item}  ORDER BY \`${id}\` ASC);"
+			else
+				query_string_pre_delete_suffix=")  ORDER BY \`${id}\` ASC);"
+			fi
+			echo "${query_string_pre_delete} ${query_string_pre_delete_suffix}"
+			"${dbengine}" "${db}" -NBqe "${query_string_pre_delete} ${query_string_pre_delete_suffix}"
 			while [[ ${deletions} -gt 0 ]]; do
 				starttime=$(date +'%s')
-				query_string_delete_suffix=") ORDER BY \`${id}\` ASC LIMIT ${limit}; SELECT ROW_COUNT();"
-				if [[ ${enable_maximum_item} -gt 0 ]]; then
-					maximum_item=$("${dbengine}" "${db}" -N -B -q -e 'SELECT `uri-id` FROM `post-thread-user-view` WHERE `uid` = 0 AND `received` < (CURDATE() - INTERVAL 1 DAY) ORDER BY `received` DESC LIMIT 1')
-					query_string_delete_suffix=") AND \`${id}\` < ${maximum_item} ORDER BY \`${id}\` ASC LIMIT ${limit}; SELECT ROW_COUNT();"
-				else
-					query_string_delete_suffix=") ORDER BY \`${id}\` ASC LIMIT ${limit}; SELECT ROW_COUNT();"
-				fi
-				deletions=$("${dbengine}" "${db}" -NBqe "${query_string_delete} ${query_string_delete_suffix}")
+				query_string_delete="DELETE IGNORE FROM \`${referenced_table_name}\`, \`tmp_${referenced_table_name}\` USING \`${referenced_table_name}\` INNER JOIN \`tmp_${referenced_table_name}\` ON \`${referenced_table_name}\`.\`${id}\` = \`tmp_${referenced_table_name}\`.\`${id}\` WHERE \`${referenced_table_name}\`.\`${id}\` IN (SELECT \`${id}\` FROM \`tmp_${referenced_table_name}\`) LIMIT ${limit}; SELECT ROW_COUNT();"
+				echo "${query_string_delete}"
+				deletions=$(($("${dbengine}" "${db}" -NBqe "${query_string_delete}") / 2))
 				total_deletions=$((total_deletions + deletions))
 				endtime=$(date +'%s')
 				total_time=$((endtime - starttime))
@@ -84,6 +87,7 @@ while read -r id; do
 					sleep "${sleep_time}"
 				fi
 			done
+			"${dbengine}" "${db}" -NBque "DROP TABLE IF EXISTS \`tmp_${referenced_table_name}\`;"
 		fi
 		findings_this_batch="${limit}"
 		total_findings=0
