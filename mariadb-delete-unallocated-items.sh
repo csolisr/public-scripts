@@ -66,7 +66,12 @@ while read -r id; do
 				starttime=$(date +'%s')
 				query_string_delete="DELETE IGNORE FROM \`${referenced_table_name}\`, \`tmp_${referenced_table_name}\` USING \`${referenced_table_name}\` INNER JOIN \`tmp_${referenced_table_name}\` ON \`${referenced_table_name}\`.\`${id}\` = \`tmp_${referenced_table_name}\`.\`${id}\` WHERE \`${referenced_table_name}\`.\`${id}\` IN (SELECT \`${id}\` FROM \`tmp_${referenced_table_name}\`) LIMIT ${limit}; SELECT ROW_COUNT();"
 				echo "${query_string_delete}"
-				deletions=$(($("${dbengine}" "${db}" -NBqe "${query_string_delete}") / 2))
+				#Since we delete from both tables, we must calculate half the reported amount of items deleted to get the true account
+				both_deletions=$("${dbengine}" "${db}" -NBqe "${query_string_delete}")
+				if [[ -z ${both_deletions} ]]; then
+					both_deletions=0
+				fi
+				deletions=$((both_deletions / 2))
 				total_deletions=$((total_deletions + deletions))
 				endtime=$(date +'%s')
 				total_time=$((endtime - starttime))
@@ -117,12 +122,20 @@ while read -r id; do
 						if [[ ${intense_optimizations} -eq 0 ]]; then
 							echo "${i}"
 						fi
-						"${dbengine}" "${db}" -NBqe "DELETE IGNORE FROM \`${referenced_table_name}\` WHERE \`${id}\` = \"${i}\""
+						query_string_post_delete_prefix="DELETE IGNORE FROM \`${referenced_table_name}\` WHERE \`${id}\` = \"${i}\""
+						query_string_post_delete_suffix=";"
+						if [[ ${enable_maximum_item} -gt 0 ]]; then
+							maximum_item=$("${dbengine}" "${db}" -N -B -q -e 'SELECT `uri-id` FROM `post-thread-user-view` WHERE `uid` = 0 AND `received` < (CURDATE() - INTERVAL 1 DAY) ORDER BY `received` DESC LIMIT 1')
+							query_string_post_delete_suffix=" AND \`${id}\` < ${maximum_item};"
+						else
+							query_string_post_delete_suffix=";"
+						fi
+						"${dbengine}" "${db}" -NBqe "${query_string_post_delete_prefix}${query_string_post_delete_suffix}"
 					fi
 				) &
-				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; then
-					wait -n
-				fi
+				while [[ $(jobs -r -p | wc -l) -le $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; do
+					sleep 0.1s
+				done
 			done < <("${dbengine}" "${db}" -NBqe "${query_string_find} ${query_string_find_suffix}")
 			wait
 			total_findings=$((total_findings + findings_this_batch))
