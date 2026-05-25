@@ -36,6 +36,10 @@ if [[ -f ${settings_file} ]]; then
 			scriptsfolder="${value}"
 			echo "scriptsfolder=${scriptsfolder}"
 			;;
+		"overrides")
+			overrides="${value}"
+			echo "overrides=${overrides}"
+			;;
 		*) ;;
 		esac
 	done <"${settings_file}"
@@ -77,13 +81,13 @@ while read -r i; do
 			#Show the name of the target file
 			echo "${j}"
 			#Show the differences between the current target file and the modified file
-			diff <(sed -e "s/friendica.example.net/${serverurl}/g" -e "s/#&>/\&\>/g" -e "s/\(token=\${.*:-\"\)[0-9a-f]*\"/\1${credential}\"/g" "${i}" | shfmt -mn | shfmt -s) <(shfmt -s "${j}")
+			diff <(sed -e "s/friendica.example.net/${serverurl}/g" -e "s/_OVERRIDES_/${overrides}/g" -e "s/#&>/\&\>/g" -e "s/\(token=\${.*:-\"\)[0-9a-f]*\"/\1${credential}\"/g" "${i}" | shfmt -mn | shfmt -s) <(shfmt -s "${j}")
 			#Write the modified file to the target file, with the following modifications:
 			#- Replace the placeholder server URL
 			#- Uncomment all the commented `#&> /dev/null` to prevent the cron file from printing unneeded data
 			#- Replace the corresponding file credentials for the ones in the credentials file
 			#- Minify the resulting file
-			sed -e "s/friendica.example.net/${serverurl}/g" -e "s/#&>/\&\>/g" "${i}" -e "s/\(token=\${.*:-\"\)[0-9a-f]*\"/\1${credential}\"/g" | sudo tee "${j}" &>/dev/null
+			sed -e "s/friendica.example.net/${serverurl}/g" -e "s/_OVERRIDES_/${overrides}/g" -e "s/#&>/\&\>/g" "${i}" -e "s/\(token=\${.*:-\"\)[0-9a-f]*\"/\1${credential}\"/g" | sudo tee "${j}" &>/dev/null
 			shfmt -mn -w "${j}"
 		done < <(find "${cronfolder%\/*}" -ipath "${cronfolder}" -iname "${i_tmp%.sh}")
 	fi
@@ -92,10 +96,10 @@ while read -r i; do
 		#Show the name of the target file
 		echo "${k}"
 		#Show the differences between the current target file and the modified file
-		diff <(sed -e "s/friendica.example.net/${serverurl}/g" -e "s/\(token=\${.*:-\"\)[0-9a-f]*\"/\1${credential}\"/g" "${i}") "${k}"
+		diff <(sed -e "s/friendica.example.net/${serverurl}/g" -e "s/_OVERRIDES_/${overrides}/g" -e "s/\(token=\${.*:-\"\)[0-9a-f]*\"/\1${credential}\"/g" "${i}") "${k}"
 		#Write the modified file to the target file, with the following modifications:
 		#- Replace the placeholder server URL
 		#- Replace the corresponding file credentials for the ones in the credentials file
-		sed -e "s/friendica.example.net/${serverurl}/g" -e "s/\(token=\${.*:-\"\)[0-9a-f]*\"/\1${credential}\"/g" "${i}" | tee "${k}" &>/dev/null
+		sed -e "s/friendica.example.net/${serverurl}/g" -e "s/_OVERRIDES_/${overrides}/g" -e "s/\(token=\${.*:-\"\)[0-9a-f]*\"/\1${credential}\"/g" "${i}" | tee "${k}" &>/dev/null
 	done < <(find "${scriptsfolder}" -iname "${i_tmp}")
 done < <(find . -iname "*.sh")

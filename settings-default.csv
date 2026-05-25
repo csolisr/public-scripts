@@ -2,3 +2,4 @@ serveruname	localhost
 serverurl	friendica.example.net
 cronfolder	/etc/cron.*
 scriptsfolder	/home/youruser/Document/Scripts
+overrides	"mastodon.social" "misskey.io"

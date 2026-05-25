@@ -31,7 +31,7 @@ useragent="Trending Hashtags Fetcher (https://${mysite})"
 #languages=("en-US" "es-ES" "ja-JP" "de-DE" "fr-FR")
 languages=("en-US" "es-ES")
 #Manual overrides for some external services, such as bridges, generally blocked by some servers.
-overrides=("threads.net" "threads.com" "threads.instagram.com" "bsky.brid.gy" "bird.makeup" "mostr.pub" "newsmast.org" "newsmast.social" "mastodon.social" "misskey.io" "misskey.gg" "mstdn.jp" "mastodon.cloud" "mastodon.world" "fosstodon.org" "mas.to" "mastodon.art" "troet.cafe" "mastodon.online")
+overrides=(_OVERRIDES_)
 #Holos service URL
 holos_url="https://discover.holos.social/feeds/trending"
 holos_limit="100"
