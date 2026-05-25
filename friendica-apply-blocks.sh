@@ -51,7 +51,7 @@ process_blocks() {
 		if [[ -z ${i_reason} ]]; then
 			i_reason="Shared banlist"
 		fi
-		i_reason=$(echo "${i_reason}" | sed -e 's/"/”/g')
+		i_reason=${i_reason//\"/”}
 		if ! (echo "${current_server_blocks}" | grep -q -e "${i}"); then
 			bash -c "sudo -u ${user} php ${site_folder}/bin/console.php serverblock add ${i} \"${i_reason}\""
 		fi
