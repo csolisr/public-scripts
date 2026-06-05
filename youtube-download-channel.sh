@@ -311,7 +311,7 @@ core_loop() {
 			file=$(echo "${line}" | cut -d ',' -f3-)
 			if [[ -f ${file} ]]; then
 				if [[ $(jq -r ".timestamp" "${temporary}/${file}") != "null" ]]; then
-					jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(uuidgen)\", \"type\": .media_type}" "${temporary}/${file}" >>"${temporary}/${channel}.db"
+					jq -c "{\"videoId\": .id, \"title\": .title, \"author\": .uploader, \"authorId\": .channel_id, \"lengthSeconds\": .duration, \"published\": ( .timestamp * 1000 ), \"timeAdded\": $(date +%s)$(date +%N | cut -c-3), \"playlistItemId\": \"$(cat /proc/sys/kernel/random/uuid || uuidgen)\", \"type\": .media_type}" "${temporary}/${file}" >>"${temporary}/${channel}.db"
 					echo "," >>"${temporary}/${channel}.db"
 					echo "${count}/${total} ${file}"
 				else
