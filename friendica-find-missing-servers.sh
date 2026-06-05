@@ -140,8 +140,8 @@ loop_3() {
 if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type date) ]]; then
 	date
 	if [[ ${intense_optimizations} -gt 0 ]]; then
-		"${dbengine}" "${db}" -N -B -q -e 'alter table `contact` add index if not exists `tmp_contact_baseurl` (`baseurl`)'
-		"${dbengine}" "${db}" -N -B -q -e 'alter table `post-user` add index if not exists `tmp_post_user_id` (`author-id`, `causer-id`, `owner-id`)'
+		"${dbengine}" "${db}" -N -B -q -e 'alter table `contact` add index if not exists `local_tmp_contact_baseurl` (`baseurl`)'
+		"${dbengine}" "${db}" -N -B -q -e 'alter table `post-user` add index if not exists `local_tmp_post_user_id` (`author-id`, `causer-id`, `owner-id`)'
 	fi
 	echo "Listing sites"
 	siteslist=$("${dbengine}" "${db}" -N -B -q -e "select distinct baseurl, protocol from contact where baseurl != '' and protocol != ''" | sort -b -f -n | sed -e "s/http:/https:/g" | uniq -i)
@@ -201,8 +201,8 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 		alter table \`photo\` auto_increment = 1; \
 		alter table \`contact\` auto_increment = 1"
 	if [[ ${intense_optimizations} -gt 0 ]]; then
-		"${dbengine}" "${db}" -N -B -q -e 'alter table `contact` drop index `tmp_contact_baseurl`'
-		"${dbengine}" "${db}" -N -B -q -e 'alter table `post-user` drop index `tmp_post_user_id`'
+		"${dbengine}" "${db}" -N -B -q -e 'alter table `contact` drop index `local_tmp_contact_baseurl`'
+		"${dbengine}" "${db}" -N -B -q -e 'alter table `post-user` drop index `local_tmp_post_user_id`'
 	fi
 	date
 fi

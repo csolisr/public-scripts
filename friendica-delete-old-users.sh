@@ -179,11 +179,11 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 	touch "${tmpfile}"
 	echo "0 0 0 0 0 0 0 0 0 0" >"${tmpfile}"
 	if [[ ${intense_optimizations} -gt 0 ]]; then
-		"${dbengine}" "${db}" -v -e 'alter table `contact` add index if not exists `tmp_contact_baseurl_addr` (baseurl, addr)'
-		"${dbengine}" "${db}" -v -e 'alter table `post-thread` add index if not exists `tmp_post_thread_id` (`owner-id`, `author-id`, `causer-id`)'
-		"${dbengine}" "${db}" -v -e 'alter table `post-thread-user` add index if not exists `tmp_post_thread_user_id` (`owner-id`, `author-id`, `causer-id`)'
-		"${dbengine}" "${db}" -v -e 'alter table `post-user` add index if not exists `tmp_post_user_id` (`owner-id`, `author-id`, `causer-id`)'
-		"${dbengine}" "${db}" -v -e 'alter table `post` add index if not exists `tmp_post_id` (`owner-id`, `author-id`, `causer-id`)'
+		"${dbengine}" "${db}" -v -e 'alter table `contact` add index if not exists `local_tmp_contact_baseurl_addr` (baseurl, addr)'
+		"${dbengine}" "${db}" -v -e 'alter table `post-thread` add index if not exists `local_tmp_post_thread_id` (`owner-id`, `author-id`, `causer-id`)'
+		"${dbengine}" "${db}" -v -e 'alter table `post-thread-user` add index if not exists `local_tmp_post_thread_user_id` (`owner-id`, `author-id`, `causer-id`)'
+		"${dbengine}" "${db}" -v -e 'alter table `post-user` add index if not exists `local_tmp_post_user_id` (`owner-id`, `author-id`, `causer-id`)'
+		"${dbengine}" "${db}" -v -e 'alter table `post` add index if not exists `local_tmp_post_id` (`owner-id`, `author-id`, `causer-id`)'
 		"${dbengine}" "${db}" -v -e \
 			"select count(\`id\`) as \"Count\" from contact c where c.\`addr\` not in (\
 				select \`addr\` from \`contact\` where \
@@ -236,11 +236,11 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 		alter table \`post\` auto_increment = 1; \
 	"
 	if [[ ${intense_optimizations} -gt 0 ]]; then
-		"${dbengine}" "${db}" -v -e 'alter table `contact` drop index `tmp_contact_baseurl_addr`'
-		"${dbengine}" "${db}" -v -e 'alter table `post-thread` drop index  `tmp_post_thread_id`'
-		"${dbengine}" "${db}" -v -e 'alter table `post-thread-user` drop index `tmp_post_thread_user_id`'
-		"${dbengine}" "${db}" -v -e 'alter table `post-user` drop index `tmp_post_user_id`'
-		"${dbengine}" "${db}" -v -e 'alter table `post` drop index `tmp_post_id`'
+		"${dbengine}" "${db}" -v -e 'alter table `contact` drop index `local_tmp_contact_baseurl_addr`'
+		"${dbengine}" "${db}" -v -e 'alter table `post-thread` drop index `local_tmp_post_thread_id`'
+		"${dbengine}" "${db}" -v -e 'alter table `post-thread-user` drop index `local_tmp_post_thread_user_id`'
+		"${dbengine}" "${db}" -v -e 'alter table `post-user` drop index `local_tmp_post_user_id`'
+		"${dbengine}" "${db}" -v -e 'alter table `post` drop index `local_tmp_post_id`'
 		"${dboptimizeengine}" "${db}"
 	fi
 	if [[ -n $(type flock) ]]; then

@@ -246,12 +246,12 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 	echo "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" >"${tmpfile}"
 	if [[ ${intense_optimizations} -gt 0 ]]; then
 		"${dbengine}" "${db}" -v -e "\
-			alter table \`contact\` add index if not exists \`tmp_contact_baseurl_addr\` (baseurl, addr); \
-			alter table \`post-thread\` add index if not exists \`tmp_post_thread_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
-			alter table \`post-thread-user\` add index if not exists \`tmp_post_thread_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
-			alter table \`post-user\` add index if not exists \`tmp_post_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
-			alter table \`post\` add index if not exists \`tmp_post_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
-			alter table \`photo\` add index if not exists \`tmp_photo_id\` (\`contact-id\`); \
+			alter table \`contact\` add index if not exists \`local_tmp_contact_baseurl_addr\` (baseurl, addr); \
+			alter table \`post-thread\` add index if not exists \`local_tmp_post_thread_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
+			alter table \`post-thread-user\` add index if not exists \`local_tmp_post_thread_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
+			alter table \`post-user\` add index if not exists \`local_tmp_post_user_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
+			alter table \`post\` add index if not exists \`local_tmp_post_id\` (\`owner-id\`, \`author-id\`, \`causer-id\`); \
+			alter table \`photo\` add index if not exists \`local_tmp_photo_id\` (\`contact-id\`); \
 			select count(\`id\`) from contact c where \
 			c.\`addr\` not in (select \`addr\` from \`contact\` where \`id\` in (select \`cid\` from \`user-contact\`) \
 			or \`id\` in (select \`uid\` from \`user\`) \
@@ -306,12 +306,12 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 	"
 	if [[ ${intense_optimizations} -gt 0 ]]; then
 		"${dbengine}" "${db}" -v -e "\
-			alter table \`contact\` drop index \`tmp_contact_baseurl_addr\`; \
-			alter table \`post-thread\` drop index \`tmp_post_thread_id\`; \
-			alter table \`post-thread-user\` drop index \`tmp_post_thread_user_id\`; \
-			alter table \`post-user\` drop index \`tmp_post_user_id\`; \
-			alter table \`post\` drop index \`tmp_post_id\`; \
-			alter table \`photo\` drop index\`tmp_photo_id\`; \
+			alter table \`contact\` drop index \`local_tmp_contact_baseurl_addr\`; \
+			alter table \`post-thread\` drop index \`local_tmp_post_thread_id\`; \
+			alter table \`post-thread-user\` drop index \`local_tmp_post_thread_user_id\`; \
+			alter table \`post-user\` drop index \`local_tmp_post_user_id\`; \
+			alter table \`post\` drop index \`local_tmp_post_id\`; \
+			alter table \`photo\` drop index\`local_tmp_photo_id\`; \
 		"
 		"${dboptimizeengine}" "${db}"
 	fi

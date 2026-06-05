@@ -71,7 +71,7 @@ idcount=0
 if [[ ${intensive_optimizations} -gt 0 ]]; then
 	#https:// = 8 characters | /avatar/ = 8 characters
 	indexlength=$(("${#url}" + 16))
-	"${dbengine}" "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
+	"${dbengine}" "${db}" -e "alter table contact add index if not exists local_tmp_photo_index (photo(${indexlength}))"
 	dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%' or (\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = ''))")
 	#dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and (\`photo\` like 'https:\/\/${url}/avatar/%')")
 	#dbcount=$("${dbengine}" "${db}" -B -N -q -e "select count(\`id\`) from \`contact\` where \`id\` > ${lastid} and ((\`photo\` = '' and not \`avatar\` = '') or (\`avatar\` = '' and not \`photo\` = ''))")
@@ -403,5 +403,5 @@ if [[ ! -d ${nfolder} && $(find "${nfolder}" | wc -l) -eq 0 ]]; then
 fi
 "${dbengine}" "${db}" -e 'delete from workerqueue where `id` in (select distinct w2.`id` from workerqueue w1 inner join workerqueue w2 where w1.`id` > w2.`id` and w1.`parameter` = w2.`parameter` and w1.`command` = "UpdateContact" and w1.`done` = 0)'
 if [[ ${intensive_optimizations} -gt 0 ]]; then
-	"${dbengine}" "${db}" -e "alter table contact drop index photo_index"
+	"${dbengine}" "${db}" -e "alter table contact drop index local_tmp_photo_index"
 fi

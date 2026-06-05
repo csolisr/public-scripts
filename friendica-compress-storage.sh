@@ -56,7 +56,7 @@ loop_1() {
 
 #Generate an index to make searches faster
 echo "Generating photo index..."                                                                  #&> /dev/null
-sudo mariadb "${db}" -e 'alter table photo add index if not exists backend_index (`backend-ref`)' #&> /dev/null
+sudo mariadb "${db}" -e 'alter table photo add index if not exists local_tmp_backend_index (`backend-ref`)' #&> /dev/null
 echo "Generating list of files..."                                                                #&> /dev/null
 total=$(find "${storagefolder}" -depth -mindepth 2 -type f -size +"${target_size}"k -mtime -"${target_time}" -not -iname "index.html" | wc -l)
 count=0
@@ -71,4 +71,4 @@ done < <(find "${storagefolder}" -depth -mindepth 2 -type f -size +"${target_siz
 wait
 printf "\r\n" #&> /dev/null
 #Drop the index in the end to save storage
-sudo mariadb "${db}" -e "alter table photo drop index backend_index" #&> /dev/null
+sudo mariadb "${db}" -e "alter table photo drop index local_tmp_backend_index" #&> /dev/null

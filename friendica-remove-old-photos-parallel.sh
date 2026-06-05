@@ -43,7 +43,7 @@ date
 #Go to the Friendica installation
 cd "${folderavatar}" || exit
 indexlength=$((49 + ${#url}))
-"${dbengine}" "${db}" -e "alter table contact add index if not exists photo_index (photo(${indexlength}))"
+"${dbengine}" "${db}" -e "alter table contact add index if not exists local_tmp_photo_index (photo(${indexlength}))"
 n=0
 d=0
 while read -r x; do
@@ -62,5 +62,5 @@ while read -r x; do
 		printf "\r\nFolder %d done - %s\n" "${n}" "${x}"
 	fi
 done < <(find "${folderavatar}" -depth -mindepth 1 -maxdepth 1 -type d)
-"${dbengine}" "${db}" -e "alter table contact drop index photo_index"
+"${dbengine}" "${db}" -e "alter table contact drop index local_tmp_photo_index"
 date
