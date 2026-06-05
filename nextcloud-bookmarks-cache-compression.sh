@@ -98,7 +98,7 @@ main_loop() {
 	fi
 }
 
-if [[ -d "${cache_folder}" ]]; then
+if [[ -d ${cache_folder} ]]; then
 	count=0
 	total=$(find "${cache_folder}" -type f -mtime "-${target_time}" -size "+${target_size}" | wc -l)
 	find "${cache_folder}" -type f -mtime "-${target_time}" -size "+${target_size}" | while read -r i; do
