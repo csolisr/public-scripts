@@ -98,14 +98,16 @@ main_loop() {
 	fi
 }
 
-count=0
-total=$(find "${cache_folder}" -type f -mtime "-${target_time}" -size "+${target_size}" | wc -l)
-find "${cache_folder}" -type f -mtime "-${target_time}" -size "+${target_size}" | while read -r i; do
-	count=$((count + 1))
-	main_loop "${i}" &
-	if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
-		wait -n
-	fi
-done
-wait
-printf "\n\r" #&> /dev/null
+if [[ -d "${cache_folder}" ]]; then
+	count=0
+	total=$(find "${cache_folder}" -type f -mtime "-${target_time}" -size "+${target_size}" | wc -l)
+	find "${cache_folder}" -type f -mtime "-${target_time}" -size "+${target_size}" | while read -r i; do
+		count=$((count + 1))
+		main_loop "${i}" &
+		if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
+			wait -n
+		fi
+	done
+	wait
+	printf "\n\r" #&> /dev/null
+fi
