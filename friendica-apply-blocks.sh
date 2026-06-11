@@ -46,6 +46,33 @@ print_count() {
 	fi
 }
 
+delete_specific_contact() {
+	#Find the pictures in the avatar folders and delete them
+	while read -r photo thumb micro; do
+		#If stored in avatar folder
+		avatarfolder="${site_folder}/avatar"
+		avatarfolderescaped=${avatarfolder////\\/}
+		if grep -v -q "${mysite}/avatar" <(echo "${photo}"); then
+			phototrimmed=$(echo "${photo}" | sed -e "s/https:\/\/${mysite}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
+			rm -rf "${phototrimmed}"
+			thumbtrimmed=$(echo "${thumb}" | sed -e "s/https:\/\/${mysite}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
+			rm -rf "${thumbtrimmed}"
+			microtrimmed=$(echo "${micro}" | sed -e "s/https:\/\/${mysite}\/avatar/${avatarfolderescaped}/g" -e "s/\?ts.*//g")
+			rm -rf "${microtrimmed}"
+		fi
+	done < <("${dbengine}" "${db}" -NBqe "select \`photo\`, \`thumb\`, \`micro\` from \`contact\` where \`id\` = ${j}")
+	"${dbengine}" "${db}" -NBqe "create temporary table tmp_post_thread (select \`uri-id\` from \`post-thread\` where \`owner-id\` = ${j} or \`author-id\` = ${j} or \`causer-id\` = ${j}); delete h.* from \`post-thread\` h inner join \`tmp_post_thread\` t where h.\`uri-id\` = t.\`uri-id\`;"
+	"${dbengine}" "${db}" -NBqe "create temporary table tmp_post_thread_user (select \`uri-id\` from \`post-thread-user\` where \`owner-id\` = ${j} or \`author-id\` = ${j} or \`causer-id\` = ${j}); delete r.* from \`post-thread-user\` r inner join \`tmp_post_thread_user\` t where r.\`uri-id\` = t.\`uri-id\`;"
+	"${dbengine}" "${db}" -NBqe "create temporary table tmp_post_user (select \`id\` from \`post-user\` where \`owner-id\` = ${j} or \`author-id\` = ${j} or \`causer-id\` = ${j}); delete u.* from \`post-user\` u inner join \`tmp_post_user\` t where u.\`id\` = t.\`id\`;"
+	"${dbengine}" "${db}" -NBqe "delete from \`post-tag\` where cid = ${j};"
+	"${dbengine}" "${db}" -NBqe "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${j} or \`author-id\` = ${j} or \`causer-id\` = ${j}); delete p.* from \`post-content\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`"
+	"${dbengine}" "${db}" -NBqe "create temporary table tmp_post (select \`uri-id\` from \`post\` where \`owner-id\` = ${j} or \`author-id\` = ${j} or \`causer-id\` = ${j}); delete p.* from \`post\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`;"
+	"${dbengine}" "${db}" -NBqe "delete from \`photo\` where \`contact-id\` = ${j};"
+	"${dbengine}" "${db}" -NBqe "delete from \`contact\` where \`id\` = ${j};"
+	"${dbengine}" "${db}" -NBqe "delete from \`apcontact\` where \`uri-id\` = ${j};"
+	"${dbengine}" "${db}" -NBqe "delete from \`diaspora-contact\` where \`uri-id\` = ${j};"
+}
+
 process_blocks() {
 	if [[ -n ${i} ]]; then
 		if [[ -z ${i_reason} ]]; then
@@ -65,7 +92,7 @@ process_blocks() {
 		fi
 	fi
 	"${dbengine}" "${db}" -NBqe "select \`id\` from \`contact\` where \`baseurl\` = \"https://${i}\"" | while read -r j; do
-		bash friendica-delete-specific-contact.sh "${j}" &
+		delete_specific_contact "${j}" &
 		until [[ $(jobs -r -p | wc -l) -le ${threads} ]]; do
 			sleep 0.1
 		done
