@@ -33,7 +33,7 @@ echo "tmp_item_uri_expired" #&> /dev/null
 tmp_item_uri_expired_q="${limit}"
 tmp_item_uri_expired_current_id=0
 tmp_item_uri_expired_limit_id=$("${dbengine}" "${db}" -N -B -q -e 'SELECT `uri-id` FROM `post-thread-user-view` WHERE `uid` = 0 AND `received` < (CURDATE() - INTERVAL 1 DAY) ORDER BY `received` DESC LIMIT 1')
-until [[ ${tmp_item_uri_expired_q} -lt ${limit} ]]; do
+until [[ ${tmp_item_uri_expired_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_expired_q=0
 	while read -r id; do
@@ -79,7 +79,7 @@ wait
 echo "tmp_post_origin_deleted" #&> /dev/null
 tmp_post_origin_deleted_q="${limit}"
 tmp_post_origin_deleted_current_uri_id=0
-until [[ ${tmp_post_origin_deleted_q} -lt ${limit} ]]; do
+until [[ ${tmp_post_origin_deleted_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_origin_deleted_q=0
 	while read -r uri_id uid; do
@@ -112,7 +112,7 @@ wait
 echo "tmp_post_user_deleted" #&> /dev/null
 tmp_post_user_deleted_q="${limit}"
 tmp_post_user_deleted_current_uri_id=0
-until [[ ${tmp_post_user_deleted_q} -lt ${limit} ]]; do
+until [[ ${tmp_post_user_deleted_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_user_deleted_q=0
 	while read -r uri_id; do
@@ -145,7 +145,7 @@ wait
 echo "tmp_post_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_uri_id_not_in_post_user_q="${limit}"
 tmp_post_uri_id_not_in_post_user_current_uri_id=0
-until [[ ${tmp_post_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
+until [[ ${tmp_post_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
@@ -181,7 +181,7 @@ wait
 echo "tmp_post_content_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_content_uri_id_not_in_post_user_q="${limit}"
 tmp_post_content_uri_id_not_in_post_user_current_uri_id=0
-until [[ ${tmp_post_content_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
+until [[ ${tmp_post_content_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_content_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
@@ -217,7 +217,7 @@ wait
 echo "tmp_post_thread_uri_id_not_in_post_user" #&> /dev/null
 tmp_post_thread_uri_id_not_in_post_user_q="${limit}"
 tmp_post_thread_uri_id_not_in_post_user_current_uri_id=0
-until [[ ${tmp_post_thread_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
+until [[ ${tmp_post_thread_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_thread_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
@@ -253,7 +253,7 @@ wait
 echo "tmp_post_user_uri_id_not_in_post" #&> /dev/null
 tmp_post_user_uri_id_not_in_post_q="${limit}"
 tmp_post_user_uri_id_not_in_post_current_uri_id=0
-until [[ ${tmp_post_user_uri_id_not_in_post_q} -lt ${limit} ]]; do
+until [[ ${tmp_post_user_uri_id_not_in_post_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_user_uri_id_not_in_post_q=0
 	while read -r uri_id; do
@@ -289,7 +289,7 @@ wait
 echo "tmp_item_uri_not_in_valid_post_thread" #&> /dev/null
 tmp_item_uri_not_in_valid_post_thread_q="${limit}"
 tmp_item_uri_not_in_valid_post_thread_current_id=0
-until [[ ${tmp_item_uri_not_in_valid_post_thread_q} -lt ${limit} ]]; do
+until [[ ${tmp_item_uri_not_in_valid_post_thread_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_in_valid_post_thread_q=0
 	while read -r id; do
@@ -331,7 +331,7 @@ wait
 echo "tmp_item_uri_not_in_valid_post_user" #&> /dev/null
 tmp_item_uri_not_in_valid_post_user_q="${limit}"
 tmp_item_uri_not_in_valid_post_user_current_id=0
-until [[ ${tmp_item_uri_not_in_valid_post_user_q} -lt ${limit} ]]; do
+until [[ ${tmp_item_uri_not_in_valid_post_user_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_in_valid_post_user_q=0
 	while read -r id; do
@@ -366,7 +366,7 @@ wait
 echo "tmp_attach_not_in_post_media" #&> /dev/null
 tmp_attach_not_in_post_media_q="${limit}"
 tmp_attach_not_in_post_media_current_id=0
-until [[ ${tmp_attach_not_in_post_media_q} -lt ${limit} ]]; do
+until [[ ${tmp_attach_not_in_post_media_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_attach_not_in_post_media_q=0
 	while read -r id; do
@@ -404,7 +404,7 @@ tmp_item_uri_not_valid_q="${limit}"
 tmp_item_uri_not_valid_current_id=0
 tmp_item_uri_not_valid_last_id=$("${dbengine}" "${db}" -N -B -q -e \
 	'SELECT `uri-id` FROM `post` WHERE `received` < CURDATE() - INTERVAL 1 DAY ORDER BY `received` DESC LIMIT 1')
-until [[ ${tmp_item_uri_not_valid_q} -lt ${limit} ]]; do
+until [[ ${tmp_item_uri_not_valid_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_valid_q=0
 	while read -r id; do
@@ -497,7 +497,7 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 	echo "tmp_item_uri_duplicate" #&> /dev/null
 	tmp_item_uri_duplicate_q="${limit}"
 	tmp_item_uri_duplicate_current_id=0
-	until [[ ${tmp_item_uri_duplicate_q} -lt ${limit} ]]; do
+	until [[ ${tmp_item_uri_duplicate_q} -lt ${initial_limit} ]]; do
 		initial_i=$(date +%s)
 		tmp_item_uri_duplicate_q=0
 		while read -r id; do
@@ -529,7 +529,7 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 	echo "tmp_post_media_duplicate"
 	tmp_post_media_duplicate_q="${limit}"
 	tmp_post_media_duplicate_current_id=0
-	until [[ ${tmp_post_media_duplicate_q} -lt ${limit} ]]; do
+	until [[ ${tmp_post_media_duplicate_q} -lt ${initial_limit} ]]; do
 		initial_i=$(date +%s)
 		tmp_post_media_duplicate_q=0
 		while read -r id; do
@@ -561,7 +561,7 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 	echo "tmp_post_user_duplicate"
 	tmp_post_user_duplicate_q="${limit}"
 	tmp_post_user_duplicate_current_id=0
-	until [[ ${tmp_post_user_duplicate_q} -lt ${limit} ]]; do
+	until [[ ${tmp_post_user_duplicate_q} -lt ${initial_limit} ]]; do
 		initial_i=$(date +%s)
 		tmp_post_user_duplicate_q=0
 		while read -r id; do
