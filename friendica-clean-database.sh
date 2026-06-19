@@ -35,7 +35,7 @@ until [[ ${tmp_item_uri_expired_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_expired_q=0
 	while read -r id; do
-		if [[ -s ${id} ]]; then
+		if [[ -n ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -45,18 +45,18 @@ until [[ ${tmp_item_uri_expired_q} -lt ${limit} ]]; do
 			tmp_item_uri_expired_current_id="${id}"
 		fi
 	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT i.id FROM \`item-uri\` i LEFT JOIN \`post-user\` pu1 ON i.id = pu1.\`uri-id\` \
+		"SELECT i.\`id\` FROM \`item-uri\` i LEFT JOIN \`post-user\` pu1 ON i.id = pu1.\`uri-id\` \
 			LEFT JOIN \`post-user\` pu2 ON i.id = pu2.\`parent-uri-id\` LEFT JOIN \`post-user\` pu3 ON i.id = pu3.\`thr-parent-id\` \
 			LEFT JOIN \`post-user\` pu4 ON i.id = pu4.\`external-id\` LEFT JOIN \`post-user\` pu5 ON i.id = pu5.\`replies-id\` \
 			LEFT JOIN \`post-thread\` pt1 ON i.id = pt1.\`context-id\` LEFT JOIN \`post-thread\` pt2 ON i.id = pt2.\`conversation-id\` \
-			LEFT JOIN \`mail\` m1 ON i.id = m1.\`uri-id\` LEFT JOIN \`event\` e ON i.id = e.\`uri-id\` \
+			LEFT JOIN \`post-quote\` pq ON i.id = pq.\`quote-uri-id\` LEFT JOIN \`mail\` m1 ON i.id = m1.\`uri-id\` LEFT JOIN \`event\` e ON i.id = e.\`uri-id\` \
 			LEFT JOIN \`user-contact\` uc ON i.id = uc.\`uri-id\` LEFT JOIN \`contact\` c ON i.id = c.\`uri-id\` \
 			LEFT JOIN \`apcontact\` ac ON i.id = ac.\`uri-id\` LEFT JOIN \`diaspora-contact\` dc ON i.id = dc.\`uri-id\` \
 			LEFT JOIN \`inbox-status\` ins ON i.id = ins.\`uri-id\` LEFT JOIN \`post-delivery\` pd1 ON i.id = pd1.\`uri-id\` \
 			LEFT JOIN \`post-delivery\` pd2 ON i.id = pd2.\`inbox-id\` LEFT JOIN \`mail\` m2 ON i.id = m2.\`parent-uri-id\` \
-			LEFT JOIN \`mail\` m3 ON i.id = m3.\`thr-parent-id\` WHERE i.\`id\` < ${tmp_item_uri_expired_limit_id} \
+			LEFT JOIN \`mail\` m3 ON i.id = m3.\`thr-parent-id\` WHERE i.id < ${tmp_item_uri_expired_limit_id} \
 			AND pu1.\`uri-id\` IS NULL AND pu2.\`parent-uri-id\` IS NULL AND pu3.\`thr-parent-id\` IS NULL AND pu4.\`external-id\` IS NULL \
-			AND pu5.\`replies-id\` IS NULL AND pt1.\`context-id\` IS NULL AND pt2.\`conversation-id\` IS NULL AND m1.\`uri-id\` IS NULL \
+			AND pu5.\`replies-id\` IS NULL AND pt1.\`context-id\` IS NULL AND pt2.\`conversation-id\` IS NULL AND pq.\`quote-uri-id\` IS NULL AND m1.\`uri-id\` IS NULL \
 			AND e.\`uri-id\` IS NULL AND uc.\`uri-id\` IS NULL AND c.\`uri-id\` IS NULL AND ac.\`uri-id\` IS NULL AND dc.\`uri-id\` IS NULL \
 			AND ins.\`uri-id\` IS NULL AND pd1.\`uri-id\` IS NULL AND pd2.\`inbox-id\` IS NULL AND m2.\`parent-uri-id\` IS NULL \
 			AND m3.\`thr-parent-id\` IS NULL \
@@ -73,7 +73,7 @@ until [[ ${tmp_post_origin_deleted_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_origin_deleted_q=0
 	while read -r uri_id uid; do
-		if [[ -s ${uri_id} && -s ${uid} ]]; then
+		if [[ -n ${uri_id} && -n ${uid} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-origin\` WHERE \`parent-uri-id\` = ${uri_id} AND \`uid\` = ${uid}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -98,7 +98,7 @@ until [[ ${tmp_post_user_deleted_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_user_deleted_q=0
 	while read -r uri_id; do
-		if [[ -s ${uri_id} ]]; then
+		if [[ -n ${uri_id} ]]; then
 			tmp_post_user_deleted_q=$((tmp_post_user_deleted_q + 1))
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-user\` WHERE \`uri-id\` = ${uri_id}" &
@@ -123,7 +123,7 @@ until [[ ${tmp_post_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
-		if [[ -s ${uri_id} ]]; then
+		if [[ -n ${uri_id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post\` WHERE \`uri-id\` = ${uri_id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -151,7 +151,7 @@ until [[ ${tmp_post_content_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_content_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
-		if [[ -s ${uri_id} ]]; then
+		if [[ -n ${uri_id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-content\` WHERE \`uri-id\` = ${uri_id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -179,7 +179,7 @@ until [[ ${tmp_post_thread_uri_id_not_in_post_user_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_thread_uri_id_not_in_post_user_q=0
 	while read -r uri_id; do
-		if [[ -s ${uri_id} ]]; then
+		if [[ -n ${uri_id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-thread\` WHERE \`uri-id\` = ${uri_id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -207,7 +207,7 @@ until [[ ${tmp_post_user_uri_id_not_in_post_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_user_uri_id_not_in_post_q=0
 	while read -r uri_id; do
-		if [[ -s ${uri_id} ]]; then
+		if [[ -n ${uri_id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`post-user\` WHERE \`uri-id\` = ${uri_id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -235,7 +235,7 @@ until [[ ${tmp_item_uri_not_in_valid_post_thread_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_in_valid_post_thread_q=0
 	while read -r id; do
-		if [[ -s ${id} ]]; then
+		if [[ -n ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -269,7 +269,7 @@ until [[ ${tmp_item_uri_not_in_valid_post_user_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_in_valid_post_user_q=0
 	while read -r id; do
-		if [[ -s ${id} ]]; then
+		if [[ -n ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -296,7 +296,7 @@ until [[ ${tmp_attach_not_in_post_media_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_attach_not_in_post_media_q=0
 	while read -r id; do
-		if [[ -s ${id} ]]; then
+		if [[ -n ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`attach\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -326,7 +326,7 @@ until [[ ${tmp_item_uri_not_valid_q} -lt ${limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_valid_q=0
 	while read -r id; do
-		if [[ -s ${id} ]]; then
+		if [[ -n ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
 				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 			if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -411,7 +411,7 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 		initial_i=$(date +%s)
 		tmp_item_uri_duplicate_q=0
 		while read -r id; do
-			if [[ -s ${id} ]]; then
+			if [[ -n ${id} ]]; then
 				"${dbengine}" "${db}" -N -B -q -e \
 					"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
 				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -435,7 +435,7 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 		initial_i=$(date +%s)
 		tmp_post_media_duplicate_q=0
 		while read -r id; do
-			if [[ -s ${id} ]]; then
+			if [[ -n ${id} ]]; then
 				"${dbengine}" "${db}" -N -B -q -e \
 					"DELETE FROM \`post-media\` WHERE \`id\` = ${id}" &
 				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
@@ -459,7 +459,7 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 		initial_i=$(date +%s)
 		tmp_post_user_duplicate_q=0
 		while read -r id; do
-			if [[ -s ${id} ]]; then
+			if [[ -n ${id} ]]; then
 				"${dbengine}" "${db}" -N -B -q -e \
 					"DELETE FROM \`post-user\` WHERE \`id\` = ${id}" &
 				if [[ $(jobs -r -p | wc -l) -ge $(($(getconf _NPROCESSORS_ONLN) * 1)) ]]; then
