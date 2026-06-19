@@ -1,7 +1,7 @@
 #!/bin/bash
 initial_limit=1000
 limit="${initial_limit}"
-last_i="${initial_limit}"
+last_ratio=0
 folder=/var/www/friendica
 user=friendica
 phpversion=php8.4
@@ -65,14 +65,14 @@ until [[ ${tmp_item_uri_expired_q} -lt ${initial_limit} ]]; do
 			ORDER BY i.\`id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_item_uri_expired_q} item(s) deleted until ${tmp_item_uri_expired_current_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	if [[ ${last_ratio} -gt ${final_i} ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio="${final_i}"
 done
 wait
 
@@ -98,14 +98,15 @@ until [[ ${tmp_post_origin_deleted_q} -lt ${initial_limit} ]]; do
 		ORDER BY \`uri-id\`, \`uid\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_origin_deleted_q} item(s) deleted until ${tmp_post_origin_deleted_current_uri_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -131,14 +132,15 @@ until [[ ${tmp_post_user_deleted_q} -lt ${initial_limit} ]]; do
 			AND \`uri-id\` > ${tmp_post_user_deleted_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_user_deleted_q} item(s) deleted until ${tmp_post_user_deleted_current_uri_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -167,14 +169,15 @@ until [[ ${tmp_post_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; do
 	#			AND \`uri-id\` > ${tmp_post_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -203,14 +206,15 @@ until [[ ${tmp_post_content_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; 
 	#			AND \`uri-id\` > ${tmp_post_content_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_content_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_content_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -239,14 +243,15 @@ until [[ ${tmp_post_thread_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; d
 	#			AND \`uri-id\` > ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_thread_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -275,14 +280,15 @@ until [[ ${tmp_post_user_uri_id_not_in_post_q} -lt ${initial_limit} ]]; do
 	#			AND \`uri-id\` > ${tmp_post_user_uri_id_not_in_post_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_post_user_uri_id_not_in_post_q} item(s) deleted until ${tmp_post_user_uri_id_not_in_post_current_uri_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -317,14 +323,15 @@ until [[ ${tmp_item_uri_not_in_valid_post_thread_q} -lt ${initial_limit} ]]; do
 			AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_thread_current_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_item_uri_not_in_valid_post_thread_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_thread_current_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -352,14 +359,15 @@ until [[ ${tmp_item_uri_not_in_valid_post_user_q} -lt ${initial_limit} ]]; do
 		AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_user_current_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_item_uri_not_in_valid_post_user_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_user_current_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -388,14 +396,15 @@ until [[ ${tmp_attach_not_in_post_media_q} -lt ${initial_limit} ]]; do
 	#		AND \`id\` > ${tmp_attach_not_in_post_media_current_id} ORDER BY \`id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_attach_not_in_post_media_q} item(s) deleted until ${tmp_attach_not_in_post_media_current_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -482,14 +491,15 @@ until [[ ${tmp_item_uri_not_valid_q} -lt ${initial_limit} ]]; do
 	#		ORDER BY \`id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
 	echo "${tmp_item_uri_not_valid_q} item(s) deleted until ${tmp_item_uri_not_valid_current_id} in ${final_i}s" #&> /dev/null
-	if [[ ${last_i} -gt ${final_i} ]]; then
+	last_limit="${limit}"
+	if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 		limit=$((limit * 2))
 	else
 		if [[ ${limit} -gt ${initial_limit} ]]; then
 			limit=$((limit / 2))
 		fi
 	fi
-	last_i="${final_i}"
+	last_ratio=$((final_i / last_limit))
 done
 wait
 
@@ -515,14 +525,15 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 			AND t1.\`id\` < t2.\`id\` AND t1.\`uri\` = t2.\`uri\` LIMIT ${limit}")
 		final_i=$(($(date +%s) - initial_i))
 		echo "${tmp_item_uri_duplicate_q} item(s) deleted until ${tmp_item_uri_duplicate_current_id} in ${final_i}s" #&> /dev/null
-		if [[ ${last_i} -gt ${final_i} ]]; then
+		last_limit="${limit}"
+		if [[ ${last_ratio} -gt $((final_i / last_limit)) ]]; then
 			limit=$((limit * 2))
 		else
 			if [[ ${limit} -gt ${initial_limit} ]]; then
 				limit=$((limit / 2))
 			fi
 		fi
-		last_i="${final_i}"
+		last_ratio=$((final_i / last_limit))
 	done
 	wait
 
@@ -547,14 +558,14 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 			AND u1.\`id\` < u2.\`id\` AND u1.\`uri-id\` = u2.\`uri-id\` AND u1.\`url\`= u2.\`url\` LIMIT ${limit}")
 		final_i=$(($(date +%s) - initial_i))
 		echo "${tmp_post_media_duplicate_q} item(s) deleted until ${tmp_post_media_duplicate_current_id} in ${final_i}s"
-		if [[ ${last_i} -gt ${final_i} ]]; then
+		if [[ ${last_ratio} -gt ${final_i} ]]; then
 			limit=$((limit * 2))
 		else
 			if [[ ${limit} -gt ${initial_limit} ]]; then
 				limit=$((limit / 2))
 			fi
 		fi
-		last_i="${final_i}"
+		last_ratio="${final_i}"
 	done
 	wait
 
@@ -579,14 +590,15 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 				AND v1.\`id\` < v2.\`id\` AND v1.\`uri-id\` = v2.\`uri-id\` LIMIT ${limit}")
 		final_i=$(($(date +%s) - initial_i))
 		echo "${tmp_post_user_duplicate_q} item(s) deleted until ${tmp_post_user_duplicate_current_id} in ${final_i}s"
-		if [[ ${last_i} -gt ${final_i} ]]; then
+		last_limit="${limit}"
+		if [[ ${last_i} -gt $((final_i / last_limit)) ]]; then
 			limit=$((limit * 2))
 		else
 			if [[ ${limit} -gt ${initial_limit} ]]; then
 				limit=$((limit / 2))
 			fi
 		fi
-		last_i="${final_i}"
+		last_i=$((final_i / last_limit))
 	done
 	wait
 
