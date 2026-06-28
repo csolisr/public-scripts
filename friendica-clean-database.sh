@@ -24,6 +24,39 @@ fi
 intense_optimizations=${1:-"0"}
 #Second parameter. Amount of maximum age in days to keep on the database; anything older will be removed. Defaults to 7 days (one week).
 interval=${2:-"7"}
+query=""
+
+loop() {
+	q="${limit}"
+	current_id=0
+	until [[ ${q} -lt ${initial_limit} ]]; do
+		initial_i=$(date +%s)
+		q=0
+		while IFS=$'\t' read -r result_count result_max; do
+			if [[ ${result_count} -eq 0 || ${result_max} == "NULL" ]]; then
+				q=0
+			else
+				current_id="${result_max}"
+				q=$((q + result_count))
+			fi
+		done < <("${dbengine}" "${db}" -N -B -q -e "${query}")
+		final_i=$(($(date +%s) - initial_i))
+		if [[ ${final_i} -le 0 ]]; then
+			final_i=1
+		fi
+		echo "${q} item(s) deleted until ${current_id} in ${final_i}s" #&> /dev/null
+		last_limit="${limit}"
+		if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
+			limit=$((limit * 2))
+		else
+			if [[ ${limit} -gt ${initial_limit} ]]; then
+				limit=$((limit / 2))
+			fi
+		fi
+		last_ratio=$((last_limit / final_i))
+	done
+	wait
+}
 
 if [[ ${intense_optimizations} -gt 0 ]]; then
 	bash -c "cd ${folder} && sudo -u ${user} ${phpversion} bin/console.php maintenance 1 \"Database maintenance\"" #&> /dev/null
@@ -36,34 +69,37 @@ tmp_item_uri_expired_limit_id=$("${dbengine}" "${db}" -N -B -q -e 'SELECT `uri-i
 until [[ ${tmp_item_uri_expired_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_expired_q=0
-	while read -r id; do
-		if [[ -n ${id} ]]; then
-			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
-			until [[ $(jobs -r -p | wc -l) -le $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; do
-				sleep 0.1s
-			done
-			tmp_item_uri_expired_q=$((tmp_item_uri_expired_q + 1))
-			tmp_item_uri_expired_current_id="${id}"
+	while IFS=$'\t' read -r tmp_item_uri_expired_result_count tmp_item_uri_expired_result_max; do
+		if [[ ${tmp_item_uri_expired_result_count} -eq 0 || ${tmp_item_uri_expired_result_max} == "NULL" ]]; then
+			tmp_item_uri_expired_q=0
+		else
+			tmp_item_uri_expired_current_id="${tmp_item_uri_expired_result_max}"
+			tmp_item_uri_expired_q=$((tmp_item_uri_expired_q + tmp_item_uri_expired_result_count))
 		fi
 	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT i.\`id\` FROM \`item-uri\` i LEFT JOIN \`post-user\` pu1 ON i.id = pu1.\`uri-id\` \
-			LEFT JOIN \`post-user\` pu2 ON i.id = pu2.\`parent-uri-id\` LEFT JOIN \`post-user\` pu3 ON i.id = pu3.\`thr-parent-id\` \
-			LEFT JOIN \`post-user\` pu4 ON i.id = pu4.\`external-id\` LEFT JOIN \`post-user\` pu5 ON i.id = pu5.\`replies-id\` \
-			LEFT JOIN \`post-thread\` pt1 ON i.id = pt1.\`context-id\` LEFT JOIN \`post-thread\` pt2 ON i.id = pt2.\`conversation-id\` \
-			LEFT JOIN \`post-quote\` pq ON i.id = pq.\`quote-uri-id\` LEFT JOIN \`mail\` m1 ON i.id = m1.\`uri-id\` LEFT JOIN \`event\` e ON i.id = e.\`uri-id\` \
-			LEFT JOIN \`user-contact\` uc ON i.id = uc.\`uri-id\` LEFT JOIN \`contact\` c ON i.id = c.\`uri-id\` \
-			LEFT JOIN \`apcontact\` ac ON i.id = ac.\`uri-id\` LEFT JOIN \`diaspora-contact\` dc ON i.id = dc.\`uri-id\` \
-			LEFT JOIN \`inbox-status\` ins ON i.id = ins.\`uri-id\` LEFT JOIN \`post-delivery\` pd1 ON i.id = pd1.\`uri-id\` \
-			LEFT JOIN \`post-delivery\` pd2 ON i.id = pd2.\`inbox-id\` LEFT JOIN \`mail\` m2 ON i.id = m2.\`parent-uri-id\` \
-			LEFT JOIN \`mail\` m3 ON i.id = m3.\`thr-parent-id\` WHERE i.id < ${tmp_item_uri_expired_limit_id} \
-			AND pu1.\`uri-id\` IS NULL AND pu2.\`parent-uri-id\` IS NULL AND pu3.\`thr-parent-id\` IS NULL AND pu4.\`external-id\` IS NULL \
-			AND pu5.\`replies-id\` IS NULL AND pt1.\`context-id\` IS NULL AND pt2.\`conversation-id\` IS NULL AND pq.\`quote-uri-id\` IS NULL AND m1.\`uri-id\` IS NULL \
-			AND e.\`uri-id\` IS NULL AND uc.\`uri-id\` IS NULL AND c.\`uri-id\` IS NULL AND ac.\`uri-id\` IS NULL AND dc.\`uri-id\` IS NULL \
-			AND ins.\`uri-id\` IS NULL AND pd1.\`uri-id\` IS NULL AND pd2.\`inbox-id\` IS NULL AND m2.\`parent-uri-id\` IS NULL \
-			AND m3.\`thr-parent-id\` IS NULL \
-			ORDER BY i.\`id\` LIMIT ${limit}")
+		"CREATE TEMPORARY TABLE tmp_item_uri_expired_table (SELECT i.\`id\` FROM \`item-uri\` i LEFT JOIN \`post-user\` pu1 ON i.id = pu1.\`uri-id\` \
+		LEFT JOIN \`post-user\` pu2 ON i.id = pu2.\`parent-uri-id\` LEFT JOIN \`post-user\` pu3 ON i.id = pu3.\`thr-parent-id\` \
+		LEFT JOIN \`post-user\` pu4 ON i.id = pu4.\`external-id\` LEFT JOIN \`post-user\` pu5 ON i.id = pu5.\`replies-id\` \
+		LEFT JOIN \`post-thread\` pt1 ON i.id = pt1.\`context-id\` LEFT JOIN \`post-thread\` pt2 ON i.id = pt2.\`conversation-id\` \
+		LEFT JOIN \`post-quote\` pq ON i.id = pq.\`quote-uri-id\` LEFT JOIN \`mail\` m1 ON i.id = m1.\`uri-id\` LEFT JOIN \`event\` e ON i.id = e.\`uri-id\` \
+		LEFT JOIN \`user-contact\` uc ON i.id = uc.\`uri-id\` LEFT JOIN \`contact\` c ON i.id = c.\`uri-id\` \
+		LEFT JOIN \`apcontact\` ac ON i.id = ac.\`uri-id\` LEFT JOIN \`diaspora-contact\` dc ON i.id = dc.\`uri-id\` \
+		LEFT JOIN \`inbox-status\` ins ON i.id = ins.\`uri-id\` LEFT JOIN \`post-delivery\` pd1 ON i.id = pd1.\`uri-id\` \
+		LEFT JOIN \`post-delivery\` pd2 ON i.id = pd2.\`inbox-id\` LEFT JOIN \`mail\` m2 ON i.id = m2.\`parent-uri-id\` \
+		LEFT JOIN \`mail\` m3 ON i.id = m3.\`thr-parent-id\` WHERE i.id < ${tmp_item_uri_expired_limit_id} \
+		AND pu1.\`uri-id\` IS NULL AND pu2.\`parent-uri-id\` IS NULL AND pu3.\`thr-parent-id\` IS NULL AND pu4.\`external-id\` IS NULL \
+		AND pu5.\`replies-id\` IS NULL AND pt1.\`context-id\` IS NULL AND pt2.\`conversation-id\` IS NULL AND pq.\`quote-uri-id\` IS NULL AND m1.\`uri-id\` IS NULL \
+		AND e.\`uri-id\` IS NULL AND uc.\`uri-id\` IS NULL AND c.\`uri-id\` IS NULL AND ac.\`uri-id\` IS NULL AND dc.\`uri-id\` IS NULL \
+		AND ins.\`uri-id\` IS NULL AND pd1.\`uri-id\` IS NULL AND pd2.\`inbox-id\` IS NULL AND m2.\`parent-uri-id\` IS NULL \
+		AND m3.\`thr-parent-id\` IS NULL \
+		AND ( i.\`id\` > ${tmp_item_uri_expired_current_id} ) \
+		ORDER BY i.\`id\` LIMIT ${limit}); \
+		SELECT COUNT(\`id\`), MAX(\`id\`) FROM tmp_item_uri_expired_table; \
+		DELETE FROM \`item-uri\` WHERE \`id\` IN (SELECT \`id\` FROM tmp_item_uri_expired_table);")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_item_uri_expired_q} item(s) deleted until ${tmp_item_uri_expired_current_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -83,21 +119,23 @@ tmp_post_origin_deleted_current_uri_id=0
 until [[ ${tmp_post_origin_deleted_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_origin_deleted_q=0
-	while read -r uri_id uid; do
-		if [[ -n ${uri_id} && -n ${uid} ]]; then
-			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`post-origin\` WHERE \`parent-uri-id\` = ${uri_id} AND \`uid\` = ${uid}" &
-			until [[ $(jobs -r -p | wc -l) -le $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; do
-				sleep 0.1s
-			done
-			tmp_post_origin_deleted_q=$((tmp_post_origin_deleted_q + 1))
-			tmp_post_origin_deleted_current_uri_id="${uri_id}"
+	while IFS=$'\t' read -r tmp_post_origin_deleted_result_count tmp_post_origin_deleted_result_max; do
+		if [[ ${tmp_post_origin_deleted_result_count} -eq 0 || ${tmp_post_origin_deleted_result_max} == "NULL" ]]; then
+			tmp_post_origin_deleted_q=0
+		else
+			tmp_post_origin_deleted_current_uri_id="${tmp_post_origin_deleted_result_max}"
+			tmp_post_origin_deleted_q=$((tmp_post_origin_deleted_q + tmp_post_origin_deleted_result_count))
 		fi
 	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT \`uri-id\`, \`uid\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL ${interval} DAY) \
+		"CREATE TEMPORARY TABLE tmp_post_origin_deleted_table (SELECT \`uri-id\`, \`uid\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL ${interval} DAY) \
 		AND ( \`uri-id\` > ${tmp_post_origin_deleted_current_uri_id} ) \
-		ORDER BY \`uri-id\`, \`uid\` LIMIT ${limit}")
+		ORDER BY \`uri-id\`, \`uid\` LIMIT ${limit}); \
+		SELECT COUNT(\`uri-id\`), MAX(\`uri-id\`) FROM tmp_post_origin_deleted_table; \
+		DELETE p.* FROM \`post-origin\` p INNER JOIN tmp_post_origin_deleted_table t ON p.\`parent-uri-id\` = t.\`uri-id\` AND p.\`uid\` = t.\`uid\`;")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_post_origin_deleted_q} item(s) deleted until ${tmp_post_origin_deleted_current_uri_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -117,21 +155,22 @@ tmp_post_user_deleted_current_uri_id=0
 until [[ ${tmp_post_user_deleted_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_post_user_deleted_q=0
-	while read -r uri_id; do
-		if [[ -n ${uri_id} ]]; then
-			tmp_post_user_deleted_q=$((tmp_post_user_deleted_q + 1))
-			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`post-user\` WHERE \`uri-id\` = ${uri_id}" &
-			until [[ $(jobs -r -p | wc -l) -le $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; do
-				sleep 0.1s
-			done
-			tmp_post_user_deleted_q=$((tmp_post_user_deleted_q + 1))
-			tmp_post_user_deleted_current_uri_id="${uri_id}"
+	while IFS=$'\t' read -r tmp_post_user_deleted_result_count tmp_post_user_deleted_result_max; do
+		if [[ ${tmp_post_user_deleted_result_count} -eq 0 || ${tmp_post_user_deleted_result_max} == "NULL" ]]; then
+			tmp_post_user_deleted_q=0
+		else
+			tmp_post_user_deleted_current_uri_id="${tmp_post_user_deleted_result_max}"
+			tmp_post_user_deleted_q=$((tmp_post_user_deleted_q + tmp_post_user_deleted_result_count))
 		fi
 	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL ${interval} DAY) \
-			AND \`uri-id\` > ${tmp_post_user_deleted_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
+		"CREATE TEMPORARY TABLE tmp_post_user_deleted_table (SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`deleted\` AND \`edited\` < (CURDATE() - INTERVAL ${interval} DAY) \
+			AND \`uri-id\` > ${tmp_post_user_deleted_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}); \
+			SELECT COUNT(\`uri-id\`), MAX(\`uri-id\`) FROM tmp_post_user_deleted_table; \
+			DELETE FROM \`post-user\` WHERE \`uri-id\` IN (SELECT \`uri-id\` FROM tmp_post_user_deleted_table);")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_post_user_deleted_q} item(s) deleted until ${tmp_post_user_deleted_current_uri_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -169,6 +208,9 @@ until [[ ${tmp_post_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; do
 	#		"SELECT \`uri-id\` FROM \`post\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 	#			AND \`uri-id\` > ${tmp_post_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_post_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -206,6 +248,9 @@ until [[ ${tmp_post_content_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; 
 	#		"SELECT \`uri-id\` FROM \`post-content\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 	#			AND \`uri-id\` > ${tmp_post_content_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_post_content_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_content_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -243,6 +288,9 @@ until [[ ${tmp_post_thread_uri_id_not_in_post_user_q} -lt ${initial_limit} ]]; d
 	#		"SELECT \`uri-id\` FROM \`post-thread\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post-user\`) \
 	#			AND \`uri-id\` > ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_post_thread_uri_id_not_in_post_user_q} item(s) deleted until ${tmp_post_thread_uri_id_not_in_post_user_current_uri_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -280,6 +328,9 @@ until [[ ${tmp_post_user_uri_id_not_in_post_q} -lt ${initial_limit} ]]; do
 	#		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`uri-id\` NOT IN (SELECT \`uri-id\` FROM \`post\`) \
 	#			AND \`uri-id\` > ${tmp_post_user_uri_id_not_in_post_current_uri_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_post_user_uri_id_not_in_post_q} item(s) deleted until ${tmp_post_user_uri_id_not_in_post_current_uri_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -299,6 +350,29 @@ tmp_item_uri_not_in_valid_post_thread_current_id=0
 until [[ ${tmp_item_uri_not_in_valid_post_thread_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_in_valid_post_thread_q=0
+	#TODO: This fails with an error message. Sticking to the classic method for now.
+	# while IFS=$'\t' read -r tmp_item_uri_not_in_valid_post_thread_result_count tmp_item_uri_not_in_valid_post_thread_result_max; do
+	# 	if [[ ${tmp_item_uri_not_in_valid_post_thread_result_count} -eq 0 || ${tmp_item_uri_not_in_valid_post_thread_result_max} == "NULL" ]]; then
+	# 		tmp_item_uri_expired_q=0
+	# 	else
+	# 		tmp_item_uri_not_in_valid_post_thread_current_id="${tmp_item_uri_not_in_valid_post_thread_result_max}"
+	# 		tmp_item_uri_not_in_valid_post_thread_q=$((tmp_item_uri_not_in_valid_post_thread_q + tmp_item_uri_not_in_valid_post_thread_result_count))
+	# 	fi
+	# done < <("${dbengine}" "${db}" -N -B -q -e \
+	# 	"CREATE TEMPORARY TABLE tmp_item_uri_not_in_valid_post_thread_table (SELECT \`uri-id\` FROM \`post-thread\` WHERE \`received\` < (CURDATE() - INTERVAL ${interval} DAY) \
+	# 	AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-thread-user\` WHERE (\`mention\` OR \`starred\` OR \`wall\`) \
+	# 	AND \`uri-id\` = \`post-thread\`.\`uri-id\`) \
+	# 	AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-category\` WHERE \`uri-id\` = \`post-thread\`.\`uri-id\`) \
+	# 	AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-collection\` WHERE \`uri-id\` = \`post-thread\`.\`uri-id\`) \
+	# 	AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-media\` WHERE \`uri-id\` = \`post-thread\`.\`uri-id\`) \
+	# 	AND NOT \`uri-id\` IN (SELECT \`parent-uri-id\` FROM \`post-user\` INNER JOIN \`contact\` ON \`contact\`.\`id\` = \`contact-id\` \
+	# 		AND \`notify_new_posts\` WHERE \`parent-uri-id\` = \`post-thread\`.\`uri-id\`) \
+	# 	AND NOT \`uri-id\` IN (SELECT \`parent-uri-id\` FROM \`post-user\` WHERE (\`origin\` OR \`event-id\` != 0 OR \`post-type\` = 128) \
+	# 		AND \`parent-uri-id\` = \`post-thread\`.\`uri-id\`) \
+	# 	AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-content\` WHERE \`resource-id\` != 0 AND \`uri-id\` = \`post-thread\`.\`uri-id\`) \
+	# 	AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_thread_current_id} ORDER BY \`uri-id\` LIMIT ${limit}); \
+	# 	SELECT COUNT(\`uri-id\`), MAX(\`uri-id\`) FROM tmp_item_uri_not_in_valid_post_thread_table; \
+	# 	DELETE FROM \`item-uri\` i WHERE i.\`id\` IN (SELECT \`uri-id\` FROM tmp_item_uri_not_in_valid_post_thread_table);")
 	while read -r id; do
 		if [[ -n ${id} ]]; then
 			"${dbengine}" "${db}" -N -B -q -e \
@@ -323,6 +397,9 @@ until [[ ${tmp_item_uri_not_in_valid_post_thread_q} -lt ${initial_limit} ]]; do
 			AND NOT \`uri-id\` IN (SELECT \`uri-id\` FROM \`post-content\` WHERE \`resource-id\` != 0 AND \`uri-id\` = \`post-thread\`.\`uri-id\`) \
 			AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_thread_current_id} ORDER BY \`uri-id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_item_uri_not_in_valid_post_thread_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_thread_current_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -342,23 +419,25 @@ tmp_item_uri_not_in_valid_post_user_current_id=0
 until [[ ${tmp_item_uri_not_in_valid_post_user_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_in_valid_post_user_q=0
-	while read -r id; do
-		if [[ -n ${id} ]]; then
-			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
-			until [[ $(jobs -r -p | wc -l) -le $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; do
-				sleep 0.1s
-			done
-			tmp_item_uri_not_in_valid_post_user_q=$((tmp_item_uri_not_in_valid_post_user_q + 1))
-			tmp_item_uri_not_in_valid_post_user_current_id="${id}"
+	while IFS=$'\t' read -r tmp_item_uri_not_in_valid_post_user_result_count tmp_item_uri_not_in_valid_post_user_result_max; do
+		if [[ ${tmp_item_uri_not_in_valid_post_user_result_count} -eq 0 || ${tmp_item_uri_not_in_valid_post_user_result_max} == "NULL" ]]; then
+			tmp_item_uri_not_in_valid_post_user_q=0
+		else
+			tmp_item_uri_not_in_valid_post_user_current_id="${tmp_item_uri_not_in_valid_post_user_result_max}"
+			tmp_item_uri_not_in_valid_post_user_q=$((tmp_item_uri_not_in_valid_post_user_q + tmp_item_uri_not_in_valid_post_user_result_count))
 		fi
 	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`uid\` = 0 \
+		"CREATE TEMPORARY TABLE tmp_item_uri_not_in_valid_post_user_table (SELECT \`uri-id\` FROM \`post-user\` WHERE \`gravity\` = 0 AND \`uid\` = 0 \
 		AND \`received\` < (CURDATE() - INTERVAL ${interval} DAY) AND NOT \`uri-id\` IN ( SELECT \`parent-uri-id\` FROM \`post-user\` AS \`i\` WHERE \`i\`.\`uid\` != 0 \
 		AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` ) AND NOT \`uri-id\` IN ( SELECT \`parent-uri-id\` FROM \`post-user\` AS \`i\` WHERE \`i\`.\`uid\` = 0 \
 		AND \`i\`.\`parent-uri-id\` = \`post-user\`.\`uri-id\` AND \`i\`.\`received\` > (CURDATE() - INTERVAL ${interval} DAY) ) \
-		AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_user_current_id} ORDER BY \`uri-id\` LIMIT ${limit}")
+		AND \`uri-id\` > ${tmp_item_uri_not_in_valid_post_user_current_id} ORDER BY \`uri-id\` LIMIT ${limit}); \
+		SELECT COUNT(\`uri-id\`), MAX(\`uri-id\`) FROM tmp_item_uri_not_in_valid_post_user_table; \
+		DELETE FROM \`item-uri\` i WHERE i.\`id\` IN (SELECT \`uri-id\` FROM tmp_item_uri_not_in_valid_post_user_table);")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_item_uri_not_in_valid_post_user_q} item(s) deleted until ${tmp_item_uri_not_in_valid_post_user_current_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -396,6 +475,9 @@ until [[ ${tmp_attach_not_in_post_media_q} -lt ${initial_limit} ]]; do
 	#		"SELECT \`id\` FROM \`attach\` WHERE \`id\` NOT IN (SELECT \`attach-id\` FROM \`post-media\`) \
 	#		AND \`id\` > ${tmp_attach_not_in_post_media_current_id} ORDER BY \`id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_attach_not_in_post_media_q} item(s) deleted until ${tmp_attach_not_in_post_media_current_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -417,18 +499,15 @@ tmp_item_uri_not_valid_last_id=$("${dbengine}" "${db}" -N -B -q -e \
 until [[ ${tmp_item_uri_not_valid_q} -lt ${initial_limit} ]]; do
 	initial_i=$(date +%s)
 	tmp_item_uri_not_valid_q=0
-	while read -r id; do
-		if [[ -n ${id} ]]; then
-			"${dbengine}" "${db}" -N -B -q -e \
-				"DELETE FROM \`item-uri\` WHERE \`id\` = ${id}" &
-			until [[ $(jobs -r -p | wc -l) -le $(($(getconf _NPROCESSORS_ONLN) * 2)) ]]; do
-				sleep 0.1s
-			done
-			tmp_item_uri_not_valid_q=$((tmp_item_uri_not_valid_q + 1))
-			tmp_item_uri_not_valid_current_id="${id}"
+	while IFS=$'\t' read -r tmp_item_uri_not_valid_result_count tmp_item_uri_not_valid_result_max; do
+		if [[ ${tmp_item_uri_not_valid_result_count} -eq 0 || ${tmp_item_uri_not_valid_result_max} == "NULL" ]]; then
+			tmp_item_uri_not_valid_q=0
+		else
+			tmp_item_uri_not_valid_current_id="${tmp_item_uri_not_valid_result_max}"
+			tmp_item_uri_not_valid_q=$((tmp_item_uri_not_valid_q + tmp_item_uri_not_valid_result_count))
 		fi
 	done < <("${dbengine}" "${db}" -N -B -q -e \
-		"SELECT i.id FROM \`item-uri\` i \
+		"CREATE TEMPORARY TABLE tmp_item_uri_not_valid_table (SELECT i.id FROM \`item-uri\` i \
 			LEFT JOIN \`post-user\` pu1 ON i.id = pu1.\`uri-id\` \
 			LEFT JOIN \`post-user\` pu2 ON i.id = pu2.\`parent-uri-id\` \
 			LEFT JOIN \`post-user\` pu3 ON i.id = pu3.\`thr-parent-id\` \
@@ -468,7 +547,9 @@ until [[ ${tmp_item_uri_not_valid_q} -lt ${initial_limit} ]]; do
 			  pd2.\`inbox-id\` IS NULL AND \
 			  m2.\`parent-uri-id\` IS NULL AND \
 			  m3.\`thr-parent-id\` IS NULL \
-			ORDER BY \`id\` LIMIT ${limit}")
+			ORDER BY \`id\` LIMIT ${limit}); \
+			SELECT COUNT(\`id\`), MAX(\`id\`) FROM tmp_item_uri_not_valid_table; \
+			DELETE FROM \`item-uri\` WHERE \`id\` IN (SELECT \`id\` FROM tmp_item_uri_not_valid_table);")
 	#		"SELECT \`id\` FROM \`item-uri\` WHERE ( \`id\` < ${tmp_item_uri_not_valid_last_id} ) \
 	#		AND (\`id\` > ${tmp_item_uri_not_valid_current_id} ) \
 	#		AND NOT EXISTS ( SELECT \`uri-id\` FROM \`post-user\` WHERE \`uri-id\` = \`item-uri\`.\`id\` ) \
@@ -491,6 +572,9 @@ until [[ ${tmp_item_uri_not_valid_q} -lt ${initial_limit} ]]; do
 	#		AND NOT EXISTS ( SELECT \`thr-parent-id\` FROM \`mail\` WHERE \`thr-parent-id\` = \`item-uri\`.\`id\` ) \
 	#		ORDER BY \`id\` LIMIT ${limit}")
 	final_i=$(($(date +%s) - initial_i))
+	if [[ ${final_i} -le 0 ]]; then
+		final_i=1
+	fi
 	echo "${tmp_item_uri_not_valid_q} item(s) deleted until ${tmp_item_uri_not_valid_current_id} in ${final_i}s" #&> /dev/null
 	last_limit="${limit}"
 	if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -525,6 +609,9 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 			"SELECT t1.\`id\` FROM \`item-uri\` t1 INNER JOIN \`item-uri\` t2 WHERE t1.\`id\` > ${tmp_item_uri_duplicate_current_id} \
 			AND t1.\`id\` < t2.\`id\` AND t1.\`uri\` = t2.\`uri\` LIMIT ${limit}")
 		final_i=$(($(date +%s) - initial_i))
+		if [[ ${final_i} -le 0 ]]; then
+			final_i=1
+		fi
 		echo "${tmp_item_uri_duplicate_q} item(s) deleted until ${tmp_item_uri_duplicate_current_id} in ${final_i}s" #&> /dev/null
 		last_limit="${limit}"
 		if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
@@ -558,7 +645,11 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 			"SELECT u1.\`id\` FROM \`post-media\` u1 INNER JOIN \`post-media\` u2 WHERE u1.\`id\` > ${tmp_post_media_duplicate_current_id} \
 			AND u1.\`id\` < u2.\`id\` AND u1.\`uri-id\` = u2.\`uri-id\` AND u1.\`url\`= u2.\`url\` LIMIT ${limit}")
 		final_i=$(($(date +%s) - initial_i))
+		if [[ ${final_i} -le 0 ]]; then
+			final_i=1
+		fi
 		echo "${tmp_post_media_duplicate_q} item(s) deleted until ${tmp_post_media_duplicate_current_id} in ${final_i}s"
+		last_limit="${limit}"
 		if [[ ${last_ratio} -le $((last_limit / final_i)) ]]; then
 			limit=$((limit * 2))
 		else
@@ -590,6 +681,9 @@ if [[ ${intense_optimizations} -gt 0 ]]; then
 			"SELECT v1.\`id\` FROM \`post-user\` v1 INNER JOIN \`post-media\` v2 WHERE v1.\`id\` > ${tmp_post_user_duplicate_current_id} \
 				AND v1.\`id\` < v2.\`id\` AND v1.\`uri-id\` = v2.\`uri-id\` LIMIT ${limit}")
 		final_i=$(($(date +%s) - initial_i))
+		if [[ ${final_i} -le 0 ]]; then
+			final_i=1
+		fi
 		echo "${tmp_post_user_duplicate_q} item(s) deleted until ${tmp_post_user_duplicate_current_id} in ${final_i}s"
 		last_limit="${limit}"
 		if [[ ${last_i} -gt $((last_limit / final_i)) ]]; then
