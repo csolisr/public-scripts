@@ -187,6 +187,7 @@ core_loop() {
 					--js-runtimes deno:"${deno}" \
 					--remote-components ejs:npm \
 					--skip-download --download-archive "${archive}" \
+					--no-write-playlist-metafiles \
 					--dateafter "${breaktime}" \
 					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
 					--max-downloads "${maxdownloads}" \
@@ -205,6 +206,7 @@ core_loop() {
 					--js-runtimes deno:"${deno}" \
 					--remote-components ejs:npm \
 					--skip-download --download-archive "${archive}" \
+					--no-write-playlist-metafiles \
 					--dateafter "${breaktime}" \
 					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
 					--max-downloads "${maxdownloads}" \
@@ -227,6 +229,7 @@ core_loop() {
 				--remote-components ejs:npm \
 				--cookies "${cookies}" \
 				--skip-download --download-archive "${archive}" \
+				--no-write-playlist-metafiles \
 				--dateafter "${breaktime}" \
 				--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
 				--break-on-reject --lazy-playlist --write-info-json \
