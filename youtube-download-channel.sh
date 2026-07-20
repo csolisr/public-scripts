@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
 		echo "-b [value] | --breaktime [value]: Time limit for the download. Leave blank to save all videos from the last month."
 		echo "-s [value] | --sleeptime [value]: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low."
 		echo "--personal_folder [value]: Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required."
-		echo "--no_track: Whether to count the time used by the application's loops for statistical purposes (on by default)."
+		echo "--no_track: Whether to count the time used by the application's loops for statistical purposes."
 		exit 0
 		;;
 	#Whether to override reading the loop file. Required if running individual channel fetches.
@@ -123,7 +123,7 @@ inner_loop() {
 		mostinnerstarttime=$(date -u +%s%3N)
 	fi
 	if [[ ${enable_livestreams} -eq 0 ]]; then
-		if [[ $(jq -rc '.is_live' "${x}") == "true" || $(jq -rc '.was_live' "${x}" == "true" || $(jq -rc '.media_type' "${x}") == "livestream" ]]; then
+		if [[ $(jq -rc '.is_live' "${x}") == "true" || $(jq -rc '.was_live' "${x}") == "true" || $(jq -rc '.media_type' "${x}") == "livestream" ]]; then
 			echo "${count}/${total} ${x} was a livestream, removing..." && rm "${x}"
 		fi
 	fi
