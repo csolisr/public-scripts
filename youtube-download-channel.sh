@@ -1,21 +1,4 @@
 #!/bin/bash
-#Parameters:
-#1st parameter: Whether to override reading the loop file. Required if running individual channel fetches.
-override_loop=${1:-"0"}
-#2nd parameter: Whether to enable exporting to FreeTube playlist database (1=on by default, 0=off)
-enabledb=${2:-"1"}
-#3rd parameter: Whether to enable exporting to a CSV file (1=on by default, 0=off)
-enablecsv=${3:-"1"}
-#4th parameter: Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)
-channel=${4:-"subscriptions"}
-#5th parameter: Time limit for the download. Leave blank to save all videos from the last month.
-breaktime=${5:-"today-1month"}
-#6th parameter: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low.
-sleeptime=${6:-"0.1"}
-#7th parameter: Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required.
-personal_folder=${7:-"/cygdrive/d/Nextcloud/Multimedia/Document/Playnite"}
-#8th parameter: Whether to count the time used by the application's loops for statistical purposes. (1=on by default, 0=off)
-track=${8:-"1"}
 #Internal variables:
 #Via https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
 folder=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
@@ -28,13 +11,126 @@ subfolder="${folder}/subscriptions"
 subscriptions_old="${subfolder}/subscriptions-old.csv"
 subscriptions_new="${subfolder}/subscriptions-new.csv"
 diff_file="/tmp/subscriptions-diff.csv"
-loop_file="${subfolder}/loop-file.csv"
 final="${folder}/../FreeTube/playlists.db"
 max_jobs=$(($(getconf _NPROCESSORS_ONLN) * 2))
+#Default values:
+override_loop="0"
+loop_file="${subfolder}/loop-file.csv"
+enabledb="1"
+enablecsv="1"
+enable_shorts="1"
+enable_livestreams="1"
+channel="subscriptions"
+breaktime="today-1month"
+sleeptime="0.1"
+personal_folder="/cygdrive/d/Nextcloud/Multimedia/Document/Playnite"
+track="1"
+#Cf. https://stackoverflow.com/a/14203146
+#Space to temporarily save the leftover positional arguments
+pos_args=()
+#Begin parsing items in the parameters stack
+while [[ $# -gt 0 ]]; do
+	case $1 in
+	-h | --help)
+		echo "-f [value] | --file [value]: Read a file with the list of channels to download, in the format 'channelname 20260101', where the latter is the deadline for downloads."
+		echo "                             Use 'WL' for the Watch Later list and 'subscriptions' for your subscriptions."
+		echo "--disable_db: Whether to disable exporting to FreeTube playlist database."
+		echo "--disable_csv: Whether to disable exporting to a CSV file."
+		echo "--disable_shorts: Whether to disable fetching shorts."
+		echo "--disable_livestreams: Whether to disable fetching livestreams."
+		echo "-c [value] | --channel [value]: Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)."
+		echo "-b [value] | --breaktime [value]: Time limit for the download. Leave blank to save all videos from the last month."
+		echo "-s [value] | --sleeptime [value]: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low."
+		echo "--personal_folder [value]: Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required."
+		echo "--no_track: Whether to count the time used by the application's loops for statistical purposes (on by default)."
+		exit 0
+		;;
+	#Whether to override reading the loop file. Required if running individual channel fetches.
+	-f | --file)
+		override_loop="0"
+		loop_file="$2"
+		shift #for items with a value: first past the key (argument),
+		shift #then past the value
+		;;
+	#Whether to enable exporting to FreeTube playlist database (1=on by default, 0=off)
+	--disable_db)
+		enabledb="0"
+		shift #for items without a value: only past the key (argument)
+		;;
+	#Whether to enable exporting to a CSV file (1=on by default, 0=off)
+	--disable_csv)
+		enablecsv="0"
+		shift
+		;;
+	#Whether to enable fetching shorts (1=on by default, 0=off)
+	--disable_shorts)
+		enable_shorts="0"
+		shift
+		;;
+	#Whether to enable fetching livestreams (1=on by default, 0=off)
+	--disable_livestreams)
+		enable_livestreams="0"
+		shift
+		;;
+	#Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)
+	-c | --channel)
+		override_loop="1"
+		channel="$2"
+		shift
+		shift
+		;;
+	#Time limit for the download. Leave blank to save all videos from the last month.
+	-b | --breaktime)
+		breaktime="$2"
+		shift
+		shift
+		;;
+	#Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low.
+	-s | --sleeptime)
+		sleeptime="$2"
+		shift
+		shift
+		;;
+	#Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required.
+	--personal_folder)
+		personal_folder="$2"
+		shift
+		shift
+		;;
+	#Whether to count the time used by the application's loops for statistical purposes. (1=on by default, 0=off)
+	--no_track)
+		track="0"
+		shift
+		;;
+	#Any key-formatted arguments not understood cause an error
+	--* | -*)
+		echo "Unknown option: $1"
+		exit 1
+		;;
+	#Any other positional arguments are stuffed here
+	*)
+		pos_args+=("$1")
+		shift
+		;;
+	esac
+done
+#Restore the positional arguments
+set -- "${pos_args[@]}"
 
 inner_loop() {
+	#TODO: Process playlist files here
 	if [[ ${track} -eq 1 ]]; then
 		mostinnerstarttime=$(date -u +%s%3N)
+	fi
+	if [[ ${enable_livestreams} -eq 0 ]]; then
+		if [[ $(jq -rc '.is_live' "${x}") == "true" || $(jq -rc '.was_live' "${x}" == "true" || $(jq -rc '.media_type' "${x}") == "livestream" ]]; then
+			echo "${count}/${total} ${x} was a livestream, removing..." && rm "${x}"
+		fi
+	fi
+	if [[ ${enable_shorts} -eq 0 ]]; then
+		if [[ $(jq -rc '.height' "${x}") -gt $(jq -rc '.height' "${x}") || $(jq -rc '.media_type' "${x}") == "short" ]]; then
+			echo "${count}/${total} ${x} was a short, removing..." && rm "${x}"
+		fi
 	fi
 	if [[ -f ${x} && ${breaktime} =~ ^[0-9]+$ ]]; then
 		file_timestamp=$(jq -rc '.timestamp' "${x}")
@@ -46,6 +142,7 @@ inner_loop() {
 		echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 	fi
 	if [[ -f ${x} && (${channel} == "subscriptions" || ${channel} == "WL") && -f ${diff_file} && -f ${subscriptions_old} ]]; then
+		#TODO: Temporarily delete everything from non-subscribed channels (maybe with a parameter?)
 		channel_id=$(jq -rc ".channel_id" "${x}")
 		while read -r line; do
 			if [[ ${line} == "${channel_id}" ]]; then
@@ -154,9 +251,30 @@ core_loop() {
 	fi
 	if [[ ${channel} != "WL" ]]; then
 		#Channels need to manually check for each of videos, shorts, and streams. This does not apply for the Watch Later list.
-		for section_url in "${url}/videos" "${url}/shorts" "${url}/streams"; do
+		section_urls=()
+		match_filters=""
+		if [[ ${channel} != "subscriptions" ]]; then
+			section_urls+=("${url}/videos")
+		else
+			section_urls+=("${url}")
+		fi
+		if [[ ${enable_shorts} -eq 1 ]]; then
+			section_urls+=("${url}/shorts")
+		else
+			match_filters="height>width"
+		fi
+		if [[ ${enable_livestreams} -eq 1 ]]; then
+			section_urls+=("${url}/livestreams")
+		else
+			if [[ ${enable_shorts} -eq 1 ]]; then
+				match_filters="!is_live & !was_live"
+			else
+				match_filters="height>width & !is_live & !was_live"
+			fi
+		fi
+		for section_url in "${section_urls[@]}"; do
 			if [[ ${section_url} == "${url}/videos" ]]; then
-				full_url=$(curl -s "${url}" | tr -d "\n\r" 2>/dev/null | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n 2>/dev/null | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl" 2>/dev/null)
+				full_url=$(curl -s "${url}" | tr -d "\n\r" 2>/dev/null | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n 2>/dev/null | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl" 2>/dev/null | grep -ve '^null$' | tail -n 1)
 				if [[ -z ${full_url} ]]; then
 					full_url="${url}"
 				fi
@@ -168,20 +286,146 @@ core_loop() {
 				maxdownloads=200
 			fi
 			echo "${section_url} = ${full_url}"
-			#TODO: test if section exists
-			#test=$(curl -s -L -I -m 30 -X HEAD "${full_url}"
-			if [[ ${channel} == "subscriptions" || -f ${cookies} ]]; then
-				#If available, you can use the cookies from your browser directly. Substitute
-				#	--cookies "${cookies}"
-				#for the below, substituting for your browser of choice:
-				#	--cookies-from-browser "firefox"
-				#In case this still fails, you can resort to a PO Token. Follow the instructions at
-				# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
-				#and add a new variable with the contents of the PO Token in the form
-				#	potoken="INSERTYOURPOTOKENHERE"
-				#then substitute the "--extractor-args" line below with
-				#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
-				#including the backslash so the multiline command keeps working.
+			#Test if section exists
+			test_raw=$(curl -s -L -I -m 30 -X HEAD "${full_url}")
+			test=$(echo "${test_raw}" | grep -e "HTTP.* 200")
+			if [[ -n ${test} ]]; then
+				if [[ ${channel} == "subscriptions" || -f ${cookies} ]]; then
+					#If available, you can use the cookies from your browser directly. Substitute
+					#	--cookies "${cookies}"
+					#for the below, substituting for your browser of choice:
+					#	--cookies-from-browser "firefox"
+					#In case this still fails, you can resort to a PO Token. Follow the instructions at
+					# https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide
+					#and add a new variable with the contents of the PO Token in the form
+					#	potoken="INSERTYOURPOTOKENHERE"
+					#then substitute the "--extractor-args" line below with
+					#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
+					#including the backslash so the multiline command keeps working.
+					if [[ -n "${match_filters}" ]]; then
+						"${ytdl}" "${full_url}" \
+							--cookies "${cookies}" \
+							--js-runtimes deno:"${deno}" \
+							--remote-components ejs:npm \
+							--skip-download --download-archive "${archive}" \
+							--no-write-playlist-metafiles \
+							--dateafter "${breaktime}" \
+							--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+							--max-downloads "${maxdownloads}" \
+							--lazy-playlist --write-info-json \
+							--sleep-requests "${sleeptime}" \
+							--match-filters "${match_filters}" \
+							--parse-metadata "video::(?P<formats>)" \
+							--parse-metadata "video::(?P<thumbnails>)" \
+							--parse-metadata "video::(?P<subtitles>)" \
+							--parse-metadata "video::(?P<automatic_captions>)" \
+							--parse-metadata "video::(?P<chapters>)" \
+							--parse-metadata "video::(?P<heatmap>)" \
+							--parse-metadata "video::(?P<tags>)" \
+							--parse-metadata "video::(?P<categories>)"
+					else
+						"${ytdl}" "${full_url}" \
+							--cookies "${cookies}" \
+							--js-runtimes deno:"${deno}" \
+							--remote-components ejs:npm \
+							--skip-download --download-archive "${archive}" \
+							--no-write-playlist-metafiles \
+							--dateafter "${breaktime}" \
+							--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+							--max-downloads "${maxdownloads}" \
+							--break-on-reject --lazy-playlist --write-info-json \
+							--sleep-requests "${sleeptime}" \
+							--parse-metadata "video::(?P<formats>)" \
+							--parse-metadata "video::(?P<thumbnails>)" \
+							--parse-metadata "video::(?P<subtitles>)" \
+							--parse-metadata "video::(?P<automatic_captions>)" \
+							--parse-metadata "video::(?P<chapters>)" \
+							--parse-metadata "video::(?P<heatmap>)" \
+							--parse-metadata "video::(?P<tags>)" \
+							--parse-metadata "video::(?P<categories>)"
+					fi
+				else
+					if [[ -n "${match_filters}" ]]; then
+						"${ytdl}" "${full_url}" \
+							--js-runtimes deno:"${deno}" \
+							--remote-components ejs:npm \
+							--skip-download --download-archive "${archive}" \
+							--no-write-playlist-metafiles \
+							--dateafter "${breaktime}" \
+							--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+							--max-downloads "${maxdownloads}" \
+							--lazy-playlist --write-info-json \
+							--sleep-requests "${sleeptime}" \
+							--match-filters "${match_filters}" \
+							--parse-metadata "video::(?P<formats>)" \
+							--parse-metadata "video::(?P<thumbnails>)" \
+							--parse-metadata "video::(?P<subtitles>)" \
+							--parse-metadata "video::(?P<automatic_captions>)" \
+							--parse-metadata "video::(?P<chapters>)" \
+							--parse-metadata "video::(?P<heatmap>)" \
+							--parse-metadata "video::(?P<tags>)" \
+							--parse-metadata "video::(?P<categories>)"
+					else
+						"${ytdl}" "${full_url}" \
+							--js-runtimes deno:"${deno}" \
+							--remote-components ejs:npm \
+							--skip-download --download-archive "${archive}" \
+							--no-write-playlist-metafiles \
+							--dateafter "${breaktime}" \
+							--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+							--max-downloads "${maxdownloads}" \
+							--break-on-reject --lazy-playlist --write-info-json \
+							--sleep-requests "${sleeptime}" \
+							--parse-metadata "video::(?P<formats>)" \
+							--parse-metadata "video::(?P<thumbnails>)" \
+							--parse-metadata "video::(?P<subtitles>)" \
+							--parse-metadata "video::(?P<automatic_captions>)" \
+							--parse-metadata "video::(?P<chapters>)" \
+							--parse-metadata "video::(?P<heatmap>)" \
+							--parse-metadata "video::(?P<tags>)" \
+							--parse-metadata "video::(?P<categories>)"
+					fi
+				fi
+			else
+				error_code=$(echo "${test_raw}" | grep -e "HTTP")
+				echo "Error: ${error_code}"
+			fi
+		done
+	else
+		match_filters=""
+		if [[ ${enable_shorts} -eq 0 ]]; then
+			match_filters="height>width"
+		fi
+		if [[ ${enable_livestreams} -eq 0 ]]; then
+			if [[ ${enable_shorts} -eq 0 ]]; then
+				match_filters="height>width & !is_live & !was_live"
+			else
+				match_filters="!is_live & !was_live"
+			fi
+		fi
+		if [[ -f ${cookies} && ${channel} == "WL" ]]; then
+			if [[ -n "${match_filters}" ]]; then
+				"${ytdl}" "${full_url}" \
+					--cookies "${cookies}" \
+					--js-runtimes deno:"${deno}" \
+					--remote-components ejs:npm \
+					--skip-download --download-archive "${archive}" \
+					--no-write-playlist-metafiles \
+					--dateafter "${breaktime}" \
+					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
+					--max-downloads "${maxdownloads}" \
+					--lazy-playlist --write-info-json \
+					--sleep-requests "${sleeptime}" \
+					--match-filters "${match_filters}" \
+					--parse-metadata "video::(?P<formats>)" \
+					--parse-metadata "video::(?P<thumbnails>)" \
+					--parse-metadata "video::(?P<subtitles>)" \
+					--parse-metadata "video::(?P<automatic_captions>)" \
+					--parse-metadata "video::(?P<chapters>)" \
+					--parse-metadata "video::(?P<heatmap>)" \
+					--parse-metadata "video::(?P<tags>)" \
+					--parse-metadata "video::(?P<categories>)"
+			else
 				"${ytdl}" "${full_url}" \
 					--cookies "${cookies}" \
 					--js-runtimes deno:"${deno}" \
@@ -201,47 +445,7 @@ core_loop() {
 					--parse-metadata "video::(?P<heatmap>)" \
 					--parse-metadata "video::(?P<tags>)" \
 					--parse-metadata "video::(?P<categories>)"
-			else
-				"${ytdl}" "${full_url}" \
-					--js-runtimes deno:"${deno}" \
-					--remote-components ejs:npm \
-					--skip-download --download-archive "${archive}" \
-					--no-write-playlist-metafiles \
-					--dateafter "${breaktime}" \
-					--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
-					--max-downloads "${maxdownloads}" \
-					--break-on-reject --lazy-playlist --write-info-json \
-					--sleep-requests "${sleeptime}" \
-					--parse-metadata "video::(?P<formats>)" \
-					--parse-metadata "video::(?P<thumbnails>)" \
-					--parse-metadata "video::(?P<subtitles>)" \
-					--parse-metadata "video::(?P<automatic_captions>)" \
-					--parse-metadata "video::(?P<chapters>)" \
-					--parse-metadata "video::(?P<heatmap>)" \
-					--parse-metadata "video::(?P<tags>)" \
-					--parse-metadata "video::(?P<categories>)"
 			fi
-		done
-	else
-		if [[ -f ${cookies} && ${channel} == "WL" ]]; then
-			"${ytdl}" "${full_url}" \
-				--js-runtimes deno:"${deno}" \
-				--remote-components ejs:npm \
-				--cookies "${cookies}" \
-				--skip-download --download-archive "${archive}" \
-				--no-write-playlist-metafiles \
-				--dateafter "${breaktime}" \
-				--extractor-args "youtubetab:approximate_date" "youtubetab:skip=webpage" "youtube:player_skip=webpage,configs,js" "youtube:max_comments=0" \
-				--break-on-reject --lazy-playlist --write-info-json \
-				--sleep-requests "${sleeptime}" \
-				--parse-metadata "video::(?P<formats>)" \
-				--parse-metadata "video::(?P<thumbnails>)" \
-				--parse-metadata "video::(?P<subtitles>)" \
-				--parse-metadata "video::(?P<automatic_captions>)" \
-				--parse-metadata "video::(?P<chapters>)" \
-				--parse-metadata "video::(?P<heatmap>)" \
-				--parse-metadata "video::(?P<tags>)" \
-				--parse-metadata "video::(?P<categories>)"
 		fi
 	fi
 	if [[ ${enablecsv} == 1 ]]; then
@@ -265,6 +469,7 @@ core_loop() {
 		fi
 		count=$((count + 1))
 		inner_loop &
+		#Commented - this might place items in the wrong order due to parallelism.
 		#if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
 		#wait -n
 		#fi
@@ -357,6 +562,7 @@ if [[ ${track} -eq 1 ]]; then
 	starttime=$(date +'%s')
 fi
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
+echo "loop_file: ${loop_file}"
 if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 	while read -r channel_entry cutdate; do
 		channel="${channel_entry}"
