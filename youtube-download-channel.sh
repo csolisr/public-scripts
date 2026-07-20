@@ -20,6 +20,7 @@ enabledb="1"
 enablecsv="1"
 enable_shorts="1"
 enable_livestreams="1"
+extract_all="0"
 channel="subscriptions"
 breaktime="today-1month"
 sleeptime="0.1"
@@ -32,12 +33,16 @@ pos_args=()
 while [[ $# -gt 0 ]]; do
 	case $1 in
 	-h | --help)
-		echo "-f [value] | --file [value]: Read a file with the list of channels to download, in the format 'channelname 20260101', where the latter is the deadline for downloads."
+		echo "-f [value] | --file [value]: Path to a file with the list of channels to download."
+		echo "                             Use the format 'channelname 20260101', where the latter is the deadline for downloads."
 		echo "                             Use 'WL' for the Watch Later list and 'subscriptions' for your subscriptions."
+		echo "--cookies [value]: Path to a file with your YouTube cookies as extracted with `yt-dlp --cookies-from-browser`."
+		echo "--database [value]: Path to a file where you will save your final FreeTube playlist database."
 		echo "--disable_db: Whether to disable exporting to FreeTube playlist database."
 		echo "--disable_csv: Whether to disable exporting to a CSV file."
 		echo "--disable_shorts: Whether to disable fetching shorts."
 		echo "--disable_livestreams: Whether to disable fetching livestreams."
+		echo "--extract-all: Whether to extract all other channels when downloading subscriptions."
 		echo "-c [value] | --channel [value]: Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)."
 		echo "-b [value] | --breaktime [value]: Time limit for the download. Leave blank to save all videos from the last month."
 		echo "-s [value] | --sleeptime [value]: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low."
@@ -51,6 +56,18 @@ while [[ $# -gt 0 ]]; do
 		loop_file="$2"
 		shift #for items with a value: first past the key (argument),
 		shift #then past the value
+		;;
+	#Path to a file with your YouTube cookies, as extracted with `yt-dlp --cookies-from-browser`."
+	--cookies)
+		cookies="$2"
+		shift
+		shift
+		;;
+	#Path to a file where you will save your final FreeTube playlist database.
+	--database)
+		final="$2"
+		shift
+		shift
 		;;
 	#Whether to enable exporting to FreeTube playlist database (1=on by default, 0=off)
 	--disable_db)
@@ -70,6 +87,11 @@ while [[ $# -gt 0 ]]; do
 	#Whether to enable fetching livestreams (1=on by default, 0=off)
 	--disable_livestreams)
 		enable_livestreams="0"
+		shift
+		;;
+	#Whether to extract all other channels when downloading subscriptions (0=off by default, 1=on)
+	--extract_all)
+		extract_all="1"
 		shift
 		;;
 	#Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)
@@ -223,19 +245,22 @@ core_loop() {
 	if [[ ! -f ${archive} ]]; then
 		touch "${archive}" && chmod 664 "${archive}" && chown "${folder_user}:${folder_group}" "${archive}"
 	fi
-	if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
-		if [[ ${channel} == "subscriptions" ]]; then
-			find "${subfolder}" -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}"; done
-		else
+	if [[ ${extract_all} -eq 1 ]]; then
+		if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
 			tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
+			if [[ ${channel} == "subscriptions" ]]; then
+				tar -xvp -I zstd -f "${subfolder}/WL.tar.zst"
+			fi
+		fi
+	else
+		if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
+			if [[ ${channel} == "subscriptions" ]]; then
+				find "${subfolder}" -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}"; done
+			else
+				tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
+			fi
 		fi
 	fi
-	#	if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
-	#		tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
-	#		if [[ ${channel} == "subscriptions" ]]; then
-	#			tar -xvp -I zstd -f "${subfolder}/WL.tar.zst"
-	#		fi
-	#	fi
 	#Fix permissions after extraction, in case the script was run as root
 	find "${temporary}" -type f -and -not -perm 664 -exec chmod 664 {} \;
 	find "${temporary}" -type f -and \( -not -user "${folder_user}" -or -not -group "${folder_group}" \) -exec chown "${folder_user}:${folder_group}" {} \;
@@ -575,7 +600,7 @@ if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 else
 	core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
 fi
-if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
+if [[ -f ${loop_file} && ${enable_db} == "1" && -n ${final} ]]; then
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
 	if [[ ${enabledb} -eq 1 ]]; then
 		cd ./subscriptions || exit
