@@ -302,7 +302,7 @@ core_loop() {
 					#then substitute the "--extractor-args" line below with
 					#	--extractor-args "youtubetab:approximate_date,youtube:player-client=default,mweb;po_token=mweb.gvs+${potoken}" \
 					#including the backslash so the multiline command keeps working.
-					if [[ -n "${match_filters}" ]]; then
+					if [[ -n ${match_filters} ]]; then
 						"${ytdl}" "${full_url}" \
 							--cookies "${cookies}" \
 							--js-runtimes deno:"${deno}" \
@@ -345,7 +345,7 @@ core_loop() {
 							--parse-metadata "video::(?P<categories>)"
 					fi
 				else
-					if [[ -n "${match_filters}" ]]; then
+					if [[ -n ${match_filters} ]]; then
 						"${ytdl}" "${full_url}" \
 							--js-runtimes deno:"${deno}" \
 							--remote-components ejs:npm \
@@ -404,7 +404,7 @@ core_loop() {
 			fi
 		fi
 		if [[ -f ${cookies} && ${channel} == "WL" ]]; then
-			if [[ -n "${match_filters}" ]]; then
+			if [[ -n ${match_filters} ]]; then
 				"${ytdl}" "${full_url}" \
 					--cookies "${cookies}" \
 					--js-runtimes deno:"${deno}" \
