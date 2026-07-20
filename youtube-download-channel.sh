@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
 		echo "-f [value] | --file [value]: Path to a file with the list of channels to download."
 		echo "                             Use the format 'channelname 20260101', where the latter is the deadline for downloads."
 		echo "                             Use 'WL' for the Watch Later list and 'subscriptions' for your subscriptions."
-		echo "--cookies [value]: Path to a file with your YouTube cookies as extracted with `yt-dlp --cookies-from-browser`."
+		echo "--cookies [value]: Path to a file with your YouTube cookies as extracted with 'yt-dlp --cookies-from-browser'."
 		echo "--database [value]: Path to a file where you will save your final FreeTube playlist database."
 		echo "--disable_db: Whether to disable exporting to FreeTube playlist database."
 		echo "--disable_csv: Whether to disable exporting to a CSV file."
@@ -600,7 +600,7 @@ if [[ -f ${loop_file} && ${override_loop} == "0" ]]; then
 else
 	core_loop "${channel}" "${breaktime}" "${sleeptime}" "${enabledb}" "${enablecsv}"
 fi
-if [[ -f ${loop_file} && ${enable_db} == "1" && -n ${final} ]]; then
+if [[ -f ${loop_file} && ${enabledb} == "1" && -n ${final} ]]; then
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
 	if [[ ${enabledb} -eq 1 ]]; then
 		cd ./subscriptions || exit
