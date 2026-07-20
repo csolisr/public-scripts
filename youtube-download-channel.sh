@@ -245,7 +245,7 @@ core_loop() {
 	if [[ ! -f ${archive} ]]; then
 		touch "${archive}" && chmod 664 "${archive}" && chown "${folder_user}:${folder_group}" "${archive}"
 	fi
-	if [[ ${extract_all} -eq 1 ]]; then
+	if [[ ${extract_all} -eq 0 ]]; then
 		if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
 			tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
 			if [[ ${channel} == "subscriptions" ]]; then
