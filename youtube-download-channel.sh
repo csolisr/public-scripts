@@ -603,7 +603,7 @@ fi
 if [[ -f ${loop_file} && ${enabledb} == "1" && -n ${final} ]]; then
 	cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd
 	if [[ ${enabledb} -eq 1 ]]; then
-		cd ./subscriptions || exit
+		cd "${folder}/subscriptions" || exit
 		if [[ -f ${final} ]]; then
 			rm -rf "${final}"
 		fi
