@@ -51,7 +51,7 @@ loop() {
 		delete ignore p.* from \`post-category\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count(); \
 		delete ignore p.* from \`post\` p inner join \`tmp_post\` t where p.\`uri-id\` = t.\`uri-id\`; select row_count(); \
 		delete ignore from \`photo\` where \`contact-id\` = ${id}; select row_count(); \
-		delete ignore from \`endpoint\` where regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(url, \"/collections/devices\", \"\"), \"/playlists\", \"\"), \"discussions\", \"\"), \"/events\", \"\"), \"/members\", \"\"), \"/posts\", \"\"), \"/resources\", \"\"), \"/todos\", \"\") in (select \`url\` from \`contact\` where \`id\` = ${id}); select row_count(); \
+		delete ignore from \`endpoint\` where \`owner-uri-id\` in (select \`uri-id\` from \`contact\` where \`id\` = ${id}); select row_count(); \
 		delete ignore from \`contact\` where \`id\` = ${id}; select row_count(); \
 		delete ignore from \`apcontact\` where \`uri-id\` = ${id}; select row_count(); \
 		delete ignore from \`diaspora-contact\` where \`uri-id\` = ${id}; select row_count();" ||
@@ -257,6 +257,7 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 			or \`id\` in (select \`uid\` from \`user\`) \
 			or \`id\` in (select \`contact-id\` from \`group_member\`)) and \
 			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \
+			c.\`gsid\` not in (select \`id\` from \`gserver\` where platform = 'lemmy' or platform = 'piefed' or platform = 'friendica') and \
 			c.\`nick\` not in ('threads.sys', 'relay', 'friendica', 'sharkey', 'bot', 'catodon', \
 			'flipboard', 'lemmy', 'mitra', 'mstdn_bot', 'peertube', 'piefed', 'admin');
 		"
@@ -285,6 +286,7 @@ if [[ -n $(type curl) && -n ${dbengine} && -n $(type "${dbengine}") && -n $(type
 			or \`id\` in (select \`contact-id\` from \`group_member\`)) and \
 			c.\`contact-type\` != 4 and not pending and  \`last-item\` < CURDATE() - INTERVAL ${period} and \
 			c.\`id\` > ${currentid} and \
+			c.\`gsid\` not in (select \`id\` from \`gserver\` where platform = 'lemmy' or platform = 'piefed' or platform = 'friendica') and \
 			c.\`nick\` not in ('threads.sys', 'relay', 'friendica', 'sharkey', 'bot', 'catodon', \
 			'flipboard', 'lemmy', 'mitra', 'mstdn_bot', 'peertube', 'piefed', 'admin') \
 			limit ${loopsize}")
