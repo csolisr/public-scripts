@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
 		echo "--disable_csv: Whether to disable exporting to a CSV file."
 		echo "--disable_shorts: Whether to disable fetching shorts."
 		echo "--disable_livestreams: Whether to disable fetching livestreams."
-		echo "--extract-all: Whether to extract all other channels when downloading subscriptions."
+		echo "--extract_all: Whether to extract all other channels when downloading subscriptions."
 		echo "-c [value] | --channel [value]: Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)."
 		echo "-b [value] | --breaktime [value]: Time limit for the download. Leave blank to save all videos from the last month."
 		echo "-s [value] | --sleeptime [value]: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low."
@@ -70,27 +70,27 @@ while [[ $# -gt 0 ]]; do
 		shift
 		;;
 	#Whether to enable exporting to FreeTube playlist database (1=on by default, 0=off)
-	--disable_db)
+	--disable_db | --disable-db)
 		enabledb="0"
 		shift #for items without a value: only past the key (argument)
 		;;
 	#Whether to enable exporting to a CSV file (1=on by default, 0=off)
-	--disable_csv)
+	--disable_csv | --disable-csv)
 		enablecsv="0"
 		shift
 		;;
 	#Whether to enable fetching shorts (1=on by default, 0=off)
-	--disable_shorts)
+	--disable_shorts | --disable-shorts)
 		enable_shorts="0"
 		shift
 		;;
 	#Whether to enable fetching livestreams (1=on by default, 0=off)
-	--disable_livestreams)
+	--disable_livestreams | --disable-livestreams)
 		enable_livestreams="0"
 		shift
 		;;
 	#Whether to extract all other channels when downloading subscriptions (0=off by default, 1=on)
-	--extract_all)
+	--extract_all | --extract-all)
 		extract_all="1"
 		shift
 		;;
@@ -114,13 +114,13 @@ while [[ $# -gt 0 ]]; do
 		shift
 		;;
 	#Personal folder where yt_dlp is hosted - specifically for Windows over Cygwin/WSL. Substitute this as required.
-	--personal_folder)
+	--personal_folder | --personal-folder)
 		personal_folder="$2"
 		shift
 		shift
 		;;
 	#Whether to count the time used by the application's loops for statistical purposes. (1=on by default, 0=off)
-	--no_track)
+	--no_track | --no-track)
 		track="0"
 		shift
 		;;
