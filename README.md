@@ -31,6 +31,7 @@ As you can see, the vast majority of my scripts are used to handle my [Friendica
 * trending-hashtags.sh: Used to backfill the Friendica server with trending content from the most popular servers from the Fediverse. It requires generating an application key with OAuth. By default, this backfill tool ignores posts from instances blocked by any of these popular servers. You can configure a list of exceptions by adding them to the `overrides` parameter in your `settings.csv` file.
 * mariadb-delete-unallocated-items.sh: Allows deleting dangling items from tables with complex dependencies on MariaDB. Used here mainly to remove references to `item-uri` on Friendica. (Ensure you activate `enable-maximum-item` if you use this on a running Friendica instance)
 * nextcloud-bookmarks-cache-compression.sh: Allows compressing Nextcloud's cache for the Bookmarks application. Files are stored in a JSON, with the file contents encoded on Base64 - this script takes the contents, compresses them with the appropriate tools, and regenerates the JSON file. Requires `gifsicle`, `oxipng`, `jpegoptim`, `cwebp`, and `scour` installed.
+* rspamc-training.sh: Used to manually train a freshly-installed installation of `rspamd` with the "spam" you already have in your Dovecot mailbox. This version is tuned specifically for the standard YunoHost installation.
 
 # License
 
