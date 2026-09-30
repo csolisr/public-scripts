@@ -17,14 +17,16 @@ token=${4:-"12345678"}
 serverslist=${5:-"https://api.fedidb.org/v1/servers?limit=${limit}"}
 #Tweak this if your instance uses a non-standard API.
 searchurl="https://${mysite}/api/v2/search?resolve=true&limit=1&type=statuses&q="
+#Current date. Will be used to generate a unique set of files per run.
+current_date=$(date +%s)
 #File that will hold the URLs found.
-url_file="/tmp/trending_urls.txt"
+url_file="/tmp/trending_urls_${current_date}.txt"
 #File that will hold the blocked domains found.
-block_file="/tmp/blocked_urls.txt"
+block_file="/tmp/blocked_urls_${current_date}.txt"
 #File that will hold the domains explored.
-found_file="/tmp/found_urls.txt"
+found_file="/tmp/found_urls_${current_date}.txt"
 #File that will hold the trending hashtags found.
-tags_file="/tmp/trending_hashtags.txt"
+tags_file="/tmp/trending_hashtags_${current_date}.txt"
 #Amount of threads that will be used for multiprocessing.
 threads=$(($(getconf _NPROCESSORS_ONLN) * 2))
 #User agent (to be used to identify the process)
