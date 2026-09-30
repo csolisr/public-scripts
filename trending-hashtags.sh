@@ -6,7 +6,9 @@ else
 	localmode=${1:-"1"}
 fi
 #Limit of servers to fetch. Can pass as the second parameter.
-limit=${2:-"20"}
+limit=${2:-"40"}
+tag_limit="20"
+post_limit="40"
 #URL of your instance. Can pass as the third parameter.
 mysite=${3:-"friendica.example.net"}
 #Token from your website. Can pass as the fourth parameter. Needs to be generated using something like GetAuth and the "read" permission ( https://getauth.thms.uk/?scopes=read )
@@ -110,7 +112,7 @@ fetch_hashtags() {
 						#fi
 					fi
 				fi
-			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/trends/tags" 2>/dev/null | jq -r '.[].name' 2>/dev/null)
+			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/trends/tags?limit=${tag_limit}" 2>/dev/null | jq -r '.[].name' 2>/dev/null)
 		fi
 		#If this returns nothing, fall back to the Misskey API
 		#if [[ ${did_add_hashtag} -eq 0 ]]; then
@@ -219,7 +221,7 @@ fetch_hashtag() {
 					#did_add_url=1
 					#fi
 				fi
-			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/timelines/tag/${hashtag_to_add}?local=false" 2>/dev/null | jq -r '.[].uri' 2>/dev/null)
+			done < <(curl -s -S --no-progress-meter -L -H "User-Agent: ${useragent}" "https://${searchsite}/api/v1/timelines/tag/${hashtag_to_add}?local=false&limit=${post_limit}" 2>/dev/null | jq -r '.[].uri' 2>/dev/null)
 		fi
 		#If no URLs are found, fall back to the Misskey API
 		#if [[ ${did_add_url} -eq 0 ]]; then
