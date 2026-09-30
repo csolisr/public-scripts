@@ -5,10 +5,10 @@ rspamd_process="localhost:11334"
 rspamd_settings="/etc/rspamd"
 mail_folder="/var/mail"
 password=""
-grep -Rhe '^#*password.*=.*' "${rspamd_settings}" | sed -e 's|password *= *||g' -e 's|"||g' | while read -r p; do
+while read -r p; do
 	password="${p}"
-done
-if grep -qRe '^#*per_user *= *true' "${rspamd_settings}" ; then
+done < <(grep -Rhe '^#*password.*=.*' "${rspamd_settings}" | sed -e 's|password *= *||g' -e 's|"||g')
+if grep -qRe '^#*per_user *= *true' "${rspamd_settings}"; then
 	per_user=1
 fi
 find "${mail_folder}" -mindepth 1 -maxdepth 1 -type d | sed -e "s|${mail_folder}||g" | while read -r u; do
