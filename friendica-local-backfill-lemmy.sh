@@ -27,11 +27,11 @@ loop() {
 	if [[ -n ${item} && ! ${item} =~ " " ]]; then
 		#Manually backfill the address to our backend
 		#curl -s --no-progress-meter -H "User-Agent: ${useragent}" -H "Authorization: Bearer ${token}" "${searchurl}${item}" -O /dev/null
-		item_result=$(curl -s --no-progress-meter -H "User-Agent: ${useragent}" -H "Authorization: Bearer ${token}" "${searchurl}${item}")
+		item_result=$(curl -s -m 30 --no-progress-meter -H "User-Agent: ${useragent}" -H "Authorization: Bearer ${token}" "${searchurl}${item}")
 		if [[ -n ${item_result} ]]; then
 			itemid=$(echo "${item_result}" | jq -r '.statuses[0].id' 2>/dev/null)
 			#Download the HTML of the page, clean it with XMLStarlet
-			jpdl=$(curl -s --no-progress-meter -H "User-Agent: ${useragent}" "${item}" 2>/dev/null)
+			jpdl=$(curl -s -m 30 --no-progress-meter -H "User-Agent: ${useragent}" "${item}" 2>/dev/null)
 			if [[ -n ${jpdl} ]]; then
 				jp=$(echo "${jpdl}" | xmlstarlet fo -H -R 2>/dev/null)
 				#Select the canonical address of the page
@@ -39,7 +39,7 @@ loop() {
 				#If neither is empty, and if the canonical address is in another server, backfill that as well
 				if [[ -n ${jp} && -n ${j} && ${j} != "${item}" ]]; then
 					#curl -s --no-progress-meter -H "Authorization: Bearer ${token}" "${searchurl}${j}" -O /dev/null
-					j_result=$(curl -s --no-progress-meter -H "Authorization: Bearer ${token}" "${searchurl}${j}")
+					j_result=$(curl -s -m 30 --no-progress-meter -H "Authorization: Bearer ${token}" "${searchurl}${j}")
 					if [[ -n ${j_result} ]]; then
 						jid=$(echo "${j_result}" | jq -r '.statuses[0].id' 2>/dev/null)
 						if [[ ${jid} != "null" ]]; then
