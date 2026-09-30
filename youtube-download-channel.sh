@@ -428,6 +428,7 @@ core_loop() {
 				match_filters="!is_live & !was_live"
 			fi
 		fi
+		maxdownloads=10000
 		if [[ -f ${cookies} && ${channel} == "WL" ]]; then
 			if [[ -n ${match_filters} ]]; then
 				"${ytdl}" "${full_url}" \
