@@ -1,5 +1,6 @@
 #!/bin/bash
 #Local mode - determines whether to print output or not. Can pass as the first parameter.
+#TODO: Convert all these parameters to non-positional
 if [[ $(uname -n) == "azkware" ]]; then
 	localmode=${1:-"0"}
 else
@@ -11,14 +12,16 @@ limit=${2:-"20"}
 tag_limit=${3:-"20"}
 #Limit of posts to fetch per tag (maximum 40). Can pass as the fourth parameter.
 post_limit=${4:-"20"}
-#URL of your instance. Can pass as the fifth parameter.
-mysite=${5:-"friendica.example.net"}
-#Token from your website. Can pass as the sixth parameter. Needs to be generated using something like GetAuth and the "read" permission ( https://getauth.thms.uk/?scopes=read )
-token=${6:-"12345678"}
+#Whether to force a scan if another one is already running. Can pass as the fifth parameter.
+force_scan=${5:-"0"}
+#URL of your instance. Can pass as the sixth parameter.
+mysite=${6:-"friendica.example.net"}
+#Token from your website. Can pass as the seventh parameter. Needs to be generated using something like GetAuth and the "read" permission ( https://getauth.thms.uk/?scopes=read )
+token=${7:-"12345678"}
 #URL of the service that contains the list of servers to fetch.
 serverslist="https://api.fedidb.org/v1/servers?limit=${limit}"
-#Tweak this if your instance uses a non-standard API. Can pass as the seventh parameter.
-searchurl=${7:-"https://${mysite}/api/v2/search?resolve=true&limit=1&type=statuses&q="}
+#Tweak this if your instance uses a non-standard API. Can pass as the eighth parameter.
+searchurl=${8:-"https://${mysite}/api/v2/search?resolve=true&limit=1&type=statuses&q="}
 #Current date. Will be used to generate a unique set of files per run.
 current_date=$(date +%s)
 #File that will hold the URLs found.
@@ -416,7 +419,7 @@ main() {
 	if [[ ${localmode} != "0" ]]; then
 		starttime=$(date +'%s')
 	fi
-	if [[ -z $(find "/tmp" -iname "trending_urls*.txt" -or -iname "blocked_urls*.txt" -or -iname "found_urls*.txt" -or -iname "trending_hashtags*.txt") ]]; then
+	if [[ ${force_scan} -gt 0 || -z $(find "/tmp" -iname "trending_urls*.txt" -or -iname "blocked_urls*.txt" -or -iname "found_urls*.txt" -or -iname "trending_hashtags*.txt") ]]; then
 		clear_files
 		initialize_files
 		serversresponse=$(curl -s -S --no-progress-meter -L "${serverslist}")
