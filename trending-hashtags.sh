@@ -319,7 +319,7 @@ search_urls() {
 	timestamp_expiration=$(date --date="today - ${dupe_expiration_days} days" +%s)
 	while read -r d; do
 		#Find the date from the file name
-		d_timestamp=$(echo "${d}" | sed -e "s|dupe_urls_||g" -e "s|.txt||g")
+		d_timestamp=$(echo "${d}" | sed -e "s|${dupes_file_folder}||g" -e "s|/||g" -e "s|dupe_urls_||g" -e "s|.txt||g")
 		#Take the file, if it exists and is not expired, as our current duplicates file;
 		#delete it if it's expired.
 		if [[ ${d_timestamp} -ge ${timestamp_expiration} ]]; then
