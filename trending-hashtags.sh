@@ -340,7 +340,7 @@ search_urls() {
 	fi
 	if [[ -f ${dupes_file} && -f ${url_file} ]]; then
 		while read -r url_to_add; do
-			echo "${url_to_add}" >"${dupes_file}"
+			echo "${url_to_add}" >>"${dupes_file}"
 		done <"${url_file}"
 		sort "${dupes_file}" | uniq -i >"${dupes_file}.tmp" && mv "${dupes_file}.tmp" "${dupes_file}"
 	fi
