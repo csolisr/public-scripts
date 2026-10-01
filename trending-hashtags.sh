@@ -5,18 +5,20 @@ if [[ $(uname -n) == "azkware" ]]; then
 else
 	localmode=${1:-"1"}
 fi
-#Limit of servers to fetch. Can pass as the second parameter.
-limit=${2:-"40"}
-tag_limit="20"
-post_limit="40"
-#URL of your instance. Can pass as the third parameter.
-mysite=${3:-"friendica.example.net"}
-#Token from your website. Can pass as the fourth parameter. Needs to be generated using something like GetAuth and the "read" permission ( https://getauth.thms.uk/?scopes=read )
-token=${4:-"12345678"}
-#URL of the service that contains the list of servers to fetch. Can pass as the fifth parameter.
-serverslist=${5:-"https://api.fedidb.org/v1/servers?limit=${limit}"}
-#Tweak this if your instance uses a non-standard API.
-searchurl="https://${mysite}/api/v2/search?resolve=true&limit=1&type=statuses&q="
+#Limit of servers to fetch (maximum 40). Can pass as the second parameter.
+limit=${2:-"20"}
+#Limit of tags to fetch per site (maximum 20). Can pass as the third parameter.
+tag_limit=${3:-"20"}
+#Limit of posts to fetch per tag (maximum 40). Can pass as the fourth parameter.
+post_limit=${4:-"20"}
+#URL of your instance. Can pass as the fifth parameter.
+mysite=${5:-"friendica.example.net"}
+#Token from your website. Can pass as the sixth parameter. Needs to be generated using something like GetAuth and the "read" permission ( https://getauth.thms.uk/?scopes=read )
+token=${6:-"12345678"}
+#URL of the service that contains the list of servers to fetch.
+serverslist="https://api.fedidb.org/v1/servers?limit=${limit}"
+#Tweak this if your instance uses a non-standard API. Can pass as the seventh parameter.
+searchurl=${7:-"https://${mysite}/api/v2/search?resolve=true&limit=1&type=statuses&q="}
 #Current date. Will be used to generate a unique set of files per run.
 current_date=$(date +%s)
 #File that will hold the URLs found.
@@ -27,13 +29,17 @@ block_file="/tmp/blocked_urls_${current_date}.txt"
 found_file="/tmp/found_urls_${current_date}.txt"
 #File that will hold the trending hashtags found.
 tags_file="/tmp/trending_hashtags_${current_date}.txt"
+#File that will hold the items found so far today, to avoid duplicates.
+dupes_file="/tmp/dupe_urls_${current_date}.txt"
+#Amount of days for expiration.
+dupe_expiration_days="1"
 #Amount of threads that will be used for multiprocessing.
 threads=$(($(getconf _NPROCESSORS_ONLN) * 2))
 #User agent (to be used to identify the process)
 useragent="Trending Hashtags Fetcher (https://${mysite})"
 #Languages for the trending topics, in ISO format.
 #languages=("en-US" "es-ES" "ja-JP" "de-DE" "fr-FR")
-languages=("en-US" "es-ES")
+languages=("en-US" "es-ES" "ja-JP")
 #Manual overrides for some external services, such as bridges, generally blocked by some servers.
 overrides=(_OVERRIDES_)
 #Holos service URL
@@ -304,6 +310,36 @@ search_urls() {
 		while read -r url_to_remove; do
 			grep -v -F -e "${url_to_remove}" -- "${url_file}" >"${url_file}.tmp" && mv "${url_file}.tmp" "${url_file}"
 		done <"${block_file}"
+	fi
+	#Find any other duplicate URL files that have not expired yet.
+	dupes_file_folder="${dupes_file%/*}"
+	timestamp_expiration=$(date --date="today - ${dupe_expiration_days} days" +%s)
+	while read -r d; do
+		#Find the date from the file name
+		d_timestamp=$(echo "${d}" | sed -e "s|dupe_urls_||g" -e "s|.txt||g")
+		#Take the file, if it exists and is not expired, as our current duplicates file;
+		#delete it if it's expired.
+		if [[ ${d_timestamp} -ge ${timestamp_expiration} ]]; then
+			dupes_file="${d}"
+		else
+			rm -rf "${d}"
+		fi
+	done < <(find "${dupes_file_folder}" -iname "dupe_urls_*")
+	#Remove duplicate domains from the results
+	if [[ -f ${dupes_file} && -f ${url_file} ]]; then
+		while read -r url_to_dedup; do
+			grep -v -F -e "${url_to_dedup}" -- "${url_file}" >"${url_file}.tmp" && mv "${url_file}.tmp" "${url_file}"
+		done <"${dupes_file}"
+	fi
+	#Add non-duplicate domains to the duplicate file, create if it does not exist yet
+	if [[ ! -f ${dupes_file} ]]; then
+		touch "${dupes_file}"
+	fi
+	if [[ -f ${dupes_file} && -f ${url_file} ]]; then
+		while read -r url_to_add; do
+			grep -v -F -e "${url_to_add}" -- "${dupes_file}" >"${dupes_file}.tmp" && mv "${dupes_file}.tmp" "${dupes_file}"
+		done <"${url_file}"
+		sort "${dupes_file}" | uniq -i >"${dupes_file}.tmp" && mv "${dupes_file}.tmp" "${dupes_file}"
 	fi
 	#Print amount of URLs
 	count_file="${url_file}"
