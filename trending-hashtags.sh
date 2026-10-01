@@ -380,15 +380,17 @@ main() {
 	if [[ ${localmode} != "0" ]]; then
 		starttime=$(date +'%s')
 	fi
-	clear_files
-	initialize_files
-	serversresponse=$(curl -s -S --no-progress-meter -L "${serverslist}")
-	fetch_sites "${serversresponse}"
-	fetch_blocks "${serversresponse}"
-	fetch_hashtags "${serversresponse}"
-	fetch_trending_posts "${serversresponse}"
-	search_urls
-	clear_files
+	if [[ -z $(find "/tmp" -iname "trending_urls*.txt" -or -iname "blocked_urls*.txt" -or -iname "found_urls*.txt" -or -iname "trending_hashtags*.txt") ]]; then
+		clear_files
+		initialize_files
+		serversresponse=$(curl -s -S --no-progress-meter -L "${serverslist}")
+		fetch_sites "${serversresponse}"
+		fetch_blocks "${serversresponse}"
+		fetch_hashtags "${serversresponse}"
+		fetch_trending_posts "${serversresponse}"
+		search_urls
+		clear_files
+	fi
 	if [[ ${localmode} != "0" ]]; then
 		endtime=$(date +'%s')
 		elapsedtime=$((endtime - starttime))
