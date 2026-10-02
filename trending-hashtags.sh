@@ -310,9 +310,7 @@ search_urls() {
 	fi
 	#Remove blocked domains from the results
 	if [[ -f ${block_file} && -f ${url_file} ]]; then
-		while read -r url_to_remove; do
-			grep -v -F -e "${url_to_remove}" -- "${url_file}" >"${url_file}.tmp" && mv "${url_file}.tmp" "${url_file}"
-		done <"${block_file}"
+		grep -v -x -f "${block_file}" -- "${url_file}" >"${url_file}.tmp" && mv "${url_file}.tmp" "${url_file}"
 	fi
 	#Find any other duplicate URL files that have not expired yet.
 	dupes_file_folder="${dupes_file%/*}"
@@ -330,9 +328,8 @@ search_urls() {
 	done < <(find "${dupes_file_folder}" -iname "dupe_urls_*")
 	#Remove duplicate domains from the results
 	if [[ -f ${dupes_file} && -f ${url_file} ]]; then
-		while read -r url_to_dedup; do
-			grep -v -F -e "${url_to_dedup}" -- "${url_file}" >"${url_file}.tmp" && mv "${url_file}.tmp" "${url_file}"
-		done <"${dupes_file}"
+		grep -v -x -f "${dupes_file}" -- "${url_file}" >"${url_file}.tmp" && mv "${url_file}.tmp" "${url_file}"
+		sort "${url_file}" | uniq -i >"${url_file}.tmp" && mv "${url_file}.tmp" "${url_file}"
 	fi
 	#Add non-duplicate domains to the duplicate file, create if it does not exist yet
 	if [[ ! -f ${dupes_file} ]]; then
