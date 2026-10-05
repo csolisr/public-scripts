@@ -176,7 +176,6 @@ inner_loop() {
 			#TODO: Determine if the file is not on the subscriptions list
 			uploader=$(jq -rc ".channel_url" "${x}" | sed -e 's/https/http/g')
 			subscriptions_list=$(tr -d '\r' <"${subscriptions_new}" | sort | cut -d ',' -f2 | sed -e 's/https/http/g')
-			echo "${subscriptions_list}" | grep "${uploader}"
 			if ! grep -q "${uploader}" <(echo "${subscriptions_list}"); then
 				echo "${count}/${total} ${x}: ${uploader} not in the subscriptions list, removing..." && rm "${x}"
 			fi
