@@ -24,6 +24,7 @@ extract_all="0"
 channel="subscriptions"
 breaktime="today-1month"
 sleeptime="0.1"
+reset_subscriptions="0"
 personal_folder="/cygdrive/d/Nextcloud/Multimedia/Document/Playnite"
 track="1"
 #Cf. https://stackoverflow.com/a/14203146
@@ -43,6 +44,8 @@ while [[ $# -gt 0 ]]; do
 		echo "--disable_shorts: Whether to disable fetching shorts."
 		echo "--disable_livestreams: Whether to disable fetching livestreams."
 		echo "--extract_all: Whether to extract all other channels when downloading subscriptions."
+		echo "--reset_subscriptions: Whether to remove all items not found in the subscriptions file."
+		echo "                       Valid only for Watch Later and Subscriptions."
 		echo "-c [value] | --channel [value]: Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)."
 		echo "-b [value] | --breaktime [value]: Time limit for the download. Leave blank to save all videos from the last month."
 		echo "-s [value] | --sleeptime [value]: Seconds between data requests. Decrease to make downloads faster, but your account may be temporarily blocked if you use a number too low."
@@ -92,6 +95,11 @@ while [[ $# -gt 0 ]]; do
 	#Whether to extract all other channels when downloading subscriptions (0=off by default, 1=on)
 	--extract_all | --extract-all)
 		extract_all="1"
+		shift
+		;;
+	#Whether to remove all items not found in the subscriptions file. (0=off by default, 1=on)
+	--reset_subscriptions | --reset-subscriptions)
+		reset_subscriptions="1"
 		shift
 		;;
 	#Channel you want to turn into a playlist. Leave blank to save your subscriptions (cookie file required)
@@ -164,20 +172,29 @@ inner_loop() {
 		echo "${count}/${total} ${x} not uploaded from ${channel}, removing..." && rm "${x}"
 	fi
 	if [[ -f ${x} && (${channel} == "subscriptions" || ${channel} == "WL") && -f ${diff_file} && -f ${subscriptions_old} ]]; then
-		#TODO: Temporarily delete everything from non-subscribed channels (maybe with a parameter?)
-		channel_id=$(jq -rc ".channel_id" "${x}")
-		while read -r line; do
-			if [[ ${line} == "${channel_id}" ]]; then
-				unsubscribed_channel=$(tr -d '\r' <"${subscriptions_old}" | grep "${line}" | cut -d ',' -f3-)
-				echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
-				touch "${subfolder}/${channel}-remove.csv"
-				touch "${temporary}/${channel}-remove.csv"
-				jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
-					echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
-				done
-				rm "${x}"
+		if [[ ${reset_subscriptions} -eq 1 ]]; then
+			#TODO: Determine if the file is not on the subscriptions list
+			uploader=$(jq -rc ".channel_url" "${x}" | sed -e 's/https/http/g')
+			subscriptions_list=$(tr -d '\r' <"${subscriptions_new}" | sort | cut -d ',' -f2 | sed -e 's/https/http/g')
+			echo "${subscriptions_list}" | grep "${uploader}"
+			if ! grep -q "${uploader}" <(echo "${subscriptions_list}"); then
+				echo "${count}/${total} ${x}: ${uploader} not in the subscriptions list, removing..." && rm "${x}"
 			fi
-		done <"${diff_file}"
+		else
+			channel_id=$(jq -rc ".channel_id" "${x}")
+			while read -r line; do
+				if [[ ${line} == "${channel_id}" ]]; then
+					unsubscribed_channel=$(tr -d '\r' <"${subscriptions_old}" | grep "${line}" | cut -d ',' -f3-)
+					echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
+					touch "${subfolder}/${channel}-remove.csv"
+					touch "${temporary}/${channel}-remove.csv"
+					jq -c '[.upload_date, .timestamp, .duration, .uploader , .title, .webpage_url, .was_live]' "${x}" | while read -r i; do
+						echo "${i}" | sed -e "s/^\[//g" -e "s/\]$//g" -e 's/\\"/＂/g' >>"${temporary}/${channel}-remove.csv"
+					done
+					rm "${x}"
+				fi
+			done <"${diff_file}"
+		fi
 	fi
 	if [[ -f ${x} ]]; then
 		if [[ $(stat -c%s "${x}") -gt 3000 ]]; then
