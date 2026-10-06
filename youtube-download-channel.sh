@@ -264,7 +264,7 @@ core_loop() {
 	if [[ ${extract_all} -eq 0 ]]; then
 		if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
 			tar -xvp -I zstd --atime-preserve=system -f "${subfolder}/${channel}.tar.zst"
-			if [[ ${channel} == "subscriptions" ]]; then
+			if [[ ${channel} == "subscriptions" && ${reset_subscriptions} -eq 0 ]]; then
 				tar -xvp -I zstd --atime-preserve=system -f "${subfolder}/WL.tar.zst"
 			fi
 		fi
