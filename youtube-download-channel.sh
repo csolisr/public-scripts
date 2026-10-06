@@ -263,17 +263,17 @@ core_loop() {
 	fi
 	if [[ ${extract_all} -eq 0 ]]; then
 		if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
-			tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
+			tar -xvp -I zstd --atime-preserve=system -f "${subfolder}/${channel}.tar.zst"
 			if [[ ${channel} == "subscriptions" ]]; then
-				tar -xvp -I zstd -f "${subfolder}/WL.tar.zst"
+				tar -xvp -I zstd --atime-preserve=system -f "${subfolder}/WL.tar.zst"
 			fi
 		fi
 	else
 		if [[ -f "${subfolder}/${channel}.tar.zst" ]]; then
 			if [[ ${channel} == "subscriptions" ]]; then
-				find "${subfolder}" -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd -f "${c}"; done
+				find "${subfolder}" -iname "*.tar.zst" | while read -r c; do tar -xvp -I zstd --atime-preserve=system -f "${c}"; done
 			else
-				tar -xvp -I zstd -f "${subfolder}/${channel}.tar.zst"
+				tar -xvp -I zstd --atime-preserve=system -f "${subfolder}/${channel}.tar.zst"
 			fi
 		fi
 	fi
@@ -593,7 +593,7 @@ core_loop() {
 	#Fix permissions before compression, in case the script was run as root
 	find "${temporary}" -type f -and -not -perm 664 -exec chmod 664 {} \;
 	find "${temporary}" -type f -and \( -not -user "${folder_user}" -or -not -group "${folder_group}" \) -exec chown "${folder_user}:${folder_group}" {} \;
-	tar -cvp -I "zstd -T0 --fast" -f "${subfolder}/${channel}.tar.zst" -- *.info.json
+	tar -cvp -I "zstd -T0 --fast" --atime-preserve=system -f "${subfolder}/${channel}.tar.zst" -- *.info.json
 	total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 	sort "${temporary}/${channel}.txt" | uniq >"${archive}"
 	rm -rf "${temporary}"
