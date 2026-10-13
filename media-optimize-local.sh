@@ -115,6 +115,41 @@ while read -r s; do
 done < <(find . -type f -iname "*.webp" \( -size +10k \))
 wait
 
+#avif
+t_avif_loop() {
+	keep_compressing_picture=1
+	while [[ ${keep_compressing_picture} -gt 0 ]]; do
+		if [[ -f ${t} ]]; then
+			avifdec "${t}" /tmp/"${t##.*\/}"_temp.png && avifenc --codec aom -q 45 /tmp/"${t##.*\/}"_temp.png /tmp/"${t##.*\/}"_temp.avif
+			if [[ -f /tmp/"${t##.*\/}"_temp.avif ]]; then
+				size_new=$(stat -c%s /tmp/"${t##.*\/}"_temp.avif || 0)
+				size_original=$(stat -c%s "${t}" || 0)
+				if [[ -n ${size_original} && -n ${size_new} && ${size_original} -gt ${size_new} && ${size_new} -gt "0" ]]; then
+					size_diff=$((size_original - size_new))
+					echo "${t}: Saved ${size_diff} bytes" #&> /dev/null
+					mv /tmp/"${t##.*\/}"_temp.webp "${t}" #&> /dev/null
+				else
+					echo "${t}: Minimum size is ${size_original} bytes" #&> /dev/null
+					rm /tmp/"${t##.*\/}"_temp.avif                      #&> /dev/null
+					keep_compressing_picture=0
+				fi
+			else
+				keep_compressing_picture=0
+			fi
+			rm /tmp/"${p##.*\/}"_temp.png
+		else
+			keep_compressing_picture=0
+		fi
+	done
+}
+while read -r t; do
+	t_avif_loop "${t}" & #&>/dev/null &
+	if [[ $(jobs -r -p | wc -l) -ge $(getconf _NPROCESSORS_ONLN) ]]; then
+		wait -n
+	fi
+done < <(find . -type f -iname "*.avif" \( -size +10k \))
+wait
+
 #Fix extensions
 while read -r i; do
 	if file -b "${i}" | grep -vq "PNG" | grep -vq "empty" | grep -vq "symbolic link" | grep -vq "directory" | grep -vq "text"; then
@@ -123,12 +158,15 @@ while read -r i; do
 			#p="${i%.*}.jpg"
 			#p_jpeg_loop "${p}"
 			#jpegoptim -m76 "${i%.*}".jpg #&>/dev/null
-		elif file "${i}" | grep -q "GIF"; then
+		elif file -b "${i}" | grep -q "GIF"; then
 			mv "${i}" "${i%.*}".gif
 			#gifsicle --batch -O3 --lossy=80 --colors=255 "${i%.*}".gif #&>/dev/null
-		elif file "${i}" | grep -q "Web/P"; then
+		elif file -b "${i}" | grep -q "Web/P"; then
 			mv "${i}" "${i%.*}".webp
 			#cwebp -mt -af -quiet $i
+		elif file -b "${i}" | grep -q "AVIF"; then
+			mv "${i}" "${i%.*}".avif
+			#avifdec "${i}" /tmp/"${i##.*\/}"_temp.png && avifenc --codec aom -q 45 /tmp/"${i##.*\/}"_temp.png "${i}" && rm /tmp/"${i##.*\/}"_temp.png
 		fi
 	fi
 done < <(find . -iname "*.png")
@@ -143,6 +181,9 @@ while read -r j; do
 		elif file -b "${j}" | grep -q "Web/P"; then
 			mv "${j}" "${j%.*}".webp
 			#cwebp -mt -af -quiet $i
+		elif file -b "${j}" | grep -q "AVIF"; then
+			mv "${j}" "${j%.*}".avif
+			#avifdec "${j}" /tmp/"${i##.*\/}"_temp.png && avifenc --codec aom -q 45 /tmp/"${j##.*\/}"_temp.png "${j}" && rm /tmp/"${j##.*\/}"_temp.png
 		fi
 	fi
 done < <(find . \( -iname "*.jpg" -or -iname "*.jpeg" \))
@@ -156,7 +197,10 @@ while read -r k; do
 			#oxipng -o max "${k%.*}".png #&>/dev/null
 		elif file -b "${k}" | grep -q "Web/P"; then
 			mv "${k}" "${k%.*}".webp
-			#cwebp -mt -af -quiet $i
+			#cwebp -mt -af -quiet $k
+		elif file -b "${k}" | grep -q "AVIF"; then
+			mv "${k}" "${k%.*}".avif
+			#avifdec "${k}" /tmp/"${k##.*\/}"_temp.png && avifenc --codec aom -q 45 /tmp/"${k##.*\/}"_temp.png "${k}" && rm /tmp/"${k##.*\/}"_temp.png
 		fi
 	fi
 done < <(find . -iname "*.gif")
@@ -168,9 +212,29 @@ while read -r l; do
 		elif file -b "${l}" | grep -q "PNG"; then
 			mv "${l}" "${l%.*}".png
 			#oxipng -o max "${l%.*}".png #&>/dev/null
-		elif file -b "${l}" | grep -q "GIF"; then
-			mv "${l}" "${l%.*}".gif
-			#gifsicle --batch -O3 --lossy=80 --colors=255 "${l%.*}".gif #&>/dev/null
+		elif file -b "${l}" | grep -q "Web/P"; then
+			mv "${l}" "${l%.*}".webp
+			#cwebp -mt -af -quiet $l
+		elif file -b "${l}" | grep -q "AVIF"; then
+			mv "${l}" "${l%.*}".avif
+			#avifdec "${l}" /tmp/"${l##.*\/}"_temp.png && avifenc --codec aom -q 45 /tmp/"${l##.*\/}"_temp.png "${l}" && rm /tmp/"${l##.*\/}"_temp.png
 		fi
 	fi
 done < <(find . -iname "*.webp")
+while read -r m; do
+	if file -b "${m}" | grep -v -q -e "Web/P" -e "empty" -e "symbolic link" -e "directory" -e "text"; then
+		if file -b "${m}" | grep -q "JPEG"; then
+			mv "${m}" "${m%.*}".jpg
+			#jpegoptim -m76 "${m%.*}".jpg #&>/dev/null
+		elif file -b "${m}" | grep -q "PNG"; then
+			mv "${m}" "${m%.*}".png
+			#oxipng -o max "${m%.*}".png #&>/dev/null
+		elif file -b "${m}" | grep -q "GIF"; then
+			mv "${m}" "${m%.*}".gif
+			#gifsicle --batch -O3 --lossy=80 --colors=255 "${m%.*}".gif #&>/dev/null
+		elif file -b "${m}" | grep -q "Web/P"; then
+			mv "${m}" "${m}%.*}".webp
+			#cwebp -mt -af -quiet $m
+		fi
+	fi
+done < <(find . -iname "*.avif")
