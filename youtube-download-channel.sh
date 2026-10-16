@@ -593,7 +593,7 @@ core_loop() {
 	#Fix permissions before compression, in case the script was run as root
 	find "${temporary}" -type f -and -not -perm 664 -exec chmod 664 {} \;
 	find "${temporary}" -type f -and \( -not -user "${folder_user}" -or -not -group "${folder_group}" \) -exec chown "${folder_user}:${folder_group}" {} \;
-	tar -cvp -I "zstd -T0 --fast" --atime-preserve=system -f "${subfolder}/${channel}.tar.zst" -- *.info.json
+	find . -type f -and -iname "*.info.json" -print | tar -cvp -I "zstd -T0 --fast" --atime-preserve=system -f "${subfolder}/${channel}.tar.zst" -T -
 	total=$(find "${temporary}" -type f -iname "*.info.json" | wc -l)
 	sort "${temporary}/${channel}.txt" | uniq >"${archive}"
 	rm -rf "${temporary}"
