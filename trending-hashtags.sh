@@ -418,7 +418,11 @@ main() {
 	if [[ ${force_scan} -gt 0 || -z $(find "/tmp" -iname "trending_urls*.txt" -or -iname "blocked_urls*.txt" -or -iname "found_urls*.txt" -or -iname "trending_hashtags*.txt") ]]; then
 		clear_files
 		initialize_files
-		serversresponse=$(curl -s -S --no-progress-meter -L "${serverslist}")
+		if curl -sSf "${serverslist}" &>/dev/null; then
+			serversresponse=$(curl -s -S --no-progress-meter -L "${serverslist}" 2>/dev/null)
+		else
+			serversresponse=""
+		fi
 		fetch_sites "${serversresponse}"
 		fetch_blocks "${serversresponse}"
 		fetch_hashtags "${serversresponse}"
