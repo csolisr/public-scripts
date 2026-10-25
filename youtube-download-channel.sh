@@ -27,6 +27,10 @@ sleeptime="0.1"
 reset_subscriptions="0"
 personal_folder="/cygdrive/d/Nextcloud/Multimedia/Document/Playnite"
 track="1"
+grep="grep"
+if [[ -n $(type rg) ]]; then
+	grep="rg"
+fi
 #Cf. https://stackoverflow.com/a/14203146
 #Space to temporarily save the leftover positional arguments
 pos_args=()
@@ -176,14 +180,14 @@ inner_loop() {
 			#TODO: Determine if the file is not on the subscriptions list
 			uploader=$(jq -rc ".channel_url" "${x}" | sed -e 's/https/http/g')
 			subscriptions_list=$(tr -d '\r' <"${subscriptions_new}" | sort | cut -d ',' -f2 | sed -e 's/https/http/g')
-			if ! grep -q "${uploader}" <(echo "${subscriptions_list}"); then
+			if ! "${grep}" -q "${uploader}" <(echo "${subscriptions_list}"); then
 				echo "${count}/${total} ${x}: ${uploader} not in the subscriptions list, removing..." && rm "${x}"
 			fi
 		else
 			channel_id=$(jq -rc ".channel_id" "${x}")
 			while read -r line; do
 				if [[ ${line} == "${channel_id}" ]]; then
-					unsubscribed_channel=$(tr -d '\r' <"${subscriptions_old}" | grep "${line}" | cut -d ',' -f3-)
+					unsubscribed_channel=$(tr -d '\r' <"${subscriptions_old}" | "${grep}" "${line}" | cut -d ',' -f3-)
 					echo "${count}/${total} ${x} is from unsubscribed channel ${unsubscribed_channel}, removing..."
 					touch "${subfolder}/${channel}-remove.csv"
 					touch "${temporary}/${channel}-remove.csv"
@@ -221,7 +225,7 @@ inner_loop() {
 
 core_loop() {
 	if [[ -f ${subscriptions_old} && -f ${subscriptions_new} ]]; then
-		diff <(tr -d '\r' <"${subscriptions_old}" | sort | cut -d ',' -f2) <(tr -d '\r' <"${subscriptions_new}" | sort | cut -d ',' -f2) | grep "< " | sed -e "s/< //g" -e "s/http:\/\/www.youtube.com\/channel\///g" | sort | uniq >"${diff_file}"
+		diff <(tr -d '\r' <"${subscriptions_old}" | sort | cut -d ',' -f2) <(tr -d '\r' <"${subscriptions_new}" | sort | cut -d ',' -f2) | "${grep}" "< " | sed -e "s/< //g" -e "s/http:\/\/www.youtube.com\/channel\///g" | sort | uniq >"${diff_file}"
 	fi
 	temporary="/tmp/subscriptions-${channel}"
 	if [[ ! -w "/tmp" ]]; then
@@ -315,7 +319,7 @@ core_loop() {
 		fi
 		for section_url in "${section_urls[@]}"; do
 			if [[ ${section_url} == "${url}/videos" ]]; then
-				full_url=$(curl -s "${url}" | tr -d "\n\r" 2>/dev/null | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n 2>/dev/null | grep "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl" 2>/dev/null | grep -ve '^null$' | tail -n 1)
+				full_url=$(curl -s "${url}" | tr -d "\n\r" 2>/dev/null | xmlstarlet fo -R -n -H 2>/dev/null | xmlstarlet sel -t -v "/html" -n 2>/dev/null | "${grep}" "/channel/UC" | sed -e "s/var .* = //g" -e "s/\};/\}/g" -e "s/channel\/UC/playlist\?list=UU/g" | jq -r ".metadata .channelMetadataRenderer .channelUrl" 2>/dev/null | "${grep}" -ve '^null$' | tail -n 1)
 				if [[ -z ${full_url} ]]; then
 					full_url="${url}"
 				fi
@@ -329,7 +333,7 @@ core_loop() {
 			echo "${section_url} = ${full_url}"
 			#Test if section exists
 			test_raw=$(curl -s -L -I -m 30 -X HEAD "${full_url}")
-			test=$(echo "${test_raw}" | grep -e "HTTP.* 200")
+			test=$(echo "${test_raw}" | "${grep}" -e "HTTP.* 200")
 			if [[ -n ${test} ]]; then
 				if [[ ${channel} == "subscriptions" || -f ${cookies} ]]; then
 					#If available, you can use the cookies from your browser directly. Substitute
@@ -428,7 +432,7 @@ core_loop() {
 					fi
 				fi
 			else
-				error_code=$(echo "${test_raw}" | grep -e "HTTP")
+				error_code=$(echo "${test_raw}" | "${grep}" -e "HTTP")
 				echo "Error: ${error_code}"
 			fi
 		done
@@ -577,7 +581,7 @@ core_loop() {
 		done <"${temporary}/${channel}-sort-ordered.csv"
 		echo "],\"_id\":\"${channel}$(date +%s)\",\"createdAt\":$(date +%s),\"lastUpdatedAt\":$(date +%s)}" >>"${temporary}/${channel}.db"
 		rm "${json}"
-		grep -v -e ":[ ]*null" "${temporary}/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" -e "s/\[\r,/\[/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "${temporary}/${channel}.db"
+		"${grep}" -v -e ":[ ]*null" "${temporary}/${channel}.db" | tr '\n' '\r' | sed -e "s/,\r[,\r]*/,\r/g" | sed -e "s/,\r\]/\]/g" -e "s/\[\r,/\[/g" | tr '\r' '\n' | jq -c . >"${json}" && rm "${temporary}/${channel}.db"
 		rm "${temporary}/${channel}-sort-ordered.csv" "${sortcsv}"
 	fi
 	if [[ ${enablecsv} -eq 1 ]]; then
