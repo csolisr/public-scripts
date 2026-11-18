@@ -83,17 +83,18 @@ s_webp_loop() {
 		if [[ -f ${s} ]]; then
 			#if [[ -z $(grep -o -a -e "ANIM" -e "ANMF" "${s}") ]]; then
 			if ! grep -q -o -a -e "ANIM" -e "ANMF" "${s}"; then
-				cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp.webp #&>/dev/null
-				if [[ -f /tmp/"${s##.*\/}"_temp.webp ]]; then
-					size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp.webp || 0)
+				ts=$(date +%s)
+				cwebp -mt -af -quiet "${s}" -o /tmp/"${s##.*\/}"_temp_"${ts}".webp #&>/dev/null
+				if [[ -f /tmp/"${s##.*\/}"_temp_"${ts}".webp ]]; then
+					size_new=$(stat -c%s /tmp/"${s##.*\/}"_temp_"${ts}".webp || 0)
 					size_original=$(stat -c%s "${s}" || 0)
 					if [[ -n ${size_original} && -n ${size_new} && ${size_original} -gt ${size_new} && ${size_new} -gt "0" ]]; then
 						size_diff=$((size_original - size_new))
-						echo "${s}: Saved ${size_diff} bytes" #&> /dev/null
-						mv /tmp/"${s##.*\/}"_temp.webp "${s}" #&> /dev/null
+						echo "${s}: Saved ${size_diff} bytes"         #&> /dev/null
+						mv /tmp/"${s##.*\/}"_temp_"${ts}".webp "${s}" #&> /dev/null
 					else
 						echo "${s}: Minimum size is ${size_original} bytes" #&> /dev/null
-						rm /tmp/"${s##.*\/}"_temp.webp                      #&> /dev/null
+						rm /tmp/"${s##.*\/}"_temp_"${ts}".webp              #&> /dev/null
 						keep_compressing_picture=0
 					fi
 				else
@@ -120,23 +121,24 @@ t_avif_loop() {
 	keep_compressing_picture=1
 	while [[ ${keep_compressing_picture} -gt 0 ]]; do
 		if [[ -f ${t} ]]; then
-			avifdec "${t}" /tmp/"${t##.*\/}"_temp.png && avifenc --codec aom -q 45 /tmp/"${t##.*\/}"_temp.png /tmp/"${t##.*\/}"_temp.avif
-			if [[ -f /tmp/"${t##.*\/}"_temp.avif ]]; then
-				size_new=$(stat -c%s /tmp/"${t##.*\/}"_temp.avif || 0)
+			ts=$(date +%s)
+			avifdec "${t}" /tmp/"${t##.*\/}"_temp_"${ts}".png && avifenc --codec aom -q 45 /tmp/"${t##.*\/}"_temp_"${ts}".png /tmp/"${t##.*\/}"_temp_"${ts}".avif
+			if [[ -f /tmp/"${t##.*\/}"_temp_"${ts}".avif ]]; then
+				size_new=$(stat -c%s /tmp/"${t##.*\/}"_temp_"${ts}".avif || 0)
 				size_original=$(stat -c%s "${t}" || 0)
 				if [[ -n ${size_original} && -n ${size_new} && ${size_original} -gt ${size_new} && ${size_new} -gt "0" ]]; then
 					size_diff=$((size_original - size_new))
-					echo "${t}: Saved ${size_diff} bytes" #&> /dev/null
-					mv /tmp/"${t##.*\/}"_temp.webp "${t}" #&> /dev/null
+					echo "${t}: Saved ${size_diff} bytes"         #&> /dev/null
+					mv /tmp/"${t##.*\/}"_temp_"${ts}".avif "${t}" #&> /dev/null
 				else
 					echo "${t}: Minimum size is ${size_original} bytes" #&> /dev/null
-					rm /tmp/"${t##.*\/}"_temp.avif                      #&> /dev/null
+					rm /tmp/"${t##.*\/}"_temp_"${ts}".avif              #&> /dev/null
 					keep_compressing_picture=0
 				fi
 			else
 				keep_compressing_picture=0
 			fi
-			rm /tmp/"${p##.*\/}"_temp.png
+			rm /tmp/"${p##.*\/}"_temp_"${ts}".png
 		else
 			keep_compressing_picture=0
 		fi
